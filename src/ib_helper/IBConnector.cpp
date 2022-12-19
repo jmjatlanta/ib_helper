@@ -3,6 +3,9 @@
 
 namespace ib_helper {
 
+util::SysLogger* logger = nullptr;
+std::string logCategory("IBConnector");
+
 IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
 {
 	osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
@@ -13,6 +16,7 @@ IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
 	reader = new EReader(ibClient, osSignal);
 	reader->start();
 	listenerThread = std::make_shared<std::thread>(processMessages, this);
+    logger = util::SysLogger::getInstance();
 }
 
 IBConnector::~IBConnector() {
@@ -25,7 +29,6 @@ IBConnector::~IBConnector() {
 }
 
 void IBConnector::IBConnector::processMessages(IBConnector* ibConnector) {
-	util::SysLogger* logger = util::SysLogger::getInstance();
 	while (!ibConnector->shuttingDown) {
 		// wait for connection
 		if (!ibConnector->fullyConnected) {
@@ -52,7 +55,10 @@ void IBConnector::orderStatus( OrderId orderId, const std::string& status, Decim
 	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice){}
 void IBConnector::openOrder( OrderId orderId, const Contract&, const Order&, const OrderState&){}
 void IBConnector::openOrderEnd(){}
-void IBConnector::winError( const std::string& str, int lastError){}
+void IBConnector::winError( const std::string& str, int lastError)
+{
+    logger->error(logCategory, str);
+}
 void IBConnector::connectionClosed(){}
 void IBConnector::updateAccountValue(const std::string& key, const std::string& val,
             const std::string& currency, const std::string& accountName){}
@@ -60,7 +66,12 @@ void IBConnector::updatePortfolio( const Contract& contract, Decimal position, d
             double averageCost, double unrealizedPNL, double realizedPNL, const std::string& accountName){}
 void IBConnector::updateAccountTime(const std::string& timeStamp){}
 void IBConnector::accountDownloadEnd(const std::string& accountName){}
-void IBConnector::nextValidId( OrderId orderId){}
+void IBConnector::nextValidId( OrderId orderId)
+{
+    logger->debug(logCategory, "Received orderId of " + std::to_string(orderId));
+    nextOrderId = orderId;
+    fullyConnected = true;
+}
 void IBConnector::contractDetails( int reqId, const ContractDetails& contractDetails){}
 void IBConnector::bondContractDetails( int reqId, const ContractDetails& contractDetails){}
 void IBConnector::contractDetailsEnd( int reqId){}

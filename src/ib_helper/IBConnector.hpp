@@ -15,6 +15,8 @@ class IBConnector : public EWrapper
     IBConnector(const std::string& hostname, int port, int clientId);
     virtual ~IBConnector();
 
+    bool IsConnected() { return fullyConnected; }
+
     protected:
     /***
      * message loop
