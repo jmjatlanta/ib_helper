@@ -1,11 +1,16 @@
+#pragma once
 #include "AccountHandler.hpp"
+#include "TickHandler.hpp"
 #include "../ib_api/client/EReaderOSSignal.h"
 #include "../ib_api/client/EClientSocket.h"
 #include "../ib_api/client/EWrapper.h"
 #include "../ib_api/client/EReader.h"
-
+#include "../ib_api/client/TagValue.h"
 #include <string>
 #include <thread>
+#include <unordered_map>
+#include <atomic>
+#include <memory>
 
 namespace ib_helper {
 
@@ -15,7 +20,15 @@ class IBConnector : public EWrapper
     IBConnector(const std::string& hostname, int port, int clientId);
     virtual ~IBConnector();
 
-    bool IsConnected() { return fullyConnected; }
+    bool IsConnected() const { return fullyConnected; }
+    uint32_t NextRequestId() { return ++nextRequestId; }
+    uint32_t SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
+            const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
+            const TagValueListSPtr& mktDataOptions);
+    void UnsubscribeFromMarketData(uint32_t reqId);
+    uint32_t SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
+            int numberOfTicks, bool ignoreSize);
+    void UnsubscribeFromTickByTick(uint32_t reqId);
 
     protected:
     /***
@@ -148,9 +161,11 @@ class IBConnector : public EWrapper
     EReaderOSSignal* osSignal = nullptr;
     EClientSocket* ibClient = nullptr;
     EReader* reader = nullptr;
-    uint32_t nextOrderId = 0;
-    uint32_t nextRequestId = 0;
+    std::atomic<uint32_t> nextOrderId = 0;
+    std::atomic<uint32_t> nextRequestId = 0;
     bool fullyConnected = false;
-};
+    std::unordered_map<uint32_t, TickHandler* > tickHandlers{};
+}; 
 
 } // namespace ib_helper
+

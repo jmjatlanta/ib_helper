@@ -40,16 +40,110 @@ void IBConnector::IBConnector::processMessages(IBConnector* ibConnector) {
 	}
 }
 
-void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attrib){}
-void IBConnector::tickSize(TickerId tickerId, TickType field, Decimal size){}
+uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
+        const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
+        const TagValueListSPtr& mktDataOptions)
+{
+    uint32_t reqId = NextRequestId();
+    tickHandlers[reqId] = tickHandler;
+    ibClient->reqMktData(reqId, contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions);
+    return reqId;
+};
+
+void IBConnector::UnsubscribeFromMarketData(uint32_t reqId) { ibClient->cancelMktData(reqId); }
+
+uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
+            int numberOfTicks, bool ignoreSize)
+{
+    uint32_t reqId = NextRequestId();
+    tickHandlers[reqId] = handler;
+    ibClient->reqTickByTickData(reqId, contract, tickType, numberOfTicks, ignoreSize);
+    return reqId;
+};
+
+void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId) { ibClient->cancelTickByTickData(reqId); }
+
+void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attrib)
+{
+    try 
+    {
+        TickHandler* handler = tickHandlers.at(tickerId);
+        handler->OnTickPrice(tickerId, field, price, attrib);
+    } catch (const std::out_of_range& oor) {}
+}
+void IBConnector::tickSize(TickerId tickerId, TickType field, Decimal size)
+{
+    try 
+    {
+        TickHandler* handler = tickHandlers.at(tickerId);
+        handler->OnTickSize(tickerId, field, size);
+    } catch (const std::out_of_range& oor) {}
+}
 void IBConnector::tickOptionComputation( TickerId tickerId, TickType tickType, int tickAttrib, double impliedVol,
             double delta, double optPrice, double pvDividend, double gamma, double vega, double theta, double undPrice)
-           {}
-void IBConnector::tickGeneric(TickerId tickerId, TickType tickType, double value){}
-void IBConnector::tickString(TickerId tickerId, TickType tickType, const std::string& value){}
+{
+    try 
+    {
+        TickHandler* handler = tickHandlers.at(tickerId);
+        handler->OnTickOptionComputation(tickerId, tickType, tickAttrib, impliedVol, delta, optPrice, pvDividend, gamma,
+                vega, theta, undPrice);
+    } catch (const std::out_of_range& oor) {}
+}
+void IBConnector::tickGeneric(TickerId tickerId, TickType tickType, double value)
+{
+    try 
+    {
+        TickHandler* handler = tickHandlers.at(tickerId);
+        handler->OnTickGeneric(tickerId, tickType, value);
+    } catch (const std::out_of_range& oor) {}
+}
+void IBConnector::tickString(TickerId tickerId, TickType tickType, const std::string& value)
+{
+    try 
+    {
+        TickHandler* handler = tickHandlers.at(tickerId);
+        handler->OnTickString(tickerId, tickType, value);
+    } catch (const std::out_of_range& oor) {}
+}
 void IBConnector::tickEFP(TickerId tickerId, TickType tickType, double basisPoints,
             const std::string& formattedBasisPoints, double totalDividends, int holdDays, 
-            const std::string& futureLastTradeDate, double dividendImpact, double dividendsToLastTradeDate){}
+            const std::string& futureLastTradeDate, double dividendImpact, double dividendsToLastTradeDate)
+{
+    try 
+    {
+        TickHandler* handler = tickHandlers.at(tickerId);
+        handler->OnTickEFP(tickerId, tickType, basisPoints, formattedBasisPoints, totalDividends, holdDays, 
+                futureLastTradeDate, dividendImpact, dividendsToLastTradeDate);
+    } catch (const std::out_of_range& oor) {}
+}
+void IBConnector::tickByTickAllLast(int reqId, int tickType, time_t time, double price, Decimal size,
+            const TickAttribLast& tickAttribLast, const std::string& exchange, 
+            const std::string& specialConditions)
+{
+    try 
+    {
+        TickHandler* handler = tickHandlers.at(reqId);
+        handler->OnTickByTickAllLast(reqId, tickType, time, price, size, tickAttribLast, exchange, specialConditions);
+    } catch (const std::out_of_range& oor) {}
+}
+void IBConnector::tickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize,
+            Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk)
+{
+    try 
+    {
+        TickHandler* handler = tickHandlers.at(reqId);
+        handler->OnTickByTickBidAsk(reqId, time, bidPrice, askPrice, bidSize, askSize, tickAttribBidAsk);
+    } catch (const std::out_of_range& oor) {}
+}
+void IBConnector::tickByTickMidPoint(int reqId, time_t time, double midPoint)
+{
+    try 
+    {
+        TickHandler* handler = tickHandlers.at(reqId);
+        handler->OnTickByTickMidPoint(reqId, time, midPoint);
+    } catch (const std::out_of_range& oor) {}
+}
+void IBConnector::orderBound(long long orderId, int apiClientId, int apiOrderId){}
 void IBConnector::orderStatus( OrderId orderId, const std::string& status, Decimal filled,
 	        Decimal remaining, double avgFillPrice, int permId, int parentId,
 	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice){}
@@ -78,7 +172,13 @@ void IBConnector::contractDetailsEnd( int reqId){}
 void IBConnector::execDetails( int reqId, const Contract& contract, const Execution& execution){}
 void IBConnector::execDetailsEnd( int reqId){}
 void IBConnector::error(int id, int errorCode, const std::string& errorString, 
-            const std::string& advancedOrderRejectJson){}
+            const std::string& advancedOrderRejectJson)
+{
+    std::string msg = "Error Code: " + std::to_string(errorCode) 
+        + ": " + errorString 
+        + ". JSON: " + advancedOrderRejectJson;
+    logger->error(logCategory, msg);
+}
 void IBConnector::updateMktDepth(TickerId id, int position, int operation, int side, double price, Decimal size){}
 void IBConnector::updateMktDepthL2(TickerId id, int position, const std::string& marketMaker, int operation,
 	        int side, double price, Decimal size, bool isSmartDepth){}
@@ -148,13 +248,6 @@ void IBConnector::pnlSingle(int reqId, Decimal pos, double dailyPnL, double unre
 void IBConnector::historicalTicks(int reqId, const std::vector<HistoricalTick> &ticks, bool done){}
 void IBConnector::historicalTicksBidAsk(int reqId, const std::vector<HistoricalTickBidAsk> &ticks, bool done){}
 void IBConnector::historicalTicksLast(int reqId, const std::vector<HistoricalTickLast> &ticks, bool done){}
-void IBConnector::tickByTickAllLast(int reqId, int tickType, time_t time, double price, Decimal size,
-            const TickAttribLast& tickAttribLast, const std::string& exchange, 
-            const std::string& specialConditions){}
-void IBConnector::tickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize,
-            Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk){}
-void IBConnector::tickByTickMidPoint(int reqId, time_t time, double midPoint){}
-void IBConnector::orderBound(long long orderId, int apiClientId, int apiOrderId){}
 void IBConnector::completedOrder(const Contract& contract, const Order& order, const OrderState& orderState){}
 void IBConnector::completedOrdersEnd(){}
 void IBConnector::replaceFAEnd(int reqId, const std::string& text){}

@@ -1,3 +1,4 @@
+#pragma once
 #include "../ib_api/client/Contract.h"
 
 #include <string>
