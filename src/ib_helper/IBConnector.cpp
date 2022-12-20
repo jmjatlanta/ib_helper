@@ -21,11 +21,12 @@ IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
 
 IBConnector::~IBConnector() {
 	shuttingDown = true;
-   if (listenerThread != nullptr)
-	   listenerThread->join();
-   delete reader;
-   delete ibClient;
-   delete osSignal;
+    ibClient->eDisconnect();
+    if (listenerThread != nullptr)
+	    listenerThread->join();
+    delete reader;
+    delete ibClient;
+    delete osSignal;
 }
 
 void IBConnector::IBConnector::processMessages(IBConnector* ibConnector) {
@@ -62,6 +63,29 @@ uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandle
 };
 
 void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId) { ibClient->cancelTickByTickData(reqId); }
+
+uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines)
+{
+    uint32_t reqId = NextRequestId();
+    marketDepthHandlers[reqId] = depthHandler;
+    //ibClient->reqMktDepth(reqId, contract, int numRows, bool isSmartDepth, const int &mktDepthOptions)
+    TagValueListSPtr mktDepthOptions;
+    ibClient->reqMktDepth(reqId, contract, numLines, true, mktDepthOptions);
+    return reqId;
+}
+
+void IBConnector::UnsubscribeFromMarketDepth(uint32_t subscriptionId)
+{
+    ibClient->cancelMktDepth(subscriptionId, true);
+}
+
+std::future<std::vector<DepthMktDataDescription> > IBConnector::RequestMktDepthExchanges()
+{
+    std::lock_guard<std::mutex> lock(mktDepthExchangesPromisesMutex);
+    auto& promise = mktDepthExchangesPromises.emplace_back( );
+    ibClient->reqMktDepthExchanges();
+    return promise.get_future();
+}
 
 void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attrib)
 {
@@ -179,9 +203,23 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         + ". JSON: " + advancedOrderRejectJson;
     logger->error(logCategory, msg);
 }
-void IBConnector::updateMktDepth(TickerId id, int position, int operation, int side, double price, Decimal size){}
-void IBConnector::updateMktDepthL2(TickerId id, int position, const std::string& marketMaker, int operation,
-	        int side, double price, Decimal size, bool isSmartDepth){}
+void IBConnector::updateMktDepth(TickerId reqId, int position, int operation, int side, double price, Decimal size)
+{
+    try 
+    {
+        MarketDepthHandler* handler = marketDepthHandlers.at(reqId);
+        handler->OnUpdateMktDepth(reqId, position, operation, side, price, size);
+    } catch (const std::out_of_range& oor) {}
+}
+void IBConnector::updateMktDepthL2(TickerId reqId, int position, const std::string& marketMaker, int operation,
+	        int side, double price, Decimal size, bool isSmartDepth)
+{
+    try 
+    {
+        MarketDepthHandler* handler = marketDepthHandlers.at(reqId);
+        handler->OnUpdateMktDepthL2(reqId, position, marketMaker, operation, side, price, size, isSmartDepth);
+    } catch (const std::out_of_range& oor) {}
+}
 void IBConnector::updateNewsBulletin(int msgId, int msgType, const std::string& newsMessage, 
             const std::string& originExch){}
 void IBConnector::managedAccounts( const std::string& accountsList){}
@@ -226,7 +264,17 @@ void IBConnector::securityDefinitionOptionalParameterEnd(int reqId){}
 void IBConnector::softDollarTiers(int reqId, const std::vector<SoftDollarTier> &tiers){}
 void IBConnector::familyCodes(const std::vector<FamilyCode> &familyCodes){}
 void IBConnector::symbolSamples(int reqId, const std::vector<ContractDescription> &contractDescriptions){}
-void IBConnector::mktDepthExchanges(const std::vector<DepthMktDataDescription> &depthMktDataDescriptions){}
+void IBConnector::mktDepthExchanges(const std::vector<DepthMktDataDescription> &depthMktDataDescriptions)
+{
+    std::lock_guard<std::mutex> lock(mktDepthExchangesPromisesMutex);
+    // find the first promise
+    if (mktDepthExchangesPromises.size() == 0)
+        return;
+    auto& promise = *mktDepthExchangesPromises.begin();
+    promise.set_value(depthMktDataDescriptions);
+    mktDepthExchangesPromises.erase(mktDepthExchangesPromises.begin());
+}
+
 void IBConnector::tickNews(int tickerId, time_t timeStamp, const std::string& providerCode, const std::string& articleId,
             const std::string& headline, const std::string& extraData){}
 void IBConnector::smartComponents(int reqId, const SmartComponentsMap& theMap){}

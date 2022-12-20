@@ -1,6 +1,7 @@
 #pragma once
 #include "AccountHandler.hpp"
 #include "TickHandler.hpp"
+#include "MarketDepthHandler.hpp"
 #include "../ib_api/client/EReaderOSSignal.h"
 #include "../ib_api/client/EClientSocket.h"
 #include "../ib_api/client/EWrapper.h"
@@ -11,6 +12,7 @@
 #include <unordered_map>
 #include <atomic>
 #include <memory>
+#include <future>
 
 namespace ib_helper {
 
@@ -29,6 +31,9 @@ class IBConnector : public EWrapper
     uint32_t SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
             int numberOfTicks, bool ignoreSize);
     void UnsubscribeFromTickByTick(uint32_t reqId);
+    std::future<std::vector<DepthMktDataDescription> > RequestMktDepthExchanges();
+    uint32_t SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines);
+    void UnsubscribeFromMarketDepth(uint32_t subscriptionId);
 
     protected:
     /***
@@ -164,7 +169,11 @@ class IBConnector : public EWrapper
     std::atomic<uint32_t> nextOrderId = 0;
     std::atomic<uint32_t> nextRequestId = 0;
     bool fullyConnected = false;
-    std::unordered_map<uint32_t, TickHandler* > tickHandlers{};
+    std::unordered_map<uint32_t, TickHandler* > tickHandlers;
+    std::unordered_map<uint32_t, MarketDepthHandler* > marketDepthHandlers;
+    private:
+    std::mutex mktDepthExchangesPromisesMutex;
+    std::vector<std::promise<std::vector<DepthMktDataDescription> > > mktDepthExchangesPromises{};
 }; 
 
 } // namespace ib_helper
