@@ -16,7 +16,13 @@ class MyMarketDepthHandler : public ib_helper::MarketDepthHandler
     public:
 	virtual void OnUpdateMktDepth(int tickerId, int position, int operation, int side, double price, Decimal size) override
     {
-        // shouldn't be called
+        // shouldn't be called, but just in case
+        std::string msg = std::string("D,") + std::to_string(tickerId)
+                + "," + std::to_string(position)
+                + "," + std::to_string(operation)
+                + "," + std::to_string(side)
+                + "," + std::to_string(price)
+                + "," + decimalStringToDisplay(size);
     }
 	virtual void OnUpdateMktDepthL2(int tickerId, int position, const std::string& marketMaker, int operation, 
             int side, double price, Decimal size, bool isSmartDepth) override
@@ -27,7 +33,7 @@ class MyMarketDepthHandler : public ib_helper::MarketDepthHandler
             + "\"," + std::to_string(operation)
             + "," + std::to_string(side)
             + "," + std::to_string(price)
-            + "," + std::to_string(size)
+            + "," + decimalStringToDisplay(size)
             + "," + (isSmartDepth ? "TRUE" : "FALSE");
         logger->debug(clazz, msg);
     }
