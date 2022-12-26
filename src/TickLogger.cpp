@@ -7,12 +7,38 @@
 #include <stdio.h>
 #include <unistd.h>
 
+class MyMarketDepthHandler : public ib_helper::MarketDepthHandler
+{
+    private:
+    util::SysLogger* logger = util::SysLogger::getInstance();
+    const std::string clazz = "MyMarketDepthHandler";
+
+    public:
+	virtual void OnUpdateMktDepth(int tickerId, int position, int operation, int side, double price, Decimal size)
+    {
+        // shouldn't be called
+    }
+	virtual void OnUpdateMktDepthL2(int tickerId, int position, const std::string& marketMaker, int operation, 
+            int side, double price, Decimal size, bool isSmartDepth)
+    {
+        std::string msg = std::string("L,") + std::to_string(tickerId)
+            + "," + std::to_string(position)
+            + ",\"" + marketMaker
+            + "\"," + std::to_string(operation)
+            + "," + std::to_string(side)
+            + "," + std::to_string(price)
+            + "," + std::to_string(size)
+            + "," + (isSmartDepth ? "TRUE" : "FALSE");
+        logger->debug(clazz, msg);
+    }
+};
+
 class MyTickHandler : public ib_helper::TickHandler
 {
         public:
         int methodsCalled = 0;
         util::SysLogger* logger = util::SysLogger::getInstance();
-        const std::string clazz = "IBConnectorTest";
+        const std::string clazz = "MyTickHandler";
 
         virtual void OnTickPrice(int tickerId, int field, double price, TickAttrib attribs) override
         {
@@ -132,16 +158,19 @@ int main(int argc, char** argv)
         exit(1);
     }
     MyTickHandler tickHandler{};
+    MyMarketDepthHandler marketDepthHandler{};
+
     ib_helper::ContractBuilder contractBuilder{&conn};
     Contract stock = contractBuilder.BuildStock(ticker);
     // Last, AllLast, BidAsk
     uint32_t tickSubscriptionId = conn.SubscribeToTickByTick(stock, &tickHandler, "BidAsk", 0, true);
-    std::this_thread::sleep_for(std::chrono::seconds(15));
     uint32_t lastSubscriptionId = conn.SubscribeToTickByTick(stock, &tickHandler, "AllLast", 0, true);
+    uint32_t marketDepthSubscriptionId = conn.SubscribeToMarketDepth(stock, &marketDepthHandler, 3);
     while (!ctrl_c_pressed)
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    std::cerr << "Exiting\n";
+    std::cerr << "\nExiting\n";
     conn.UnsubscribeFromTickByTick(tickSubscriptionId);
     conn.UnsubscribeFromTickByTick(lastSubscriptionId);
+    conn.UnsubscribeFromMarketData(marketDepthSubscriptionId);
 }
 
