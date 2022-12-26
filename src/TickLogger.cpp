@@ -14,12 +14,12 @@ class MyMarketDepthHandler : public ib_helper::MarketDepthHandler
     const std::string clazz = "MyMarketDepthHandler";
 
     public:
-	virtual void OnUpdateMktDepth(int tickerId, int position, int operation, int side, double price, Decimal size)
+	virtual void OnUpdateMktDepth(int tickerId, int position, int operation, int side, double price, Decimal size) override
     {
         // shouldn't be called
     }
 	virtual void OnUpdateMktDepthL2(int tickerId, int position, const std::string& marketMaker, int operation, 
-            int side, double price, Decimal size, bool isSmartDepth)
+            int side, double price, Decimal size, bool isSmartDepth) override
     {
         std::string msg = std::string("L,") + std::to_string(tickerId)
             + "," + std::to_string(position)
@@ -81,7 +81,7 @@ class MyTickHandler : public ib_helper::TickHandler
         }
         virtual void OnTickByTickAllLast(int reqId, int tickType, time_t time, double price, Decimal size,
             const TickAttribLast& tickAttribLast, const std::string& exchange, 
-            const std::string& specialConditions)
+            const std::string& specialConditions) override
         {
             // write out a tick record
             std::string msg = "T," + std::to_string(tickType)
@@ -94,7 +94,7 @@ class MyTickHandler : public ib_helper::TickHandler
             ++methodsCalled;
         }
         virtual void OnTickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize,
-            Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk)
+            Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk) override
         {
             // write out a bid/ask record
             std::string msg = "B," + std::to_string(time)
@@ -105,7 +105,7 @@ class MyTickHandler : public ib_helper::TickHandler
             logger->debug(clazz, msg);
             ++methodsCalled;
         }
-        virtual void OnTickByTickMidPoint(int reqId, time_t time, double midPoint)
+        virtual void OnTickByTickMidPoint(int reqId, time_t time, double midPoint) override
         {
             logger->debug(clazz, "OnTickByTickMidPoint called");
             ++methodsCalled;

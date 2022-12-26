@@ -78,7 +78,7 @@ TEST(IBConnectorTest, Ticks)
         }
         virtual void OnTickByTickAllLast(int reqId, int tickType, time_t time, double price, Decimal size,
             const TickAttribLast& tickAttribLast, const std::string& exchange, 
-            const std::string& specialConditions)
+            const std::string& specialConditions) override
         {
             std::string msg = "OnTickByTickAllLast type: " + std::to_string(tickType)
                 + " time: " + std::to_string(time)
@@ -89,7 +89,7 @@ TEST(IBConnectorTest, Ticks)
             ++methodsCalled;
         }
         virtual void OnTickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize,
-            Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk)
+            Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk) override
         {
             std::string msg = "OnTickByTickBidAsk at time " + std::to_string(time)
                 + " Bid: " + std::to_string(bidPrice)
@@ -99,7 +99,7 @@ TEST(IBConnectorTest, Ticks)
             logger->debug(clazz, msg);
             ++methodsCalled;
         }
-        virtual void OnTickByTickMidPoint(int reqId, time_t time, double midPoint)
+        virtual void OnTickByTickMidPoint(int reqId, time_t time, double midPoint) override
         {
             logger->debug(clazz, "OnTickByTickMidPoint called");
             ++methodsCalled;
@@ -161,13 +161,13 @@ TEST(IBConnectorTest, L2Book)
         util::SysLogger* logger = util::SysLogger::getInstance();
         const std::string clazz = "IBConnectorTest";
 
-	    virtual void OnUpdateMktDepth(int tickerId, int position, int operation, int side, double price, Decimal size)
+	    virtual void OnUpdateMktDepth(int tickerId, int position, int operation, int side, double price, Decimal size) override
         {
             logger->debug(clazz, "OnUpdateMktDepth");
             ++depthCount;
         }
 	    virtual void OnUpdateMktDepthL2(int tickerId, int position, const std::string&  marketMaker, int operation, int side, 
-                double price, Decimal size, bool isSmartDepth)
+                double price, Decimal size, bool isSmartDepth) override
         {
             std::string message = "L2," + std::to_string(position)
                     + "," + marketMaker

@@ -126,7 +126,7 @@ class IBConnector : public EWrapper
     virtual void tickNews(int tickerId, time_t timeStamp, const std::string& providerCode, const std::string& articleId,
             const std::string& headline, const std::string& extraData) override;
     virtual void smartComponents(int reqId, const SmartComponentsMap& theMap) override;
-    virtual void tickReqParams(int tickerId, double minTick, const std::string& bboExchange, int snapshotPermissions) ;
+    virtual void tickReqParams(int tickerId, double minTick, const std::string& bboExchange, int snapshotPermissions) override;
     virtual void newsProviders(const std::vector<NewsProvider> &newsProviders) override;
     virtual void newsArticle(int requestId, int articleType, const std::string& articleText) override;
     virtual void historicalNews(int requestId, const std::string& time, const std::string& providerCode,
@@ -166,8 +166,8 @@ class IBConnector : public EWrapper
     EReaderOSSignal* osSignal = nullptr;
     EClientSocket* ibClient = nullptr;
     EReader* reader = nullptr;
-    std::atomic<uint32_t> nextOrderId = 0;
-    std::atomic<uint32_t> nextRequestId = 0;
+    std::atomic<uint32_t> nextOrderId;
+    std::atomic<uint32_t> nextRequestId;
     bool fullyConnected = false;
     std::unordered_map<uint32_t, TickHandler* > tickHandlers;
     std::unordered_map<uint32_t, MarketDepthHandler* > marketDepthHandlers;
