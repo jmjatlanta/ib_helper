@@ -28,6 +28,10 @@ class SysLogger
     void warn(const std::string& category, const std::string& msg) { log(LogLevel::WARN, category, msg); }
     void log(LogLevel level, const std::string& category, const std::string& msg)
     {
+        if (includeTimestamp)
+            std::cerr << std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now().time_since_epoch()).count())
+                    << " ";
         std::cerr << to_string(level) << " [" << category << "] " << msg << "\n";
     }
     static std::string to_string(LogLevel in) {
@@ -46,6 +50,7 @@ class SysLogger
     }
     protected:
     SysLogger() {}
+    bool includeTimestamp = true;
 };
 
 } // namespace util

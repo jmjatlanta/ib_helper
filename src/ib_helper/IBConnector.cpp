@@ -8,6 +8,7 @@ std::string logCategory("IBConnector");
 
 IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
 {
+    logger = util::SysLogger::getInstance();
 	osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
 	ibClient = new EClientSocket(this, osSignal);
 	if (!ibClient->eConnect(hostname.c_str(), port, clientId, false))
@@ -16,7 +17,6 @@ IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
 	reader = new EReader(ibClient, osSignal);
 	reader->start();
 	listenerThread = std::make_shared<std::thread>(processMessages, this);
-    logger = util::SysLogger::getInstance();
 }
 
 IBConnector::~IBConnector() {
@@ -198,6 +198,9 @@ void IBConnector::execDetailsEnd( int reqId){}
 void IBConnector::error(int id, int errorCode, const std::string& errorString, 
             const std::string& advancedOrderRejectJson)
 {
+    // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
+    if (errorCode == 502 && !fullyConnected)
+        this->shuttingDown = true;
     std::string msg = "Error Code: " + std::to_string(errorCode) 
         + ": " + errorString 
         + ". JSON: " + advancedOrderRejectJson;
