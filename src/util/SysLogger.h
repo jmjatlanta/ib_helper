@@ -4,13 +4,13 @@
 #include <chrono>
 #include <iostream>
 #include <iomanip>
+#include <mutex>
+
 #ifdef WIN32
 #define localtime_r(_Time, _Tm) localtime_s(_Tm, _Time)
 #endif
 
 namespace util {
-
-constexpr bool includeMillis = true;
 
 class SysLogger
 {
@@ -23,8 +23,11 @@ class SysLogger
     };
 
     protected:
+    static constexpr bool includeMillis = true;
+    static constexpr bool threadSafe = false;
     std::ostream* stream = &std::cerr;
     LogLevel logLevel = LogLevel::WARN;
+    std::mutex logMutex;
 
     public:
     static SysLogger* getInstance() 
@@ -46,9 +49,17 @@ class SysLogger
     {
         if (static_cast<uint32_t>(level) >= static_cast<uint32_t>(logLevel))
         {
-            auto in_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-            *stream << current_time_formatted() << " "
-                    << to_string(level) << " [" << category << "] " << msg << "\n";
+            if (threadSafe)
+            {
+                std::lock_guard<std::mutex> lock(logMutex);
+                *stream << current_time_formatted() << " "
+                        << to_string(level) << " [" << category << "] " << msg << "\n";
+            }
+            else
+            {
+                *stream << current_time_formatted() << " "
+                        << to_string(level) << " [" << category << "] " << msg << "\n";
+            }
         }
     }
     static std::string to_string(LogLevel in) {
