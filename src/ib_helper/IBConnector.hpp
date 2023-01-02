@@ -35,6 +35,8 @@ class IBConnector : public EWrapper
     uint32_t SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines);
     void UnsubscribeFromMarketDepth(uint32_t subscriptionId);
 
+    bool IsShuttingDown() const { return shuttingDown; }
+
     protected:
     /***
      * message loop

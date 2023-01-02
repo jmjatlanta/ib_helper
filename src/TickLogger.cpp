@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <chrono>
+#include <ctime>
+#include <fstream>
+#include <sstream>
 
 class MyMarketDepthHandler : public ib_helper::MarketDepthHandler
 {
@@ -130,11 +134,22 @@ bool isConnected(const ib_helper::IBConnector& conn)
     int counter = 0;
     while (true)
     {
-        if (conn.IsConnected())
+        if (conn.IsConnected() || conn.IsShuttingDown())
             break;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     return conn.IsConnected();
+}
+
+std::string getDate() 
+{
+    std::time_t currTime = std::time(0);
+    std::tm* now = std::localtime(&currTime);
+    std::stringstream ss;
+    ss << (now->tm_year + 1900) 
+        << std::setw(2) << std::setfill('0') << now->tm_mon + 1 
+        << std::setw(2) << std::setfill('0') << now->tm_mday;
+    return ss.str();
 }
 
 int main(int argc, char** argv)
@@ -149,6 +164,11 @@ int main(int argc, char** argv)
     std::string clientId = argv[3];
     std::string ticker = argv[4];
 
+    std::string filename = ticker + getDate() + ".out";
+
+    std::ofstream file(filename);
+
+    util::SysLogger::getInstance()->set_stream(file);
     struct sigaction sigIntHandler;
     sigIntHandler.sa_handler = ctrlc_handler;
     sigemptyset(&sigIntHandler.sa_mask);

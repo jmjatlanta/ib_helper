@@ -12,7 +12,9 @@ IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
 	osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
 	ibClient = new EClientSocket(this, osSignal);
 	if (!ibClient->eConnect(hostname.c_str(), port, clientId, false))
+    {
 		return;
+    }
 	// message loop
 	reader = new EReader(ibClient, osSignal);
 	reader->start();
@@ -35,9 +37,14 @@ void IBConnector::IBConnector::processMessages(IBConnector* ibConnector) {
 		if (!ibConnector->fullyConnected) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
-		ibConnector->osSignal->waitForSignal();
 		if (!ibConnector->shuttingDown)
-			ibConnector->reader->processMsgs();
+        {
+		    ibConnector->osSignal->waitForSignal();
+            if (!ibConnector->shuttingDown)
+            {
+			    ibConnector->reader->processMsgs();
+            }
+        }
 	}
 }
 
@@ -186,7 +193,6 @@ void IBConnector::updateAccountTime(const std::string& timeStamp){}
 void IBConnector::accountDownloadEnd(const std::string& accountName){}
 void IBConnector::nextValidId( OrderId orderId)
 {
-    logger->debug(logCategory, "Received orderId of " + std::to_string(orderId));
     nextOrderId = orderId;
     fullyConnected = true;
 }
