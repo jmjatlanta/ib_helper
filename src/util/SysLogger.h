@@ -26,7 +26,7 @@ class SysLogger
     static constexpr bool includeMillis = true;
     static constexpr bool threadSafe = false;
     std::ostream* stream = &std::cerr;
-    LogLevel logLevel = LogLevel::WARN;
+    LogLevel logLevel = LogLevel::DEBUG;
     std::mutex logMutex;
 
     public:
