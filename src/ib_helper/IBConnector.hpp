@@ -1,7 +1,10 @@
 #pragma once
-#include "AccountHandler.hpp"
 #include "TickHandler.hpp"
+#include "HistoricalDataHandler.hpp"
 #include "MarketDepthHandler.hpp"
+#include "IBConnectionMonitor.hpp"
+#include "AccountHandler.hpp"
+#include "OrderHandler.hpp"
 #include "../ib_api/client/EReaderOSSignal.h"
 #include "../ib_api/client/EClientSocket.h"
 #include "../ib_api/client/EWrapper.h"
@@ -165,14 +168,19 @@ class IBConnector : public EWrapper
     protected: // variables
     std::shared_ptr<std::thread> listenerThread = nullptr;
     volatile bool shuttingDown = false;
+    bool fullyConnected = false;
     EReaderOSSignal* osSignal = nullptr;
     EClientSocket* ibClient = nullptr;
     EReader* reader = nullptr;
-    std::atomic<uint32_t> nextOrderId;
-    std::atomic<uint32_t> nextRequestId;
-    bool fullyConnected = false;
-    std::unordered_map<uint32_t, TickHandler* > tickHandlers;
-    std::unordered_map<uint32_t, MarketDepthHandler* > marketDepthHandlers;
+    std::atomic<uint32_t> nextOrderId = 0;
+    std::atomic<uint32_t> nextRequestId = 0;
+    std::unordered_map<uint32_t, TickHandler* > tickHandlers{};
+    std::unordered_map<uint32_t, MarketDepthHandler* > marketDepthHandlers{};
+    std::unordered_map<uint32_t, HistoricalDataHandler*> historicalDataHandlers{};
+    std::vector<IBConnectionMonitor*> connectionMonitors{};
+    std::vector<AccountHandler*> accountHandlers{};
+    std::unordered_map<uint32_t, std::future<ContractDetails> > contractDetailsHandlers{};
+    std::unordered_map<uint32_t, OrderHandler*> orderHandlers{};
     private:
     std::mutex mktDepthExchangesPromisesMutex;
     std::vector<std::promise<std::vector<DepthMktDataDescription> > > mktDepthExchangesPromises{};

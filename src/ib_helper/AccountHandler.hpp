@@ -9,7 +9,7 @@ namespace ib_helper {
 * Implement to receive account level updates
 */
 
-class AccountHelper
+class AccountHandler
 {
     public:
     virtual void OnAccountValueUpdate(const std::string& key, const std::string& value, const std::string& currency,
