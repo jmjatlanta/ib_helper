@@ -21,6 +21,8 @@ class AccountHandler
     virtual void OnPosition(const std::string& account, Contract contract, Decimal pos, double averageCost) = 0;
     virtual void OnPositionEnd() = 0;
     virtual void OnCurrentTime(long currentTime) = 0;
+    virtual void OnError(int id, int errorCode, const std::string& errorMessage, 
+            const std::string& advancedOrderRejectJson) = 0;
 };
 
 } // end namespace ib_helper

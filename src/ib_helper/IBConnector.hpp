@@ -25,6 +25,7 @@ class IBConnector : public EWrapper
     IBConnector(const std::string& hostname, int port, int clientId);
     virtual ~IBConnector();
 
+    void AddAccountHandler(AccountHandler* in) { accountHandlers.push_back(in); }
     bool IsConnected() const { return fullyConnected; }
     uint32_t NextRequestId() { return ++nextRequestId; }
     uint32_t SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 

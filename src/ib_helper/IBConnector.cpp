@@ -207,6 +207,10 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 && !fullyConnected)
         this->shuttingDown = true;
+    for(auto handler : accountHandlers)
+    {
+        handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);
+    }
     std::string msg = "Error Code: " + std::to_string(errorCode) 
         + ": " + errorString 
         + ". JSON: " + advancedOrderRejectJson;
