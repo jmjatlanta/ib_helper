@@ -31,6 +31,31 @@ IBConnector::~IBConnector() {
     delete osSignal;
 }
 
+std::future<ContractDetails> IBConnector::GetContractDetails(const Contract& contract)
+{
+    uint32_t promiseId = this->GetNextRequestId();
+    auto& promise = contractDetailsHandlers[promiseId];
+    ibClient->reqContractDetails(promiseId, contract);
+    return promise.get_future();
+}
+
+void IBConnector::RequestPositions()
+{
+    this->ibClient->reqPositions();
+}
+
+AccountHandler* IBConnector::GetDefaultAccountHandler() 
+{ 
+    if (accountHandlers.size() == 0) 
+        return nullptr; 
+    return accountHandlers[0]; 
+}
+
+void IBConnector::PlaceOrder(int orderId, ::Order ord, const Contract& contract)
+{
+    this->ibClient->placeOrder(orderId, contract, ord);
+}
+
 void IBConnector::IBConnector::processMessages(IBConnector* ibConnector) {
 	while (!ibConnector->shuttingDown) {
 		// wait for connection
@@ -52,7 +77,7 @@ uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandle
         const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
         const TagValueListSPtr& mktDataOptions)
 {
-    uint32_t reqId = NextRequestId();
+    uint32_t reqId = GetNextRequestId();
     tickHandlers[reqId] = tickHandler;
     ibClient->reqMktData(reqId, contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions);
     return reqId;
@@ -63,7 +88,7 @@ void IBConnector::UnsubscribeFromMarketData(uint32_t reqId) { ibClient->cancelMk
 uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
             int numberOfTicks, bool ignoreSize)
 {
-    uint32_t reqId = NextRequestId();
+    uint32_t reqId = GetNextRequestId();
     tickHandlers[reqId] = handler;
     ibClient->reqTickByTickData(reqId, contract, tickType, numberOfTicks, ignoreSize);
     return reqId;
@@ -73,7 +98,7 @@ void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId) { ibClient->cancelTi
 
 uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines)
 {
-    uint32_t reqId = NextRequestId();
+    uint32_t reqId = GetNextRequestId();
     marketDepthHandlers[reqId] = depthHandler;
     //ibClient->reqMktDepth(reqId, contract, int numRows, bool isSmartDepth, const int &mktDepthOptions)
     TagValueListSPtr mktDepthOptions;
@@ -174,12 +199,37 @@ void IBConnector::tickByTickMidPoint(int reqId, time_t time, double midPoint)
         handler->OnTickByTickMidPoint(reqId, time, midPoint);
     } catch (const std::out_of_range& oor) {}
 }
-void IBConnector::orderBound(long long orderId, int apiClientId, int apiOrderId){}
+void IBConnector::orderBound(long long orderId, int apiClientId, int apiOrderId)
+{
+    for(auto* handler : orderHandlers)
+    {
+        handler->OnOrderBound(orderId, apiClientId, apiOrderId);
+    }
+}
 void IBConnector::orderStatus( OrderId orderId, const std::string& status, Decimal filled,
 	        Decimal remaining, double avgFillPrice, int permId, int parentId,
-	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice){}
-void IBConnector::openOrder( OrderId orderId, const Contract&, const Order&, const OrderState&){}
-void IBConnector::openOrderEnd(){}
+	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice)
+{
+    for(auto* handler : orderHandlers)
+    {
+        handler->OnOrderStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, 
+                lastFillPrice, clientId, whyHeld, mktCapPrice);
+    }
+}
+void IBConnector::openOrder( OrderId orderId, const Contract& contract, const Order& order, const OrderState& orderState)
+{
+    for(auto* handler : orderHandlers)
+    {
+        handler->OnOpenOrder(orderId, contract, order, orderState);
+    }
+}
+void IBConnector::openOrderEnd()
+{
+    for(auto* handler : orderHandlers)
+    {
+        handler->OnOpenOrderEnd();
+    }
+}
 void IBConnector::winError( const std::string& str, int lastError)
 {
     logger->error(logCategory, str);
@@ -196,7 +246,11 @@ void IBConnector::nextValidId( OrderId orderId)
     nextOrderId = orderId;
     fullyConnected = true;
 }
-void IBConnector::contractDetails( int reqId, const ContractDetails& contractDetails){}
+void IBConnector::contractDetails( int reqId, const ContractDetails& contractDetails)
+{
+    auto& promise = contractDetailsHandlers[reqId];
+    promise.set_value(contractDetails);
+}
 void IBConnector::bondContractDetails( int reqId, const ContractDetails& contractDetails){}
 void IBConnector::contractDetailsEnd( int reqId){}
 void IBConnector::execDetails( int reqId, const Contract& contract, const Execution& execution){}
@@ -211,7 +265,8 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
     {
         handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);
     }
-    std::string msg = "Error Code: " + std::to_string(errorCode) 
+    std::string msg = "Error id: " + std::to_string(id) 
+        + " Code: " + std::to_string(errorCode) 
         + ": " + errorString 
         + ". JSON: " + advancedOrderRejectJson;
     logger->error(logCategory, msg);
@@ -252,8 +307,20 @@ void IBConnector::tickSnapshotEnd( int reqId){}
 void IBConnector::marketDataType( TickerId reqId, int marketDataType){}
 void IBConnector::commissionReport( const CommissionReport& commissionReport){}
 void IBConnector::position( const std::string& account, const Contract& contract, Decimal position, 
-            double avgCost){}
-void IBConnector::positionEnd(){}
+            double avgCost)
+{
+    for(auto* handler : accountHandlers)
+    {
+        handler->OnPosition(account, contract, position, avgCost);
+    }
+}
+void IBConnector::positionEnd()
+{
+    for(auto* handler : accountHandlers)
+    {
+        handler->OnPositionEnd();
+    }
+}
 void IBConnector::accountSummary( int reqId, const std::string& account, const std::string& tag, 
             const std::string& value, const std::string& curency){}
 void IBConnector::accountSummaryEnd( int reqId){}

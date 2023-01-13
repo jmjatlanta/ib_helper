@@ -2,19 +2,92 @@
 #include "ib_helper/OrderStatus.hpp"
 
 AccountManager::AccountManager(ib_helper::IBConnector* conn, const std::string& mainAccount) 
-    : ib(conn), mainAccount(mainAccount) {}
+    : ib(conn), mainAccount(mainAccount)
+{
+    logger = util::SysLogger::getInstance();
+    conn->RequestPositions();
+}
 AccountManager::~AccountManager() {}
 
+uint32_t AccountManager::PlaceOrder(ib_helper::Order ord, bool immediateOrder)
+{
+    ord.account = mainAccount;
+    Position* p = GetPosition(ord.contract, true);
+    if (immediateOrder)
+    {
+        if (ord.action == "SELL")
+            p->expectedPos = sub(p->expectedPos, ord.totalQuantity);
+        else
+            p->expectedPos = add(p->expectedPos, ord.totalQuantity);
+    }
+    if (ord.orderId == 0)
+        ord.orderId = ib->GetNextOrderId();
+    orders[ord.orderId] = ord;
+    ib->PlaceOrder(ord.orderId, ord, ord.contract);
+    return ord.orderId;
+}
+
+Position* AccountManager::GetPosition(const Contract& contract, bool createIfNecessary)
+{
+    Position* retVal = nullptr;
+    try {
+        Position& pos = positions[contract.conId];
+        retVal = &pos;
+    } catch (const std::out_of_range& oor) {
+        if(createIfNecessary)
+        {
+            positions[contract.conId] = Position(mainAccount, contract, 0, 0.0);
+            Position& pos = positions[contract.conId];
+            retVal = &pos;
+        }
+    }
+    return retVal;
+}
+
 void AccountManager::OnAccountValueUpdate(const std::string& key, const std::string& value, const std::string& currency,
-            const std::string& accountName) {}
+            const std::string& accountName)
+{
+}
+
 void AccountManager::OnPortfolioUpdate(Contract contract, Decimal position, double marketPrice, double marketValue,
-            double averageCost, double unrealizedPNL, double realizedPNL, const std::string& accountName) {}
+            double averageCost, double unrealizedPNL, double realizedPNL, const std::string& accountName)
+{
+    // ignore anything that does not belong to us
+    if (accountName != mainAccount)
+        return;
+    // determine if we have an existing position
+    Position* p = nullptr;
+    try {
+        p = &positions.at(contract.conId);    
+    } catch (const std::out_of_range& oor)
+    {
+        positions[contract.conId] = Position(accountName, contract, position, averageCost);
+        p = &positions[contract.conId];
+    }
+    // update
+    logger->debug("AccountManager", "OnPortfolioUpdate updating position to " + std::to_string(decimalToDouble(position)));
+    p->averageCost = averageCost;
+    p->pos = position;
+    p->realizedPNL = realizedPNL;
+    p->unrealizedPNL = unrealizedPNL;
+    // make sure we updated
+}
+
 void AccountManager::OnUpdateAccountTime(const std::string& timestamp) {}
 void AccountManager::OnAccountDownloadEnd(const std::string& accountName) {}
 
 void AccountManager::OnPosition(const std::string& account, Contract contract, Decimal pos, double averageCost)
 {
-    positions.emplace_back( Position(account, contract, pos, averageCost) );
+    if (account != mainAccount)
+        return;
+    try {
+        Position& p = positions.at(contract.conId);
+        p.pos = pos;
+        p.averageCost = averageCost;
+    } catch (const std::out_of_range& oor)
+    {
+        positions[contract.conId] = Position(account, contract, pos, averageCost);
+    }
 }
 
 void AccountManager::OnPositionEnd() {}
@@ -101,7 +174,26 @@ void AccountManager::OnOpenOrder(int orderId, Contract contract, Order order, Or
 
 void AccountManager::OnOrderStatus(int orderId, const std::string& status, Decimal filled, Decimal remaining,
             double avgFillPrice, int permId, int parentId, double lastFillPrice, int clientId,
-            const std::string& whyHeld, double mktCapPrice) {}
+            const std::string& whyHeld, double mktCapPrice)
+{
+    ib_helper::Order& currOrder = orders[orderId];
+    if (currOrder.orderId == 0)
+    {
+        logger->error("AccountManager", "OnOrderStatus: Unable to find order id " + std::to_string(orderId));
+        return;
+    }
+    Position* currPos = GetPosition(currOrder.contract);
+    // if this goes against our expectedPos, reduce expectedPos
+    if (currPos != nullptr
+            && currPos->expectedPos > 0 
+            && currOrder.action == "SELL" 
+            && (status == ib_helper::to_string(ib_helper::OrderStatus::FILLED))
+            && decimalToDouble(filled) > 0.0)
+    {
+        logger->debug("AccountManager", "AccountManager::OnOrderStatus: Filled " + decimalToString(filled));
+        currPos->expectedPos = sub(currPos->expectedPos, filled);
+    }
+}
 void AccountManager::OnOpenOrderEnd() {}
 void AccountManager::OnOrderBound(long orderId, int apiClientId, int apiOrderId) {}
 

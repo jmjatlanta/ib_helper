@@ -13,105 +13,85 @@
 #include <functional>
 
 bool ctrl_c_pressed = false;
+util::SysLogger* logger = nullptr;
 
 void ctrlc_handler(int s) {
     ctrl_c_pressed = true;
 }
 
-class BookRecord
+class Book
 {
     public:
-    BookRecord(uint32_t pos, const std::string& marketMaker, double price, Decimal size) 
-        : position(pos), marketMaker(marketMaker), price(price), size(size) {}
-    uint32_t position;
-    std::string marketMaker;
-    double price;
-    Decimal size;
-    bool operator>(const BookRecord& in) const { return position > in.position; }
-    bool operator<(const BookRecord& in) const { return position < in.position; }
-    bool operator==(const BookRecord& in) const { return position == in.position; }
-};
-
-class Book : public ib_helper::MarketDepthHandler
-{
-    public:
-    Book(ib_helper::IBConnector* ib, Contract contract) : ib(ib), contract(contract)
+    Book() {}
+    void update(double bidPrice, Decimal bidSize, double askPrice, uint32_t askSize)
     {
-        subscriptionId = ib->SubscribeToMarketDepth(contract, this, 3);
+        askSizes.emplace_back(askSize);
+        askTotal += askSize;
     }
-    /***
-     * MarketDepthHander methods
+
+    uint32_t avg() { return askTotal / askSizes.size(); }
+
+    /****
+     * @brief calculate standard deviation of ask sizes
+     * @returns the stdandard deviation of the last ask size
      */
-
-	virtual void OnUpdateMktDepth(int tickerId, int position, int operation, int side, double price, Decimal size)
+    double stddev(uint32_t lastN)
     {
-    }
-
-    void AddToVec(std::vector<BookRecord>* vec, int position, const std::string& marketMaker, double price, 
-            Decimal size, bool isSmartDepth) 
-    {
-        // sanity checks
-        if (position > vec->size())
-            vec->emplace_back( BookRecord(position, marketMaker, price, size));
-        else
-            vec->insert(vec->begin() + position, BookRecord(position, marketMaker, price, size) );
-    }
-    
-    void UpdateVec(std::vector<BookRecord>* vec, int position, const std::string& marketMaker, double price,
-            Decimal size, bool isSmartDepth)
-    {
-        // get record
-        BookRecord& rec = (*vec)[position];
-        rec.marketMaker = marketMaker;
-        rec.price = price;
-        rec.size = size;
-    }
-
-    void DeleteFromVec(std::vector<BookRecord>* vec, int position)
-    {
-        vec->erase(vec->begin() + position);
-    }
-
-	virtual void OnUpdateMktDepthL2(int tickerId, int position, const std::string& marketMaker, int operation, 
-            int side, double price, Decimal size, bool isSmartDepth)
-    {
-        std::vector<BookRecord>* vec = &bids;
-        if (side == TickType::ASK)
-            vec = &asks;
-        switch(operation)
+        double retVal = 1.0;
+        if (lastN == 0 || lastN > askSizes.size())
+            lastN = askSizes.size();
+        if (lastN > 2)
         {
-            case 0: // ADD 
-                AddToVec(vec, position, marketMaker, price, size, isSmartDepth); 
-                break;
-            case 1: // UPDATE
-                UpdateVec(vec, position, marketMaker, price, size, isSmartDepth);
-                break;
-            case 2: // REMOVE 
-                DeleteFromVec(vec, position);
-                break;
+            // only interested in the last n prices 
+            double* inReal = (double*) malloc( sizeof(double) * lastN );
+            double* outReal = (double*) malloc( sizeof(double) * lastN );
+            int startIdx = 0;
+            if (askSizes.size() > lastN)
+                startIdx = askSizes.size() - lastN;
+            int endIdx = lastN;
+            for(uint32_t i = startIdx; i < askSizes.size(); ++i)
+            {
+                inReal[i-startIdx] = (double)askSizes[i];
+            }
+            startIdx = 0;
+            endIdx = lastN;
+            int optInTimePeriod = endIdx + 1;
+            int optInNbDev = 1.0;
+            int outBegIdx = 0;
+            int outNbElement = 0;
+            TA_RetCode retCode = TA_STDDEV(startIdx, endIdx, inReal, optInTimePeriod, optInNbDev, 
+                    &outBegIdx, &outNbElement, outReal);
+            if (retCode == TA_RetCode::TA_SUCCESS)
+            {
+                retVal = outReal[0];
+            }
+            free(outReal);
+            free(inReal);
         }
+        return retVal;
     }
     private:
-    ib_helper::IBConnector* ib = nullptr;
-    uint32_t subscriptionId = 0;
-    Contract contract;
-    std::vector<BookRecord> bids;
-    std::vector<BookRecord> asks;
+    std::vector<uint32_t> askSizes;
+    uint64_t askTotal = 0;
 };
 
 class ScalpStrategy : public ib_helper::TickHandler
 {
     public:
-    ScalpStrategy(ib_helper::IBConnector* conn, Contract& contract) : ib(conn), contract(contract), book(conn, contract)
+    ScalpStrategy(ib_helper::IBConnector* conn, Contract& contract) : ib(conn), contract(contract)
     {
-        // watch book, looking for a big bidder ( 3 stddev ) at a round number (x.00 x.50)
-        // long 0.01 above, TP at 15
-        // stop at 0.94/0.01
-        // then at 0.97/0.07
-        // then at 0.07/0.12
-        // try to get in at 0.01, cancel if hits 0.07 without entry
+        tickSubscriptionId = conn->SubscribeToTickByTick(contract, this, "Last", 0, false);
+        bidAskSubscriptionId = conn->SubscribeToTickByTick(contract, this, "BidAsk", 0, false);
+        acctMgr = (AccountManager*)conn->GetDefaultAccountHandler();
+        if (acctMgr == nullptr)
+            throw 1;
     }
 
+    ~ScalpStrategy()
+    {
+        ib->UnsubscribeFromTickByTick(tickSubscriptionId);
+        ib->UnsubscribeFromTickByTick(bidAskSubscriptionId);
+    }
     /***
      * TickHandler methods
      */
@@ -137,7 +117,6 @@ class ScalpStrategy : public ib_helper::TickHandler
             double dividendsToLastTradeDate)
     {
     }
-
 	/***
 	 * Used with reqTickByTick
 	 * @param reqId
@@ -157,19 +136,170 @@ class ScalpStrategy : public ib_helper::TickHandler
             const TickAttribLast& tickAttribLast, const std::string& exchange, 
             const std::string& specialConditions)
     {
+        Position* p = getPosition(contract);
+        if (p != nullptr 
+                && decimalToDouble(p->expectedPos) > 0.0 
+                && p->InSync())
+        {
+            ib_helper::Order initial = acctMgr->GetOrder(initialOrderId);
+            if (tpOrderId == 0 && stopOrderId == 0)
+            {
+                // set up initial orders
+                ib_helper::Order tp;
+                tp.lmtPrice = initial.lmtPrice + 0.20;
+                tp.orderType = "LMT";
+                tp.action = "SELL";
+                tp.transmit = true;
+                tp.contract = contract;
+                tp.totalQuantity = doubleToDecimal(100);
+                tp.ocaGroup = contract.localSymbol + std::to_string(initialOrderId);
+                tpOrderId = acctMgr->PlaceOrder(tp, false);
+                ib_helper::Order stop;
+                stop.auxPrice = initial.lmtPrice - 0.07;
+                stop.orderType = "STOP";
+                stop.action = "SELL";
+                stop.transmit = true;
+                stop.contract = contract;
+                stop.totalQuantity = doubleToDecimal(100);
+                stop.ocaGroup = contract.localSymbol + std::to_string(initialOrderId);
+                stopOrderId = acctMgr->PlaceOrder(stop, false);
+            }
+            else
+            {
+                // manage position
+                // stop at 0.94/0.01
+                // then at 0.97/0.07
+                // then at 0.07/0.12
+                // then at 0.05 below current price
+                ib_helper::Order stop = acctMgr->GetOrder(stopOrderId);
+                // adjust existing orders
+                if (price > initial.lmtPrice + 0.12
+                        && stop.auxPrice < initial.lmtPrice + 0.06)
+                {
+                    stop.auxPrice = initial.lmtPrice + 0.06;
+                    acctMgr->PlaceOrder(stop, false);
+                    return;
+                }
+                if (price > initial.lmtPrice + 0.07
+                        && stop.auxPrice < initial.lmtPrice - 0.04)
+                {
+                    stop.auxPrice = initial.lmtPrice - 0.04;
+                    acctMgr->PlaceOrder(stop, false);
+                    return;
+                }
+            }
+        } // in sync and in a trade
+        else
+        {
+            // why did we fail?
+            if (p == nullptr)
+            {
+            }
+            else
+            {
+                double expectedPos = decimalToDouble(p->expectedPos);
+                if (expectedPos == 0.0)
+                {
+                    if (tpOrderId != 0)
+                    {
+                        // we need to reset
+                        logger->debug("Strategy", "Resetting order stats");
+                        tpOrderId = 0;
+                        stopOrderId = 0;
+                        initialOrderId = 0;
+                        lastTriggerTime = 0;
+                        lastTriggerPrice = 0;
+                    }
+                }
+                else
+                {
+                    if (!p->InSync())
+                        logger->debug("Strategy", "Position " 
+                                + std::to_string(p->contract.conId) + " " 
+                                + p->contract.localSymbol + " is not in sync: "
+                                + std::to_string(expectedPos)
+                                + " Actual: " + std::to_string(decimalToDouble(p->pos)));
+                }
+            }
+        }
     }
+    bool isMultipleOf(double in, int multiple)
+    {
+        return ((int)(in * 100)) % multiple == 0;
+    }
+    Position* getPosition(const Contract& contract)
+    {
+        return acctMgr->GetPosition(contract);
+    }
+
+    void placeInitialOrder(double limitPrice)
+    {
+        ib_helper::Order ord;
+        ord.lmtPrice = limitPrice;
+        ord.orderType = "LMT";
+        ord.action = "BUY";
+        ord.transmit = true;
+        ord.contract = contract;
+        ord.totalQuantity = doubleToDecimal(100);
+        initialOrderId = acctMgr->PlaceOrder(ord, true);
+    }
+
     virtual void OnTickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize,
             Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk)
     {
+        // have we already triggered?
+        if (time - lastTriggerTime < 300 // 5 minutes
+                && askPrice > lastTriggerPrice) // we have gone through the level
+        {
+            Position* p = getPosition(contract);
+            if (p == nullptr || decimalToDouble(p->GetSize()) == 0.0)
+            {
+                // if we haven't already, we should place an order 1 tick above the triggerPrice
+                placeInitialOrder(lastTriggerPrice + 0.01);
+                // long 0.01 above, TP at 15
+                // try to get in at 0.01, cancel if hits 0.07 without entry
+            }
+        }
+
+        // convert Decimal to uint32_t
+        uint32_t askSz = decimalToDouble(askSize);
+        book.update( bidPrice, bidSize, askPrice, askSz);
+        
+        if( lastTriggerTime != time 
+                && isMultipleOf(askPrice, 25) )
+        {
+            uint32_t neededSize = book.avg() + (book.stddev(500) * 10);
+            if(neededSize < askSz)
+            {
+                lastTriggerTime = time;
+                lastTriggerPrice = askPrice;
+                logger->debug("Strategy", "Size triggered at " + std::to_string(lastTriggerPrice)
+                        + " at " + std::to_string(lastTriggerTime));
+            }
+            /*
+            else
+            {
+                logger->debug("Strategy", "Did not meet necessary size. Needed "
+                        + std::to_string(neededSize) + " but had " + std::to_string(askSz));
+            }
+            */
+        }
     }
     virtual void OnTickByTickMidPoint(int reqId, time_t time, double midPoint)
     {
     }
 
-    double levelToWatch = 0.0; // will have a positive price if a large bidder is found
+    int tickSubscriptionId = 0;
+    int bidAskSubscriptionId = 0;
+    uint32_t initialOrderId = 0;
+    uint32_t tpOrderId = 0;
+    uint32_t stopOrderId = 0;
     ib_helper::IBConnector* ib = nullptr;
     Contract contract;
     Book book;
+    time_t lastTriggerTime = 0;
+    double lastTriggerPrice = 0.0;
+    AccountManager* acctMgr = nullptr;
 };
 
 int main(int argc, char** argv)
@@ -191,9 +321,11 @@ int main(int argc, char** argv)
     std::string accountNumber = argv[4];
     std::string ticker = argv[5];
 
+    logger = util::SysLogger::getInstance();
     ib_helper::IBConnector conn(host, strtol(port.c_str(), nullptr, 10), strtol(clientId.c_str(), nullptr, 10));
     AccountManager accountManager(&conn, accountNumber);
     conn.AddAccountHandler(&accountManager);
+    conn.AddOrderHandler(&accountManager);
     ib_helper::ContractBuilder contractBuilder(&conn);
     Contract contract = contractBuilder.BuildStock(ticker);
     ScalpStrategy strategy(&conn, contract);

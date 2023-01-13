@@ -12,7 +12,10 @@ add_executable( ib_ts ib_ts.cpp ${ib_src} ${util_src} ${ib_helper} )
 target_link_libraries(ib_ts ${CMAKE_SOURCE_DIR}/../IntelRDFPMathLib20U2/LIBRARY/gcc000libbid.a )
 
 add_executable( scalpit scalpit.cpp AccountManager.cpp ${ib_src} ${util_src} ${ib_helper} )
-target_link_libraries(scalpit ${CMAKE_SOURCE_DIR}/../IntelRDFPMathLib20U2/LIBRARY/gcc000libbid.a )
+target_link_libraries(scalpit 
+    ${CMAKE_SOURCE_DIR}/../IntelRDFPMathLib20U2/LIBRARY/gcc000libbid.a 
+    ${CMAKE_SOURCE_DIR}/ta-lib/src/.libs/libta_lib.a 
+    )
 
 add_executable( TickLogger TickLogger.cpp ${ib_src} ${util_src} ${ib_helper} )
 target_link_libraries(TickLogger ${CMAKE_SOURCE_DIR}/../IntelRDFPMathLib20U2/LIBRARY/gcc000libbid.a )

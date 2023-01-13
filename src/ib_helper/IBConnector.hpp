@@ -26,8 +26,13 @@ class IBConnector : public EWrapper
     virtual ~IBConnector();
 
     void AddAccountHandler(AccountHandler* in) { accountHandlers.push_back(in); }
+    void AddOrderHandler(OrderHandler* in) { orderHandlers.push_back(in); }
+    AccountHandler* GetDefaultAccountHandler();
+    const std::string GetDefaultAccount() { return defaultAccount; }
+    uint32_t GetNextOrderId() { return ++nextOrderId; }
+    uint32_t GetNextRequestId() { return ++nextRequestId; }
+    void SetDefaultAccount(const std::string& in) { defaultAccount = in; }
     bool IsConnected() const { return fullyConnected; }
-    uint32_t NextRequestId() { return ++nextRequestId; }
     uint32_t SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
             const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
             const TagValueListSPtr& mktDataOptions);
@@ -40,6 +45,9 @@ class IBConnector : public EWrapper
     void UnsubscribeFromMarketDepth(uint32_t subscriptionId);
 
     bool IsShuttingDown() const { return shuttingDown; }
+    void PlaceOrder(int orderId, ::Order ord, const Contract& contract);
+    std::future<ContractDetails> GetContractDetails(const Contract& contract);
+    void RequestPositions();
 
     protected:
     /***
@@ -180,9 +188,10 @@ class IBConnector : public EWrapper
     std::unordered_map<uint32_t, HistoricalDataHandler*> historicalDataHandlers{};
     std::vector<IBConnectionMonitor*> connectionMonitors{};
     std::vector<AccountHandler*> accountHandlers{};
-    std::unordered_map<uint32_t, std::future<ContractDetails> > contractDetailsHandlers{};
-    std::unordered_map<uint32_t, OrderHandler*> orderHandlers{};
+    std::vector<OrderHandler*> orderHandlers{};
+    std::unordered_map<uint32_t, std::promise<ContractDetails> > contractDetailsHandlers{};
     private:
+    std::string defaultAccount;
     std::mutex mktDepthExchangesPromisesMutex;
     std::vector<std::promise<std::vector<DepthMktDataDescription> > > mktDepthExchangesPromises{};
 }; 

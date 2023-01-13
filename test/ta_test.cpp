@@ -22,7 +22,7 @@ TEST(ta_test, stddevTest)
             -0.028071 }; // 10
     int startIdx = 0;
     int endIdx = 10;
-    int optInTimePeriod = 10; // 2 to 100,000
+    int optInTimePeriod = 10; // 2 to 100,000, in this case start calculating when you have 10 values (index 9)
     double optInNbDev = 1; // TA_REAL_MIN to TA_REAL_MAX
     int outBegIdx; // where it started providing results
     int outNbElement; // number of results in outReal

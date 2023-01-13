@@ -7,7 +7,7 @@ namespace ib_helper {
 class ContractBuilder
 {
     public:
-    ContractBuilder(IBConnector* conn) {}
+    ContractBuilder(IBConnector* conn) : ib(conn) {}
     Contract BuildStock(const std::string& ticker)
     {
         Contract retval;
@@ -16,8 +16,14 @@ class ContractBuilder
         retval.secType = "STK";
         retval.exchange = "SMART";
         retval.currency = "USD";
+        // get contract id
+        auto fut = ib->GetContractDetails(retval);
+        ContractDetails det = fut.get();
+        retval.conId = det.contract.conId;
         return retval;
     }
+    private:
+    IBConnector* ib = nullptr;
 };
 
 } // namespace ib_helper
