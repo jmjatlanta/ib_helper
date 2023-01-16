@@ -76,56 +76,85 @@ class Book
 {
     public:
     Book() {}
+
+    /***
+     * Update totals
+     * @param bidPrice unused
+     * @param bidSize unused
+     * @param askPrice unused
+     * @param askSize the ask size
+     */
     void update(double bidPrice, Decimal bidSize, double askPrice, uint32_t askSize)
     {
         askSizes.emplace_back(askSize);
-        askTotal += askSize;
+        askTotal += askSize; // slight risk of overflow here
+        ++askEntries;
     }
 
-    uint32_t avg() { return askTotal / askSizes.size(); }
+    /***
+     * @brief compute the average size since the beginning of time
+     * @return the average size
+     */
+    uint32_t avg() 
+    { 
+        return askTotal / askEntries;  // div0 protected, not called except after update
+    }
 
     /****
      * @brief calculate standard deviation of ask sizes
+     * @note called on some ticks
+     * @param lastN the last N values to consider (2 to 100,000)
      * @returns the stdandard deviation of the last ask size
      */
     double stddev(uint32_t lastN)
     {
-        double retVal = 1.0;
-        if (lastN == 0 || lastN > askSizes.size())
-            lastN = askSizes.size();
-        if (lastN > 2)
+        double outReal = 0.0;
+        // if we have grown too big, chop askSizes down to size to save memory
+        auto sz = askSizes.size();
+        if (sz > lastN * 10)
+        {
+            askSizes = shrinkVector(askSizes, lastN);
+        }
+        sz = askSizes.size();
+        int endIdx = std::min((int)lastN-1, (int)sz-1);
+        if (endIdx > 2)
         {
             // only interested in the last n prices 
-            double* inReal = (double*) malloc( sizeof(double) * lastN );
-            double* outReal = (double*) malloc( sizeof(double) * lastN );
-            int startIdx = 0;
-            if (askSizes.size() > lastN)
-                startIdx = askSizes.size() - lastN;
-            int endIdx = lastN;
-            for(uint32_t i = startIdx; i < askSizes.size(); ++i)
-            {
-                inReal[i-startIdx] = (double)askSizes[i];
-            }
-            startIdx = 0;
-            endIdx = lastN;
+            int startIdx = std::max((int)(endIdx - lastN), 0);
             int optInTimePeriod = endIdx + 1;
             int optInNbDev = 1.0;
             int outBegIdx = 0;
             int outNbElement = 0;
-            TA_RetCode retCode = TA_STDDEV(startIdx, endIdx, inReal, optInTimePeriod, optInNbDev, 
-                    &outBegIdx, &outNbElement, outReal);
-            if (retCode == TA_RetCode::TA_SUCCESS)
+            // NOTE: Not a normal distribution, high positive skew
+            if ( TA_RetCode::TA_SUCCESS == TA_STDDEV(startIdx, endIdx, askSizes.data(), optInTimePeriod, optInNbDev, 
+                    &outBegIdx, &outNbElement, &outReal))
             {
-                retVal = outReal[0];
+                outReal = 0.0;
             }
-            free(outReal);
-            free(inReal);
         }
-        return retVal;
+        return outReal;
     }
+
     private:
-    std::vector<uint32_t> askSizes;
-    uint64_t askTotal = 0;
+    /****
+     * @brief shrink a vector
+     * @note no bounds checking
+     * @param in the vector
+     * @param n the new size
+     * @return the new vector, with the last (n) elements in it
+     */
+    template<typename T>
+    std::vector<T> shrinkVector(const std::vector<T>& in, int n)
+    {
+        auto sz = in.size();
+        const T* start = &(in.data())[sz-n];
+        return std::vector<T>(start, start + n);
+    }
+
+    private:
+    std::vector<double> askSizes; // May need to prevent this array from needlesslly getting too large
+    uint64_t askTotal = 0; // May need to prevent integer overflow
+    uint32_t askEntries = 0;
 };
 
 class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler

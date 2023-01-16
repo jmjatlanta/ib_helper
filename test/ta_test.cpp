@@ -42,3 +42,45 @@ TEST(ta_test, stddevTest)
     EXPECT_EQ( outReal[0], 0.905163 );
     EXPECT_EQ( outReal[1], 0.918655 );
 }
+
+template<typename T>
+std::vector<T> lastN(const std::vector<T>& in, int n)
+{
+    auto sz = in.size();
+    const T* start = &(in.data())[sz-n];
+    return std::vector<T>(start, start + n);
+}
+
+TEST(ta_test, vectorCleanTest)
+{
+    std::vector<double> entries;
+    for(double i = 0; i < 100; i++)
+    {
+        entries.push_back(i);
+    }
+    // we want to build a vector with only 10
+    auto sz = entries.size();
+    EXPECT_EQ(100, entries.size());
+    EXPECT_EQ(0, entries[0]);
+    EXPECT_EQ(99, entries[99]);
+    if (sz >= 10 * 10)
+    {
+        entries = lastN(entries, 10);
+        EXPECT_EQ(10, entries.size());
+        EXPECT_EQ(90, entries[0]);
+        EXPECT_EQ(91, entries[1]);
+        EXPECT_EQ(92, entries[2]);
+        EXPECT_EQ(93, entries[3]);
+        EXPECT_EQ(94, entries[4]);
+        EXPECT_EQ(95, entries[5]);
+        EXPECT_EQ(96, entries[6]);
+        EXPECT_EQ(97, entries[7]);
+        EXPECT_EQ(98, entries[8]);
+        EXPECT_EQ(99, entries[9]);
+    }
+    else
+    {
+        FAIL();
+    }
+}
+
