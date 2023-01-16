@@ -179,6 +179,10 @@ void AccountManager::OnOpenOrder(int orderId, Contract contract, Order order, Or
         return;
     }
     currOrder.update(order);
+    for(auto* handler : orderHandlers)
+    {
+        handler->OnOpenOrder(orderId, contract, order, orderState);
+    }
 }
 
 Decimal cleanDecimal(Decimal in) { if (in == decimalUnset) return decimalZero; return in; }
@@ -217,7 +221,13 @@ void AccountManager::OnOrderStatus(int orderId, const std::string& status, Decim
             currPos->expectedPos = sub(currPos->expectedPos, filledDelta);
         }
     }
+    for(auto* handler : orderHandlers)
+    {
+        handler->OnOrderStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice,
+                clientId, whyHeld, mktCapPrice);
+    }
 }
+
 void AccountManager::OnOpenOrderEnd() {}
 void AccountManager::OnOrderBound(long orderId, int apiClientId, int apiOrderId) {}
 

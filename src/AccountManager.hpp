@@ -15,6 +15,8 @@ class AccountManager : public ib_helper::AccountHandler, public ib_helper::Order
     AccountManager(ib_helper::IBConnector* conn, const std::string& mainAccount);
     ~AccountManager();
 
+    void AddOrderHandler(ib_helper::OrderHandler* in) { orderHandlers.push_back(in); }
+
     /***
      * Helper methods
      */
@@ -94,4 +96,5 @@ class AccountManager : public ib_helper::AccountHandler, public ib_helper::Order
     std::unordered_map<int, Position> positions;
     std::unordered_map<int, ib_helper::Order> orders;
     std::unordered_map<int, ib_helper::Order> past_orders;
+    std::vector<ib_helper::OrderHandler*> orderHandlers;
 };
