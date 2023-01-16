@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <thread>
 #include <functional>
@@ -18,6 +19,58 @@ util::SysLogger* logger = nullptr;
 void ctrlc_handler(int s) {
     ctrl_c_pressed = true;
 }
+
+class TickFileWriter
+{
+    public:
+    TickFileWriter(const Contract& contract)
+    {
+        stream = std::ofstream(contract.localSymbol + getDate() + ".out");
+    }
+
+    ~TickFileWriter()
+    {
+        stream.close();
+    }
+
+    std::string getDate() 
+    {
+        std::time_t currTime = std::time(0);
+        std::tm* now = std::localtime(&currTime);
+        std::stringstream ss;
+        ss << (now->tm_year + 1900) 
+            << std::setw(2) << std::setfill('0') << now->tm_mon + 1 
+            << std::setw(2) << std::setfill('0') << now->tm_mday;
+        return ss.str();
+    }
+
+    void LogAllLast(int reqId, int tickType, time_t time, double price, Decimal size,
+        const TickAttribLast& tickAttribLast, const std::string& exchange, 
+        const std::string& specialConditions)
+    {
+        // write out a tick record
+        std::string msg = "T," + std::to_string(tickType)
+            + "," + std::to_string(time)
+            + "," + std::to_string(price)
+            + "," + decimalStringToDisplay(size)
+            + ",\"" + specialConditions
+            + "\"";
+        stream << msg << "\n";
+    }
+    
+    void LogBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize,
+        Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk)
+    {
+        // write out a bid/ask record
+        std::string msg = "B," + std::to_string(time)
+            + "," + std::to_string(bidPrice)
+            + "," + std::to_string(askPrice)
+            + "," + decimalStringToDisplay(bidSize)
+            + "," + decimalStringToDisplay(askSize);
+        stream << msg << "\n";
+    }
+    std::ofstream stream;
+};
 
 class Book
 {
@@ -78,7 +131,8 @@ class Book
 class ScalpStrategy : public ib_helper::TickHandler
 {
     public:
-    ScalpStrategy(ib_helper::IBConnector* conn, Contract& contract) : ib(conn), contract(contract)
+    ScalpStrategy(ib_helper::IBConnector* conn, Contract& contract) 
+        : ib(conn), contract(contract), tickFileWriter(contract), clazz("ScalpStrategy")
     {
         tickSubscriptionId = conn->SubscribeToTickByTick(contract, this, "Last", 0, false);
         bidAskSubscriptionId = conn->SubscribeToTickByTick(contract, this, "BidAsk", 0, false);
@@ -136,9 +190,17 @@ class ScalpStrategy : public ib_helper::TickHandler
             const TickAttribLast& tickAttribLast, const std::string& exchange, 
             const std::string& specialConditions)
     {
+        tickFileWriter.LogAllLast(reqId, tickType, time, price, size, tickAttribLast, exchange, specialConditions);
         Position* p = getPosition(contract);
-        if (p != nullptr 
-                && decimalToDouble(p->expectedPos) > 0.0 
+        if (!printNoSyncMessage && p->InSync())
+        {
+            printNoSyncMessage = true;
+            logger->debug(clazz, "Position " 
+                    + std::to_string(p->contract.conId) + " " 
+                    + p->contract.localSymbol + " is in sync: "
+                    + std::to_string(decimalToDouble(p->pos)));
+        }
+        if (decimalToDouble(p->expectedPos) > 0.0 
                 && p->InSync())
         {
             ib_helper::Order initial = acctMgr->GetOrder(initialOrderId);
@@ -146,6 +208,7 @@ class ScalpStrategy : public ib_helper::TickHandler
             {
                 // set up initial orders
                 ib_helper::Order tp;
+                tp.filledQuantity = doubleToDecimal(0.0);
                 tp.lmtPrice = initial.lmtPrice + 0.20;
                 tp.orderType = "LMT";
                 tp.action = "SELL";
@@ -155,6 +218,7 @@ class ScalpStrategy : public ib_helper::TickHandler
                 tp.ocaGroup = contract.localSymbol + std::to_string(initialOrderId);
                 tpOrderId = acctMgr->PlaceOrder(tp, false);
                 ib_helper::Order stop;
+                stop.filledQuantity = doubleToDecimal(0.0);
                 stop.auxPrice = initial.lmtPrice - 0.07;
                 stop.orderType = "STOP";
                 stop.action = "SELL";
@@ -191,35 +255,32 @@ class ScalpStrategy : public ib_helper::TickHandler
         } // in sync and in a trade
         else
         {
-            // why did we fail?
-            if (p == nullptr)
+            // why did we not adjust?
+            double expectedPos = decimalToDouble(p->expectedPos);
+            if (expectedPos == 0.0)
             {
+                if (tpOrderId != 0)
+                {
+                    // we need to reset
+                    logger->debug(clazz, "Resetting order stats");
+                    tpOrderId = 0;
+                    stopOrderId = 0;
+                    initialOrderId = 0;
+                    lastTriggerTime = 0;
+                    lastTriggerPrice = 0;
+                }
             }
             else
             {
-                double expectedPos = decimalToDouble(p->expectedPos);
-                if (expectedPos == 0.0)
+                if (printNoSyncMessage && !p->InSync())
                 {
-                    if (tpOrderId != 0)
-                    {
-                        // we need to reset
-                        logger->debug("Strategy", "Resetting order stats");
-                        tpOrderId = 0;
-                        stopOrderId = 0;
-                        initialOrderId = 0;
-                        lastTriggerTime = 0;
-                        lastTriggerPrice = 0;
-                    }
-                }
-                else
-                {
-                    if (!p->InSync())
-                        logger->debug("Strategy", "Position " 
-                                + std::to_string(p->contract.conId) + " " 
-                                + p->contract.localSymbol + " is not in sync: "
-                                + std::to_string(expectedPos)
-                                + " Actual: " + std::to_string(decimalToDouble(p->pos)));
-                }
+                    printNoSyncMessage = false;
+                    logger->debug(clazz, "Position " 
+                            + std::to_string(p->contract.conId) + " " 
+                            + p->contract.localSymbol + " is not in sync: "
+                            + std::to_string(expectedPos)
+                            + " Actual: " + std::to_string(decimalToDouble(p->pos)));
+                } 
             }
         }
     }
@@ -229,12 +290,13 @@ class ScalpStrategy : public ib_helper::TickHandler
     }
     Position* getPosition(const Contract& contract)
     {
-        return acctMgr->GetPosition(contract);
+        return acctMgr->GetPosition(contract, true);
     }
 
     void placeInitialOrder(double limitPrice)
     {
         ib_helper::Order ord;
+        ord.filledQuantity = doubleToDecimal(0.0);
         ord.lmtPrice = limitPrice;
         ord.orderType = "LMT";
         ord.action = "BUY";
@@ -247,12 +309,14 @@ class ScalpStrategy : public ib_helper::TickHandler
     virtual void OnTickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize,
             Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk)
     {
+        tickFileWriter.LogBidAsk(reqId, time, bidPrice, askPrice, bidSize, askSize, tickAttribBidAsk);
         // have we already triggered?
         if (time - lastTriggerTime < 300 // 5 minutes
-                && askPrice > lastTriggerPrice) // we have gone through the level
+                && askPrice > lastTriggerPrice // we have gone through the level
+                && initialOrderId == 0) // we have not already placed an order
         {
             Position* p = getPosition(contract);
-            if (p == nullptr || decimalToDouble(p->GetSize()) == 0.0)
+            if (decimalToDouble(p->GetSize()) == 0.0)
             {
                 // if we haven't already, we should place an order 1 tick above the triggerPrice
                 placeInitialOrder(lastTriggerPrice + 0.01);
@@ -273,7 +337,7 @@ class ScalpStrategy : public ib_helper::TickHandler
             {
                 lastTriggerTime = time;
                 lastTriggerPrice = askPrice;
-                logger->debug("Strategy", "Size triggered at " + std::to_string(lastTriggerPrice)
+                logger->debug(clazz, "Size triggered at " + std::to_string(lastTriggerPrice)
                         + " at " + std::to_string(lastTriggerTime));
             }
             /*
@@ -289,6 +353,7 @@ class ScalpStrategy : public ib_helper::TickHandler
     {
     }
 
+
     int tickSubscriptionId = 0;
     int bidAskSubscriptionId = 0;
     uint32_t initialOrderId = 0;
@@ -300,6 +365,9 @@ class ScalpStrategy : public ib_helper::TickHandler
     time_t lastTriggerTime = 0;
     double lastTriggerPrice = 0.0;
     AccountManager* acctMgr = nullptr;
+    bool printNoSyncMessage = true;
+    const std::string clazz;
+    TickFileWriter tickFileWriter;
 };
 
 int main(int argc, char** argv)

@@ -1,6 +1,9 @@
 #include "AccountManager.hpp"
 #include "ib_helper/OrderStatus.hpp"
 
+Decimal decimalZero = doubleToDecimal(0.0);
+Decimal decimalUnset = ULLONG_MAX;
+
 AccountManager::AccountManager(ib_helper::IBConnector* conn, const std::string& mainAccount) 
     : ib(conn), mainAccount(mainAccount)
 {
@@ -31,7 +34,7 @@ Position* AccountManager::GetPosition(const Contract& contract, bool createIfNec
 {
     Position* retVal = nullptr;
     try {
-        Position& pos = positions[contract.conId];
+        Position& pos = positions.at(contract.conId);
         retVal = &pos;
     } catch (const std::out_of_range& oor) {
         if(createIfNecessary)
@@ -170,7 +173,15 @@ void AccountManager::OnError(int id, int errorCode, const std::string& errorMess
 
 void AccountManager::OnOpenOrder(int orderId, Contract contract, Order order, OrderState orderState)
 {
+    ib_helper::Order& currOrder = orders[orderId];
+    if (currOrder.orderId == 0)
+    {
+        return;
+    }
+    currOrder.update(order);
 }
+
+Decimal cleanDecimal(Decimal in) { if (in == decimalUnset) return decimalZero; return in; }
 
 void AccountManager::OnOrderStatus(int orderId, const std::string& status, Decimal filled, Decimal remaining,
             double avgFillPrice, int permId, int parentId, double lastFillPrice, int clientId,
@@ -179,19 +190,32 @@ void AccountManager::OnOrderStatus(int orderId, const std::string& status, Decim
     ib_helper::Order& currOrder = orders[orderId];
     if (currOrder.orderId == 0)
     {
-        logger->error("AccountManager", "OnOrderStatus: Unable to find order id " + std::to_string(orderId));
         return;
     }
+    // verify decimals are sensible
+    filled = cleanDecimal(filled);
+    remaining = cleanDecimal(remaining);
+    currOrder.filledQuantity = cleanDecimal(currOrder.filledQuantity);
     Position* currPos = GetPosition(currOrder.contract);
-    // if this goes against our expectedPos, reduce expectedPos
-    if (currPos != nullptr
-            && currPos->expectedPos > 0 
-            && currOrder.action == "SELL" 
-            && (status == ib_helper::to_string(ib_helper::OrderStatus::FILLED))
-            && decimalToDouble(filled) > 0.0)
+    Decimal oldFilled = currOrder.filledQuantity;
+    if (currOrder.update(status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, 
+                whyHeld, mktCapPrice))
     {
-        logger->debug("AccountManager", "AccountManager::OnOrderStatus: Filled " + decimalToString(filled));
-        currPos->expectedPos = sub(currPos->expectedPos, filled);
+        // something changed
+        Decimal newFilled = currOrder.filledQuantity;
+        Decimal filledDelta = sub(newFilled, oldFilled);
+        logger->debug("AccountManager", std::string("OnOrderStatus: ") 
+                    + " new filled: " + decimalStringToDisplay(newFilled)
+                    + " old filled: " + decimalStringToDisplay(oldFilled)
+                    + " remaining: " + decimalStringToDisplay(remaining));
+        if (currPos != nullptr
+                && decimalToDouble(currPos->expectedPos) > 0.0
+                && currOrder.action == "SELL"
+                && currOrder.status == ib_helper::OrderStatus::FILLED)
+        {
+            // take this off of expectedPos
+            currPos->expectedPos = sub(currPos->expectedPos, filledDelta);
+        }
     }
 }
 void AccountManager::OnOpenOrderEnd() {}
