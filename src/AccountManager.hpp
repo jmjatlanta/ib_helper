@@ -30,6 +30,7 @@ class AccountManager : public ib_helper::AccountHandler, public ib_helper::Order
      */
     ib_helper::Order& GetOrder(int id, bool currentOnly = false);
     uint32_t PlaceOrder(ib_helper::Order ord, bool immediate);
+    void CancelOrder(ib_helper::Order& ord);
 
     Position* GetPosition(const Contract& contract, bool createIfNecessary = false);
 

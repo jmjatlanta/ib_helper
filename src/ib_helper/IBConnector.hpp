@@ -46,6 +46,7 @@ class IBConnector : public EWrapper
 
     bool IsShuttingDown() const { return shuttingDown; }
     void PlaceOrder(int orderId, ::Order ord, const Contract& contract);
+    void CancelOrder(const ::Order& ord);
     std::future<ContractDetails> GetContractDetails(const Contract& contract);
     void RequestPositions();
 

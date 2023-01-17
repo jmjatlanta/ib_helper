@@ -25,7 +25,7 @@ class TickFileWriter
     public:
     TickFileWriter(const Contract& contract)
     {
-        stream = std::ofstream(contract.localSymbol + getDate() + ".out");
+        stream.open(contract.localSymbol + getDate() + ".out", std::ios_base::app);
     }
 
     ~TickFileWriter()
@@ -197,7 +197,7 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
             // set up initial orders
             ib_helper::Order tp;
             tp.filledQuantity = doubleToDecimal(0.0);
-            tp.lmtPrice = order.lmtPrice + 0.20;
+            tp.lmtPrice = order.lmtPrice + 0.18;
             tp.orderType = "LMT";
             tp.action = "SELL";
             tp.transmit = true;
@@ -218,10 +218,13 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
         }
         else
         {
-            if ( (orderId == tpOrderId || orderId == stopOrderId) 
-                    && order.status == ib_helper::OrderStatus::FILLED)
+            if ( ((orderId == tpOrderId 
+                        || orderId == stopOrderId) 
+                        && order.status == ib_helper::OrderStatus::FILLED)
+                    || (orderId == initialOrderId
+                        && order.status == ib_helper::OrderStatus::CANCELLED))
             {
-                // if we are completely filled, reset everything
+                // if we are done, reset everything
                 logger->debug(clazz, "Resetting order stats");
                 tpOrderId = 0;
                 stopOrderId = 0;
@@ -280,28 +283,32 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
         if (initialOrderId != 0)
         {
             ib_helper::Order initial = acctMgr->GetOrder(initialOrderId);
+            // if it has been a long time and the order is still not filled, cancel
+            if (initial.status == ib_helper::OrderStatus::SUBMITTED
+                    && std::time(0) - initialOrderTime > 60) // 1 min
+                acctMgr->CancelOrder(initial);
             if (tpOrderId != 0 && stopOrderId != 0)
             {
                 // manage position
-                // stop at 0.94/0.01
-                // then at 0.97/0.07
-                // then at 0.07/0.12
-                // then at 0.05 below current price
                 ib_helper::Order stop = acctMgr->GetOrder(stopOrderId);
+                double newAux = stop.auxPrice;
                 // adjust existing orders
+                // at 0.19, move to 0.17
+                if (price > initial.lmtPrice + 0.18
+                        && newAux < initial.lmtPrice + 0.14)
+                    newAux = initial.lmtPrice + 14;
+                // at 0.13, move to 0.07
                 if (price > initial.lmtPrice + 0.12
-                        && stop.auxPrice < initial.lmtPrice + 0.06)
-                {
-                    stop.auxPrice = initial.lmtPrice + 0.06;
-                    acctMgr->PlaceOrder(stop, false);
-                    return;
-                }
+                        && newAux < initial.lmtPrice + 0.06)
+                    newAux = initial.lmtPrice + 0.06;
+                // at 0.08 move to 0.98
                 if (price > initial.lmtPrice + 0.07
-                        && stop.auxPrice < initial.lmtPrice - 0.04)
+                        && stop.auxPrice < initial.lmtPrice - 0.03)
+                    newAux = initial.lmtPrice - 0.03;
+                if (newAux > stop.auxPrice)
                 {
-                    stop.auxPrice = initial.lmtPrice - 0.04;
+                    stop.auxPrice = newAux;
                     acctMgr->PlaceOrder(stop, false);
-                    return;
                 }
             }
         } // in sync and in a trade
@@ -321,6 +328,7 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
         ord.transmit = true;
         ord.contract = contract;
         ord.totalQuantity = doubleToDecimal(100);
+        initialOrderTime = std::time(0);
         initialOrderId = acctMgr->PlaceOrder(ord, true);
     }
 
@@ -342,7 +350,7 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
         
         // calculate if we have triggered
         if( lastTriggerTime != time 
-                && isMultipleOf(askPrice, 25) )
+                && isMultipleOf(askPrice, 50) )
         {
             uint32_t neededSize = book.avg() + (book.stddev(500) * 10);
             if(neededSize < askSz)
@@ -364,6 +372,7 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
     uint32_t initialOrderId = 0;
     uint32_t tpOrderId = 0;
     uint32_t stopOrderId = 0;
+    uint64_t initialOrderTime = 0;
     ib_helper::IBConnector* ib = nullptr;
     Contract contract;
     Book book;

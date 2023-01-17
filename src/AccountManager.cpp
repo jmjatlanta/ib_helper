@@ -12,6 +12,12 @@ AccountManager::AccountManager(ib_helper::IBConnector* conn, const std::string& 
 }
 AccountManager::~AccountManager() {}
 
+void AccountManager::CancelOrder(ib_helper::Order& ord)
+{
+    ord.status = ib_helper::OrderStatus::PENDINGCANCEL;
+    ib->CancelOrder(ord);
+}
+
 uint32_t AccountManager::PlaceOrder(ib_helper::Order ord, bool immediateOrder)
 {
     ord.account = mainAccount;
@@ -206,19 +212,26 @@ void AccountManager::OnOrderStatus(int orderId, const std::string& status, Decim
                 whyHeld, mktCapPrice))
     {
         // something changed
-        Decimal newFilled = currOrder.filledQuantity;
-        Decimal filledDelta = sub(newFilled, oldFilled);
         logger->debug("AccountManager", std::string("OnOrderStatus: ") 
-                    + " new filled: " + decimalStringToDisplay(newFilled)
+                    + " new filled: " + decimalStringToDisplay(currOrder.filledQuantity)
                     + " old filled: " + decimalStringToDisplay(oldFilled)
                     + " remaining: " + decimalStringToDisplay(remaining));
         if (currPos != nullptr
                 && decimalToDouble(currPos->expectedPos) > 0.0
-                && currOrder.action == "SELL"
-                && currOrder.status == ib_helper::OrderStatus::FILLED)
+                && ((currOrder.action == "SELL" 
+                        && currOrder.status == ib_helper::OrderStatus::FILLED) 
+                    || (currOrder.action == "BUY" 
+                        && currOrder.status == ib_helper::OrderStatus::CANCELLED)))
         {
             // take this off of expectedPos
-            currPos->expectedPos = sub(currPos->expectedPos, filledDelta);
+            if (currOrder.status == ib_helper::OrderStatus::CANCELLED)
+            {
+                currPos->expectedPos = sub(currPos->expectedPos, sub(currOrder.totalQuantity, currOrder.filledQuantity));
+            }
+            else
+            {
+                currPos->expectedPos = sub(currPos->expectedPos, sub(currOrder.filledQuantity, oldFilled));
+            }
         }
     }
     for(auto* handler : orderHandlers)

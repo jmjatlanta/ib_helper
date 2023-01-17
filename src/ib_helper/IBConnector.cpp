@@ -51,6 +51,11 @@ AccountHandler* IBConnector::GetDefaultAccountHandler()
     return accountHandlers[0]; 
 }
 
+void IBConnector::CancelOrder(const ::Order& ord)
+{
+    this->ibClient->cancelOrder(ord.orderId, "");
+}
+
 void IBConnector::PlaceOrder(int orderId, ::Order ord, const Contract& contract)
 {
     this->ibClient->placeOrder(orderId, contract, ord);
