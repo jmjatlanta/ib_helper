@@ -20,28 +20,28 @@ void ctrlc_handler(int s) {
     ctrl_c_pressed = true;
 }
 
+std::string getDate() 
+{
+    std::time_t currTime = std::time(0);
+    std::tm* now = std::localtime(&currTime);
+    std::stringstream ss;
+    ss << (now->tm_year + 1900) 
+        << std::setw(2) << std::setfill('0') << now->tm_mon + 1 
+        << std::setw(2) << std::setfill('0') << now->tm_mday;
+    return ss.str();
+}
+
 class TickFileWriter
 {
     public:
     TickFileWriter(const Contract& contract)
     {
-        stream.open(contract.localSymbol + getDate() + ".out", std::ios_base::app);
+        stream.open(contract.localSymbol + getDate() + ".tic", std::ios_base::app);
     }
 
     ~TickFileWriter()
     {
         stream.close();
-    }
-
-    std::string getDate() 
-    {
-        std::time_t currTime = std::time(0);
-        std::tm* now = std::localtime(&currTime);
-        std::stringstream ss;
-        ss << (now->tm_year + 1900) 
-            << std::setw(2) << std::setfill('0') << now->tm_mon + 1 
-            << std::setw(2) << std::setfill('0') << now->tm_mday;
-        return ss.str();
     }
 
     void LogAllLast(int reqId, int tickType, time_t time, double price, Decimal size,
@@ -346,19 +346,24 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
 
         // convert Decimal to uint32_t
         uint32_t askSz = decimalToDouble(askSize);
-        book.update( bidPrice, bidSize, askPrice, askSz);
+        bool isMultiple = isMultipleOf(askPrice, 50);
+        if (isMultiple)
+            book.update( bidPrice, bidSize, askPrice, askSz);
         
         // calculate if we have triggered
         if( lastTriggerTime != time 
-                && isMultipleOf(askPrice, 50) )
+                && isMultiple )
         {
-            uint32_t neededSize = book.avg() + (book.stddev(500) * 10);
-            if(neededSize < askSz)
+            uint32_t sdev = book.stddev(1000);
+            uint32_t avg = book.avg();
+            if(askSz > avg + sdev)
             {
                 lastTriggerTime = time;
                 lastTriggerPrice = askPrice;
-                logger->debug(clazz, "Size triggered at " + std::to_string(lastTriggerPrice)
-                        + " at " + std::to_string(lastTriggerTime));
+                logger->debug(clazz, "Size triggered at " + std::to_string(askSz)
+                        + " time " + std::to_string(lastTriggerTime)
+                        + " avg " + std::to_string(avg)
+                        + " sdev " + std::to_string(sdev));
             }
         }
     }
@@ -403,6 +408,9 @@ int main(int argc, char** argv)
     std::string ticker = argv[5];
 
     logger = util::SysLogger::getInstance();
+    std::string filename = ticker + getDate() + ".log";
+    std::ofstream outStream(filename, std::ios_base::app);
+    logger->set_stream(outStream);
     ib_helper::IBConnector conn(host, strtol(port.c_str(), nullptr, 10), strtol(clientId.c_str(), nullptr, 10));
     AccountManager accountManager(&conn, accountNumber);
     conn.AddAccountHandler(&accountManager);
