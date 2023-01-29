@@ -3,6 +3,7 @@
  */
 #include "gtest/gtest.h"
 #include "../ta-lib/include/ta_libc.h"
+#include "../src/util/DateUtil.hpp"
 
 #include <thread>
 #include <chrono>
@@ -39,8 +40,8 @@ TEST(ta_test, stddevTest)
             std::cout << " Value at " + std::to_string(i - outBegIdx) + ": " + std::to_string(outReal[i-outBegIdx]);
         std::cout << "\n";
     }
-    EXPECT_EQ( outReal[0], 0.905163 );
-    EXPECT_EQ( outReal[1], 0.918655 );
+    EXPECT_EQ( outReal[0], 0.9051635859255498 );
+    EXPECT_EQ( outReal[1], 0.91865511070144823 );
 }
 
 template<typename T>
@@ -82,5 +83,13 @@ TEST(ta_test, vectorCleanTest)
     {
         FAIL();
     }
+}
+
+TEST(ta_test, timeTest)
+{
+    // test DateUtils stuff
+    time_t t = 1674130833;
+    time_t t2 = timeToEpoch(t, 9, 30);
+    EXPECT_EQ(1674138633, t2);
 }
 

@@ -1,3 +1,4 @@
+#include "util/DateUtil.hpp"
 #include "ib_helper/IBConnector.hpp"
 #include "util/SysLogger.h"
 #include "ib_helper/ContractBuilder.hpp"
@@ -139,17 +140,6 @@ bool isConnected(const ib_helper::IBConnector& conn)
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     return conn.IsConnected();
-}
-
-std::string getDate() 
-{
-    std::time_t currTime = std::time(0);
-    std::tm* now = std::localtime(&currTime);
-    std::stringstream ss;
-    ss << (now->tm_year + 1900) 
-        << std::setw(2) << std::setfill('0') << now->tm_mon + 1 
-        << std::setw(2) << std::setfill('0') << now->tm_mday;
-    return ss.str();
 }
 
 int main(int argc, char** argv)

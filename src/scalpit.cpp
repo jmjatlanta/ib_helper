@@ -1,3 +1,4 @@
+#include "util/DateUtil.hpp"
 #include "ib_helper/IBConnector.hpp"
 #include "ib_helper/ContractBuilder.hpp"
 #include "../ta-lib/include/ta_libc.h"
@@ -7,6 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -18,17 +20,6 @@ util::SysLogger* logger = nullptr;
 
 void ctrlc_handler(int s) {
     ctrl_c_pressed = true;
-}
-
-std::string getDate() 
-{
-    std::time_t currTime = std::time(0);
-    std::tm* now = std::localtime(&currTime);
-    std::stringstream ss;
-    ss << (now->tm_year + 1900) 
-        << std::setw(2) << std::setfill('0') << now->tm_mon + 1 
-        << std::setw(2) << std::setfill('0') << now->tm_mday;
-    return ss.str();
 }
 
 class TickFileWriter
@@ -163,6 +154,7 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
     ScalpStrategy(ib_helper::IBConnector* conn, Contract& contract) 
         : ib(conn), contract(contract), tickFileWriter(contract), clazz("ScalpStrategy")
     {
+        setTradingTimes(std::time(0));
         tickSubscriptionId = conn->SubscribeToTickByTick(contract, this, "Last", 0, false);
         bidAskSubscriptionId = conn->SubscribeToTickByTick(contract, this, "BidAsk", 0, false);
         acctMgr = (AccountManager*)conn->GetDefaultAccountHandler();
@@ -175,6 +167,12 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
     {
         ib->UnsubscribeFromTickByTick(tickSubscriptionId);
         ib->UnsubscribeFromTickByTick(bidAskSubscriptionId);
+    }
+
+    void setTradingTimes(uint32_t time)
+    {
+        tradingStartTime = timeToEpoch(time, 10, 10);
+        tradingEndTime = timeToEpoch(time, 15, 58);
     }
 
     /**
@@ -339,7 +337,9 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
         // have we already triggered?
         if (time - lastTriggerTime < 300 // 5 minutes
                 && askPrice > lastTriggerPrice // we have gone through the level
-                && initialOrderId == 0) // we have not already placed an order
+                && initialOrderId == 0 // we have not already placed an order
+                && time > tradingStartTime
+                && time < tradingEndTime)
         {
             placeInitialOrder(lastTriggerPrice + 0.01);
         }
@@ -378,6 +378,8 @@ class ScalpStrategy : public ib_helper::TickHandler, ib_helper::OrderHandler
     uint32_t tpOrderId = 0;
     uint32_t stopOrderId = 0;
     uint64_t initialOrderTime = 0;
+    uint32_t tradingStartTime = 0;
+    uint32_t tradingEndTime = 0;
     ib_helper::IBConnector* ib = nullptr;
     Contract contract;
     Book book;
