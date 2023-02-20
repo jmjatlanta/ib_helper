@@ -1,4 +1,3 @@
 build/*
-src/ib_api/*
 .ccls
 .vscode/*
