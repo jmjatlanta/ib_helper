@@ -6,6 +6,11 @@ namespace ib_helper {
 util::SysLogger* logger = nullptr;
 std::string logCategory("IBConnector");
 
+IBConnector::IBConnector()
+{
+    logger = util::SysLogger::getInstance();
+}
+
 IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
 {
     logger = util::SysLogger::getInstance();
@@ -23,12 +28,16 @@ IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
 
 IBConnector::~IBConnector() {
 	shuttingDown = true;
-    ibClient->eDisconnect();
+    if (ibClient != nullptr)
+        ibClient->eDisconnect();
     if (listenerThread != nullptr)
 	    listenerThread->join();
-    delete reader;
-    delete ibClient;
-    delete osSignal;
+    if (reader != nullptr)
+        delete reader;
+    if (ibClient != nullptr)
+        delete ibClient;
+    if (osSignal != nullptr)
+        delete osSignal;
 }
 
 std::future<ContractDetails> IBConnector::GetContractDetails(const Contract& contract)

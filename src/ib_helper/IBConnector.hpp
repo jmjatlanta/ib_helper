@@ -51,6 +51,7 @@ class IBConnector : public EWrapper
     void RequestPositions();
 
     protected:
+    IBConnector(); // used for testing/mocking
     /***
      * message loop
      */

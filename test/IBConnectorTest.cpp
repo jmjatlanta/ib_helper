@@ -3,6 +3,7 @@
 #include "../src/util/SysLogger.h"
 
 #include "gtest/gtest.h"
+#include "MockIBConnector.h"
 
 #include <thread>
 #include <chrono>
@@ -10,11 +11,12 @@
 bool isConnected(const ib_helper::IBConnector& conn)
 {
     int counter = 0;
-    while (true)
+    while (true && counter < 20)
     {
         if (conn.IsConnected())
             break;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        counter++;
     }
     return conn.IsConnected();
 }
@@ -23,9 +25,9 @@ TEST(IBConnectorTest, Connect)
 {
     ib_helper::IBConnector connector{"127.0.0.1", 4002, 5};
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    EXPECT_TRUE(isConnected(connector));
+    ASSERT_TRUE(isConnected(connector));
 }
 
 TEST(IBConnectorTest, Ticks)
@@ -110,8 +112,8 @@ TEST(IBConnectorTest, Ticks)
     // mac: 192.168.50.194:7496
     // local: 127.0.0.1:4002
     ib_helper::IBConnector conn{"127.0.0.1", 4002, 6};
-    EXPECT_TRUE(isConnected(conn));
-    MyTickHandler tickHandler{};
+    ASSERT_TRUE(isConnected(conn));
+    MyTickHandler tickHandler;
     ib_helper::ContractBuilder contractBuilder{&conn};
     Contract msft = contractBuilder.BuildStock("GOTU");
     uint32_t tickSubscriptionId = conn.SubscribeToMarketData(msft, &tickHandler, "225,233", false, false, nullptr);
@@ -134,7 +136,7 @@ TEST(IBConnectorTest, L2Exchanges)
     // mac: 192.168.50.194:7496
     // local: 127.0.0.1:4002
     ib_helper::IBConnector conn{"127.0.0.1", 4002, 6};
-    EXPECT_TRUE(isConnected(conn));
+    ASSERT_TRUE(isConnected(conn));
     std::future<std::vector<DepthMktDataDescription> > fut = conn.RequestMktDepthExchanges();
     auto vec = fut.get();
     int linesPrinted = 0;
@@ -183,7 +185,7 @@ TEST(IBConnectorTest, L2Book)
     // mac: 192.168.50.194:7496
     // local: 127.0.0.1:4002
     ib_helper::IBConnector conn{"127.0.0.1", 4002, 6};
-    EXPECT_TRUE(isConnected(conn));
+    ASSERT_TRUE(isConnected(conn));
     MyMarketDataHandler handler;
     ib_helper::ContractBuilder builder(&conn);
     Contract contract = builder.BuildStock("GOTU");
@@ -193,3 +195,26 @@ TEST(IBConnectorTest, L2Book)
     EXPECT_GT(handler.depthCount + handler.l2Count, 0);
 }
 
+TEST(IBConnectorTest, MockGetContractDetails)
+{
+    MockIBConnector conn("", 0, 0);
+    Contract contract;
+    contract.symbol = "XYZABC";
+    auto fut = conn.GetContractDetails(contract);
+    try
+    {
+
+        ContractDetails dets = fut.get();
+        FAIL();
+    } 
+    catch(const std::out_of_range& oor)
+    {
+        // this is what is supposed to happen
+        std::string msg = oor.what();
+        EXPECT_EQ(msg, "Invalid symbol: XYZABC");
+    }
+    catch(...)
+    {
+        FAIL();
+    }
+}
