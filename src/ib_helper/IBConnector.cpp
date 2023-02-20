@@ -275,6 +275,15 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 && !fullyConnected)
         this->shuttingDown = true;
+    if (errorCode == 200) // no security definition found
+    {
+        // if the request id is found, set the exception in the promise/future
+        auto itr = contractDetailsHandlers.find(id);
+        if (itr != contractDetailsHandlers.end())
+        {
+            (*itr).second.set_exception(std::make_exception_ptr( std::out_of_range("Symbol not found")));
+        }
+    }
     for(auto handler : accountHandlers)
     {
         handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);

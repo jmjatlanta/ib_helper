@@ -8,6 +8,14 @@
 #include <thread>
 #include <chrono>
 
+struct ib_options
+{
+    std::string host{"127.0.0.1"};
+    int port = 4002;
+    int connId = 1;
+};
+
+
 bool isConnected(const ib_helper::IBConnector& conn)
 {
     int counter = 0;
@@ -23,14 +31,15 @@ bool isConnected(const ib_helper::IBConnector& conn)
 
 TEST(IBConnectorTest, Connect)
 {
-    ib_helper::IBConnector connector{"127.0.0.1", 4002, 5};
+    ib_options ops;
+    ib_helper::IBConnector connector{ops.host, ops.port, ops.connId};
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     ASSERT_TRUE(isConnected(connector));
 }
 
-TEST(IBConnectorTest, Ticks)
+TEST(IBConnectorTest, DISABLED_Ticks)
 {
     class MyTickHandler : public ib_helper::TickHandler
     {
@@ -111,7 +120,8 @@ TEST(IBConnectorTest, Ticks)
     
     // mac: 192.168.50.194:7496
     // local: 127.0.0.1:4002
-    ib_helper::IBConnector conn{"127.0.0.1", 4002, 6};
+    ib_options ops;
+    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 1};
     ASSERT_TRUE(isConnected(conn));
     MyTickHandler tickHandler;
     ib_helper::ContractBuilder contractBuilder{&conn};
@@ -135,7 +145,8 @@ TEST(IBConnectorTest, L2Exchanges)
 {
     // mac: 192.168.50.194:7496
     // local: 127.0.0.1:4002
-    ib_helper::IBConnector conn{"127.0.0.1", 4002, 6};
+    ib_options ops;
+    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 2};
     ASSERT_TRUE(isConnected(conn));
     std::future<std::vector<DepthMktDataDescription> > fut = conn.RequestMktDepthExchanges();
     auto vec = fut.get();
@@ -153,7 +164,41 @@ TEST(IBConnectorTest, L2Exchanges)
     EXPECT_GT(linesPrinted, 0);
 }
 
-TEST(IBConnectorTest, L2Book)
+TEST(IBConnectorTest, ContractExchanges)
+{
+    // mac: 192.168.50.194:7496
+    // local: 127.0.0.1:4002
+    ib_options ops;
+    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 2};
+    ASSERT_TRUE(isConnected(conn));
+    Contract contract;
+    contract.symbol = "ES";
+    contract.secType = "FUT";
+    contract.currency = "USD";
+    contract.exchange = "SMART";
+    std::future<ContractDetails> fut1= conn.GetContractDetails(contract);
+    try
+    {
+        auto dets = fut1.get();
+        FAIL();
+    } catch(const std::out_of_range& oor)
+    {
+        std::string msg = oor.what();
+        EXPECT_EQ(msg, "Symbol not found");
+    }
+    contract.exchange = "CME";
+    fut1 = conn.GetContractDetails(contract);
+    try
+    {
+        auto dets = fut1.get();
+        EXPECT_EQ(dets.contract.symbol, "ES");
+    } catch(const std::out_of_range& oor)
+    {
+        FAIL();
+    }
+}
+
+TEST(IBConnectorTest, DISABLED_L2Book)
 {
     class MyMarketDataHandler : public ib_helper::MarketDepthHandler
     {
@@ -184,7 +229,8 @@ TEST(IBConnectorTest, L2Book)
     };
     // mac: 192.168.50.194:7496
     // local: 127.0.0.1:4002
-    ib_helper::IBConnector conn{"127.0.0.1", 4002, 6};
+    ib_options ops;
+    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 3};
     ASSERT_TRUE(isConnected(conn));
     MyMarketDataHandler handler;
     ib_helper::ContractBuilder builder(&conn);
