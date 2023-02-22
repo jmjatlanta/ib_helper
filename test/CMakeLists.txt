@@ -14,7 +14,6 @@ add_executable( ib_helper_tests ${test_src} ${ib_src} ${util_src} ${ib_helper} )
 
 target_link_libraries(ib_helper_tests 
     ${CMAKE_SOURCE_DIR}/../IntelRDFPMathLib20U2/LIBRARY/gcc000libbid.a 
-    ${CMAKE_SOURCE_DIR}/ta-lib/src/.libs/libta_lib.a 
     ${CMAKE_SOURCE_DIR}/build/lib/libgtest.a
     ${CMAKE_SOURCE_DIR}/build/lib/libgtest_main.a
     )

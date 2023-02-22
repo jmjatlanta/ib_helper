@@ -8,6 +8,5 @@ file(GLOB ib_src "ib_api/client/*.cpp")
 file(GLOB ib_helper "ib_helper/*.cpp" )
 file(GLOB util_src "util/*.cpp" )
 
-set_target_properties(ib_helper, PROPERTIES VERSION ${PROJECT_VERSION})
-
 add_library( ib_helper ${ib_src} ${util_src} ${ib_helper} )
+set_target_properties(ib_helper PROPERTIES VERSION ${PROJECT_VERSION})
