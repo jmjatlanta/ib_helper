@@ -49,6 +49,8 @@ class IBConnector : public EWrapper
     void CancelOrder(const ::Order& ord);
     std::future<ContractDetails> GetContractDetails(const Contract& contract);
     void RequestPositions();
+    void RequestAccountUpdates(bool subscribe, const std::string& account);
+    void RequestOpenOrders();
 
     protected:
     IBConnector(); // used for testing/mocking

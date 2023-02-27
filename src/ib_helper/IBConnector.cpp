@@ -53,6 +53,16 @@ void IBConnector::RequestPositions()
     this->ibClient->reqPositions();
 }
 
+void IBConnector::RequestAccountUpdates(bool subscribe, const std::string& account)
+{
+    this->ibClient->reqAccountUpdates(subscribe, account);
+}
+
+void IBConnector::RequestOpenOrders()
+{
+    this->ibClient->reqOpenOrders();
+}
+
 AccountHandler* IBConnector::GetDefaultAccountHandler() 
 { 
     if (accountHandlers.size() == 0) 
