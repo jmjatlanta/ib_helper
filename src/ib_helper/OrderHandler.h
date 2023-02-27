@@ -1,3 +1,4 @@
+#include "OrderState.h"
 #include "Decimal.h"
 
 #include <string>
