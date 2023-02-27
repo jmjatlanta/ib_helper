@@ -1,5 +1,6 @@
 #pragma once
 #include "../util/SysLogger.h"
+#include "../ib_api/client/Contract.h"
 #include "../ib_api/client/Order.h"
 #include "OrderStatus.hpp"
 
