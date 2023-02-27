@@ -9,8 +9,13 @@ namespace ib_helper
 class Position
 {
     public:
-    Position(const std::string& account, Contract contract, Decimal pos, double avgCost)
-            : account(account), contract(contract), pos(pos), averageCost(avgCost), expectedPos(pos) {}
+
+    Position(const Contract& contract, Decimal pos, double avgCost, double unrealizedPNL
+            double realizedPNL, const std::string& account)
+            : contract(contract), pos(pos), averageCost(avgCost), expectedPos(pos),
+            unralizedPNL(unrealizedPNL), realizedPNL(realizedPNL), account(account)
+    {}
+
     Position() : account(""), pos(0), averageCost(0) {}
 
     Decimal GetSize() const { return expectedPos; }
