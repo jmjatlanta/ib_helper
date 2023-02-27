@@ -5,7 +5,7 @@ class AccountValue
     public:
     std::string key;
     std::string value;
-    std::string currenty;
+    std::string currency;
     std::string account;
 
     AccountValue(const std::string& key, const std::string& value, 
