@@ -2,6 +2,7 @@
 
 class Action
 {
+    public:
     enum class ActionType {
         BUY,
         SELL,
