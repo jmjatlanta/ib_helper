@@ -34,7 +34,7 @@ class Position
 	{
 		double multiplier = 1;
 		if (!contract.multiplier.empty())
-			multiplier = strtod(contract.multiplier, nullptr);
+			multiplier = strtod(contract.multiplier.c_str(), nullptr);
         if (multiplier == 0.0)
 			multiplier = 1;
 
