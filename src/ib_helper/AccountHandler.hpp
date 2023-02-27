@@ -3,7 +3,8 @@
 
 #include <string>
 
-namespace ib_helper {
+namespace ib_helper 
+{
 
 /***
 * Implement to receive account level updates
