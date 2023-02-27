@@ -13,7 +13,7 @@ class Position
     Position(const Contract& contract, Decimal pos, double avgCost, double unrealizedPNL,
             double realizedPNL, const std::string& account)
             : contract(contract), pos(pos), averageCost(avgCost), expectedPos(pos),
-            unralizedPNL(unrealizedPNL), realizedPNL(realizedPNL), account(account)
+            unrealizedPNL(unrealizedPNL), realizedPNL(realizedPNL), account(account)
     {}
 
     Position() : account(""), pos(0), averageCost(0) {}
