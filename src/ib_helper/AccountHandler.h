@@ -16,7 +16,7 @@ class AccountHandler
 			double averageCost, double unrealizedPNL, double realizedPNL, const std::string& accountName);
 	virtual void OnUpdateAccountTime(const std::string& timestamp);
 	virtual void OnAccountDownloadEnd(const std::string& accountName);
-	virtual void OnPosition(const std::string& account, Contract contract, Decimal pos, double avgCost);
+	virtual void OnPosition(const std::string& account, const Contract& contract, Decimal pos, double avgCost);
 	virtual void OnPositionEnd();
 	virtual bool isApproved(const Contract& contract, const Order& order);
 	virtual void OnCurrentTime(long currentTime);
