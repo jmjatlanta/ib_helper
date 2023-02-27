@@ -16,7 +16,10 @@ class Position
             unrealizedPNL(unrealizedPNL), realizedPNL(realizedPNL), account(account)
     {}
 
-    Position() : account(""), pos(0), averageCost(0) {}
+    Position() : account(""), averageCost(0) {}
+
+    Position(const Contract& contract, const std::string& accountName)
+        : contract(contract), account(accountName) {}
 
     Decimal GetSize() const { return expectedPos; }
     bool InSync() const { return expectedPos == pos; }
@@ -24,7 +27,7 @@ class Position
     public:
     std::string account;
     Contract contract;
-    Decimal pos = 0;
+    Decimal pos = doubleToDecimal(0.0);
     double averageCost = 0.0;    
     double unrealizedPNL = 0.0;
     double realizedPNL = 0.0;
