@@ -1,4 +1,8 @@
 #pragma once
+#include <string>
+
+namespace ib_helper
+{
 
 class AccountValue
 {
@@ -12,4 +16,6 @@ class AccountValue
             const std::string& currency, const std::string& account)
         : key(key), value(value), currency(currency), account(account) {}
 };
+
+}
 

@@ -4,6 +4,9 @@
 
 #include <string>
 
+namespace ib_helper
+{
+
 class Position 
 {
     public:
@@ -42,4 +45,6 @@ class Position
 		return averageCost / multiplier;
 	}
 };
+
+}
 

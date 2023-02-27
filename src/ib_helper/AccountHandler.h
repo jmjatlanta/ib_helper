@@ -7,6 +7,9 @@
 #include <string>
 #include <exception>
 
+namespce ib_helper
+{
+
 class AccountHandler
 {
     public:
@@ -25,4 +28,6 @@ class AccountHandler
 	virtual void OnError(const std::string& msg);
 	virtual void OnError(int id, int errorCode, const std::string& errorMsg, const std::string& advancedOrderRejectJson);
 };
+
+} // namespace ib_helper
 

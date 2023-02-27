@@ -1,6 +1,9 @@
 #pragma once
 #include <string>
 
+namespace ib_helper
+{
+
 class TickHandler 
 {
     public:
@@ -32,5 +35,7 @@ class TickHandler
     virtual void OnTickMidPoint(int reqId, long time, double midPoint) = 0;
 
 
-}
+};
+
+} // namespace ib_helper
 

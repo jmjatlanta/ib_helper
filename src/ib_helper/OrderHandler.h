@@ -4,6 +4,9 @@
 
 #include <string>
 
+namespace ib_helper
+{
+
 class OrderHandler 
 {
     public:
@@ -14,4 +17,6 @@ class OrderHandler
 	virtual void OnOpenOrderEnd() = 0;
 	virtual void OnOrderBound(long orderId, int apiClientId, int apiOrderId) = 0;
 };
+
+}
 

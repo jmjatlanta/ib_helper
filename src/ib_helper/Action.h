@@ -1,5 +1,8 @@
 #pragma once
 
+namespace ib_helper
+{
+
 class Action
 {
     public:
@@ -26,4 +29,6 @@ class Action
     }
 
 };
+
+}
 
