@@ -75,7 +75,7 @@ void IBConnector::CancelOrder(int orderId, const std::string& time)
     this->ibClient->cancelOrder(orderId, time);
 }
 
-void IBConnector::PlaceOrder(int orderId, ::Order ord, const Contract& contract)
+void IBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Order& ord)
 {
     this->ibClient->placeOrder(orderId, contract, ord);
 }

@@ -45,7 +45,7 @@ class IBConnector : public EWrapper
     void UnsubscribeFromMarketDepth(uint32_t subscriptionId);
 
     bool IsShuttingDown() const { return shuttingDown; }
-    void PlaceOrder(int orderId, ::Order ord, const Contract& contract);
+    void PlaceOrder(int orderId, const Contract& contract, const ::Order& order);
     void CancelOrder(int orderId, const std::string& time);
     std::future<ContractDetails> GetContractDetails(const Contract& contract);
     void RequestPositions();
