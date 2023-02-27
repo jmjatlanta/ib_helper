@@ -70,9 +70,9 @@ AccountHandler* IBConnector::GetDefaultAccountHandler()
     return accountHandlers[0]; 
 }
 
-void IBConnector::CancelOrder(const ::Order& ord)
+void IBConnector::CancelOrder(int orderId, const std::string& time)
 {
-    this->ibClient->cancelOrder(ord.orderId, "");
+    this->ibClient->cancelOrder(orderId, time);
 }
 
 void IBConnector::PlaceOrder(int orderId, ::Order ord, const Contract& contract)
