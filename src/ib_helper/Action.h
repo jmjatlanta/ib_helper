@@ -13,14 +13,15 @@ class Action
     {
         switch(type)
         {
-            case (BUY):
+            case (ActionType::BUY):
                 return "BUY";
-            case (SELL):
+            case (ActionType::SELL):
                 return "SELL";
-            case (SSHORT):
+            case (ActionType::SSHORT):
                 return "SSHORT";
-            case (SLONG):
+            case (ActionType::SLONG):
                 return "SLONG";
+        }
     }
 
 };
