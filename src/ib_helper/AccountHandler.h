@@ -20,7 +20,7 @@ class AccountHandler
 	virtual void OnPositionEnd();
 	virtual bool isApproved(Contract contract, Order order);
 	virtual void OnCurrentTime(long currentTime);
-	virtual Position GetPosition(Contract contract, const std::string& account);
+	virtual Position GetPosition(const Contract& contract, const std::string& account);
 	virtual void OnError(const std::exception& e);
 	virtual void OnError(const std::string& msg);
 	virtual void OnError(int id, int errorCode, const std::string& errorMsg, const std::string& advancedOrderRejectJson);

@@ -29,9 +29,9 @@ class Position
 	{
 	}
 	
-	virtual Decimal getPosition() { return position; }
+	Decimal getPosition() { return position; }
 	
-	virtual double getAverageCost()
+	double getAverageCost()
 	{
 		double multiplier = 1;
 		if (!contract.multiplier.empty())
