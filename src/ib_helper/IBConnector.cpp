@@ -240,7 +240,7 @@ void IBConnector::orderStatus( OrderId orderId, const std::string& status, Decim
                 lastFillPrice, clientId, whyHeld, mktCapPrice);
     }
 }
-void IBConnector::openOrder( OrderId orderId, const Contract& contract, const Order& order, const OrderState& orderState)
+void IBConnector::openOrder( OrderId orderId, const Contract& contract, const ::Order& order, const OrderState& orderState)
 {
     for(auto* handler : orderHandlers)
     {
