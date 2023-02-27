@@ -1,3 +1,4 @@
+#pragma once
 #include "Contract.h"
 #include "Decimal.h"
 #include "Position.h"
