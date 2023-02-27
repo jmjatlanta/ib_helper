@@ -75,7 +75,7 @@ class IBConnector : public EWrapper
     virtual void orderStatus( OrderId orderId, const std::string& status, Decimal filled,
 	        Decimal remaining, double avgFillPrice, int permId, int parentId,
 	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice) override;
-    virtual void openOrder( OrderId orderId, const Contract&, const Order&, const OrderState&) override;
+    virtual void openOrder( OrderId orderId, const Contract&, const ::Order&, const OrderState&) override;
     virtual void openOrderEnd() override;
     virtual void winError( const std::string& str, int lastError) override;
     virtual void connectionClosed() override;
@@ -169,7 +169,7 @@ class IBConnector : public EWrapper
             Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk) override;
     virtual void tickByTickMidPoint(int reqId, time_t time, double midPoint) override;
     virtual void orderBound(long long orderId, int apiClientId, int apiOrderId) override;
-    virtual void completedOrder(const Contract& contract, const Order& order, const OrderState& orderState) override;
+    virtual void completedOrder(const Contract& contract, const ::Order& order, const OrderState& orderState) override;
     virtual void completedOrdersEnd() override;
     virtual void replaceFAEnd(int reqId, const std::string& text) override;
     virtual void wshMetaData(int reqId, const std::string& dataJson) override;
