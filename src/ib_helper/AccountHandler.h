@@ -1,3 +1,4 @@
+#include "Contract.h"
 #include "Decimal.h"
 
 #include <string>
@@ -13,7 +14,7 @@ class AccountHandler
 	virtual void OnAccountDownloadEnd(const std::string& accountName);
 	virtual void OnPosition(const std::string& account, Contract contract, Decimal pos, double avgCost);
 	virtual void OnPositionEnd();
-	virtual boolean isApproved(Contract contract, Order order);
+	virtual bool isApproved(Contract contract, Order order);
 	virtual void OnCurrentTime(long currentTime);
 	virtual Position GetPosition(Contract contract, const std::string& account);
 	virtual void OnError(Exception e);
