@@ -1,7 +1,10 @@
 #include "Contract.h"
 #include "Decimal.h"
+#include "Position.h"
+#include "Order.h"
 
 #include <string>
+#include <exception>
 
 class AccountHandler
 {
@@ -17,7 +20,7 @@ class AccountHandler
 	virtual bool isApproved(Contract contract, Order order);
 	virtual void OnCurrentTime(long currentTime);
 	virtual Position GetPosition(Contract contract, const std::string& account);
-	virtual void OnError(Exception e);
+	virtual void OnError(const std::exception& e);
 	virtual void OnError(const std::string& msg);
 	virtual void OnError(int id, int errorCode, const std::string& errorMsg, const std::string& advancedOrderRejectJson);
 };
