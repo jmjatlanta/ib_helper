@@ -13,7 +13,7 @@ class Position
 	double averageCost = 0.0;;
 	double unrealizedPNL = 0.0;
 	double realizedPNL = 0.0;
-	String accountName;
+	const std::string& accountName;
 
 	Position(Contract contract, Decimal position, double marketPrice, double marketValue,
 			double averageCost, double unrealizedPNL, double realizedPNL, const std::string& accountName)
@@ -24,7 +24,7 @@ class Position
 	}
 	
 	Position(Contract contract, const std::string& accountName) 
-         : Position(contract, Decimal.get(0), 0.0, 0.0, 0.0, 0.0, 0.0, accountName)
+         : Position(contract, doubleToDecimal(0.0), 0.0, 0.0, 0.0, 0.0, 0.0, accountName)
 	{
 	}
 	
@@ -33,15 +33,12 @@ class Position
 	double getAverageCost()
 	{
 		double multiplier = 1;
-		try
-		{
-			if (contract.multiplier() != null)
-				multiplier = Double.parseDouble(contract.multiplier());
-			if (multiplier == 0.0)
-				multiplier = 1;
-		} catch (const std::exception& e) {}
+		if (!contract.multiplier.empty())
+			multiplier = strtod(contract.multiplier, nullptr);
+        if (multiplier == 0.0)
+			multiplier = 1;
 
 		return averageCost / multiplier;
 	}
-}
+};
 
