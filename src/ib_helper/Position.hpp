@@ -10,7 +10,7 @@ class Position
 {
     public:
 
-    Position(const Contract& contract, Decimal pos, double avgCost, double unrealizedPNL
+    Position(const Contract& contract, Decimal pos, double avgCost, double unrealizedPNL,
             double realizedPNL, const std::string& account)
             : contract(contract), pos(pos), averageCost(avgCost), expectedPos(pos),
             unralizedPNL(unrealizedPNL), realizedPNL(realizedPNL), account(account)
