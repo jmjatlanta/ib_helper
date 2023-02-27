@@ -3,6 +3,9 @@
 #include "../ib_api/client/Contract.h"
 #include <string>
 
+namespace ib_helper
+{
+
 class Position
 {
     public:
@@ -22,4 +25,6 @@ class Position
     double realizedPNL = 0.0;
     Decimal expectedPos = 0;
 };
+
+} // namespace ib_helper
 
