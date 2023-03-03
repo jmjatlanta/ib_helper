@@ -5,6 +5,7 @@ namespace ib_helper
 {
 
 enum Action {
+    UNKNOWN,
     BUY,
     SELL,
     SSHORT,

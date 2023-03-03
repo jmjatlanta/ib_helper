@@ -13,6 +13,8 @@ std::string to_string(Action type)
             return "SSHORT";
         case (Action::SLONG):
             return "SLONG";
+        case(Action::UNKNOWN):
+            return "UNKNOWN"
     }
 }
 
@@ -26,7 +28,9 @@ Action to_action(const std::string& in)
         return Action::SSHORT;
     if (in == "SLONG")
         return Action::SLONG;
-    throw std::invalid_argument(in);
+    else
+        throw std::invalid_argument(in);
+    return Action::UNKNOWN;
 }
 
 }
