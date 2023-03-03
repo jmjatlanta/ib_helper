@@ -12,7 +12,7 @@ enum Action {
     SLONG
 };
 
-std::string to_string(ActionType type)
+std::string to_string(Action type)
 {
     switch(type)
     {
