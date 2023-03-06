@@ -70,6 +70,27 @@ AccountHandler* IBConnector::GetDefaultAccountHandler()
     return accountHandlers[0]; 
 }
 
+void IBConnector::RemoveConnectionMonitor(IBConnectionMonitor* in)
+{
+    for(auto itr = connectionMonitors.begin(); itr != connectionMonitors.end(); ++itr)
+    {
+        if ( (*itr) == in)
+        {
+            connectionMonitors.erase(itr);
+            break;
+        }
+    }
+}
+
+void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
+{
+    connectionMonitors.push_back(in);
+    if (ibClient->isConnected())
+        in->OnConnect(this);
+    else
+        in->OnDisconnect(this);
+}
+
 void IBConnector::CancelOrder(int orderId, const std::string& time)
 {
     this->ibClient->cancelOrder(orderId, time);
@@ -97,6 +118,15 @@ void IBConnector::IBConnector::processMessages(IBConnector* ibConnector) {
 	}
 }
 
+/***
+ * Subscribe to tick data. What is returned is dependent on genericTickList
+ * @param contract the contract
+ * @param tickHandler who will receive the data
+ * @param genericTickList the types of ticks desired
+ * @param snapshot true to only get a snapshot
+ * @param regulatorySnapshot true to only get a regulatory snapshot
+ * @param mktDataOptions not currently used by us
+ */
 uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
         const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
         const TagValueListSPtr& mktDataOptions)
@@ -275,7 +305,11 @@ void IBConnector::winError( const std::string& str, int lastError)
 {
     logger->error(logCategory, str);
 }
-void IBConnector::connectionClosed(){}
+void IBConnector::connectionClosed()
+{
+    for(auto cm : connectionMonitors)
+        cm->OnDisconnect(this);
+}
 void IBConnector::updateAccountValue(const std::string& key, const std::string& val,
             const std::string& currency, const std::string& accountName){}
 void IBConnector::updatePortfolio( const Contract& contract, Decimal position, double marketPrice, double marketValue,
@@ -391,7 +425,11 @@ void IBConnector::displayGroupList( int reqId, const std::string& groups){}
 void IBConnector::displayGroupUpdated( int reqId, const std::string& contractInfo){}
 void IBConnector::verifyAndAuthMessageAPI( const std::string& apiData, const std::string& xyzChallange){}
 void IBConnector::verifyAndAuthCompleted( bool isSuccessful, const std::string& errorText){}
-void IBConnector::connectAck(){}
+void IBConnector::connectAck()
+{
+    for(auto cm : connectionMonitors)
+        cm->OnConnect(this);
+}
 void IBConnector::positionMulti( int reqId, const std::string& account,const std::string& modelCode,
             const Contract& contract, Decimal pos, double avgCost){}
 void IBConnector::positionMultiEnd( int reqId){}

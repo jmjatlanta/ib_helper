@@ -33,19 +33,62 @@ class IBConnector : public EWrapper
     uint32_t GetNextRequestId() { return ++nextRequestId; }
     void SetDefaultAccount(const std::string& in) { defaultAccount = in; }
     bool IsConnected() const { return fullyConnected; }
+    // subcriptions
+    /***
+     * Subscribe to tick data. What is returned is dependent on genericTickList
+     * @param contract the contract
+     * @param tickHandler who will receive the data
+     * @param genericTickList the types of ticks desired
+     * @param snapshot true to only get a snapshot
+     * @param regulatorySnapshot true to only get a regulatory snapshot
+     * @param mktDataOptions not currently used by us
+     * @return the subscription id
+     */
     uint32_t SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
             const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
             const TagValueListSPtr& mktDataOptions);
+    /***
+     * the opposite of SubscribeToMarketData
+     * @param the subscription id
+     */
     void UnsubscribeFromMarketData(uint32_t reqId);
+    /***
+     * Subscribe to all ticks (more like T&S)
+     * @param contract the contract
+     * @param handler who wil receive the messages
+     * @param tickType the type of tick requested (i.e. "MidPoint" or "BidAsk" or "Last")
+     * @param numberOfTicks
+     * @param ignoreSize
+     * @return the subscription id
+     */
     uint32_t SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
             int numberOfTicks, bool ignoreSize);
+    /***
+     * The opposite of SubscribeToTickByTick
+     * @param reqId the subscription id
+     */
     void UnsubscribeFromTickByTick(uint32_t reqId);
-    std::future<std::vector<DepthMktDataDescription> > RequestMktDepthExchanges();
     uint32_t SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines);
     void UnsubscribeFromMarketDepth(uint32_t subscriptionId);
-    void UnsubscribeFromHistoricalData(uint32_t reqId);
+    /***
+     * Get historical bar data
+     * @param contract the contract
+     * @param handler who will receive the data
+     * @param timePeriod how far back to go
+     * @param barSize the period size of each bar
+     * @return the subscription id
+     */
     uint32_t SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler, const std::string& timePeriod,
             const std::string& barSize);
+    /***
+     * The opposite of SubscribeToHistoricalData
+     * @param reqId the subscription id
+     */
+    void UnsubscribeFromHistoricalData(uint32_t reqId);
+    void RemoveConnectionMonitor(IBConnectionMonitor* in);
+    void AddConnectionMonitor(IBConnectionMonitor* in);
+    // end of subscriptions
+    std::future<std::vector<DepthMktDataDescription> > RequestMktDepthExchanges();
     bool IsShuttingDown() const { return shuttingDown; }
     void PlaceOrder(int orderId, const Contract& contract, const ::Order& order);
     void CancelOrder(int orderId, const std::string& time);
