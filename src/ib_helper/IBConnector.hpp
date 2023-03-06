@@ -43,7 +43,9 @@ class IBConnector : public EWrapper
     std::future<std::vector<DepthMktDataDescription> > RequestMktDepthExchanges();
     uint32_t SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines);
     void UnsubscribeFromMarketDepth(uint32_t subscriptionId);
-
+    void UnsubscribeFromHistoricalData(uint32_t reqId);
+    uint32_t SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler, const std::string& timePeriod,
+            const std::string& barSize);
     bool IsShuttingDown() const { return shuttingDown; }
     void PlaceOrder(int orderId, const Contract& contract, const ::Order& order);
     void CancelOrder(int orderId, const std::string& time);
@@ -187,9 +189,9 @@ class IBConnector : public EWrapper
     EReader* reader = nullptr;
     std::atomic<uint32_t> nextOrderId = 0;
     std::atomic<uint32_t> nextRequestId = 0;
-    std::unordered_map<uint32_t, TickHandler* > tickHandlers{};
-    std::unordered_map<uint32_t, MarketDepthHandler* > marketDepthHandlers{};
-    std::unordered_map<uint32_t, HistoricalDataHandler*> historicalDataHandlers{};
+    std::unordered_map<uint32_t, TickHandler* > tickHandlers;
+    std::unordered_map<uint32_t, MarketDepthHandler* > marketDepthHandlers;
+    std::unordered_map<uint32_t, HistoricalDataHandler*> historicalDataHandlers;
     std::vector<IBConnectionMonitor*> connectionMonitors{};
     std::vector<AccountHandler*> accountHandlers{};
     std::vector<OrderHandler*> orderHandlers{};

@@ -143,6 +143,23 @@ std::future<std::vector<DepthMktDataDescription> > IBConnector::RequestMktDepthE
     return promise.get_future();
 }
 
+void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionId)
+{
+    ibClient->cancelHistoricalData(historicalSubscriptionId);
+}
+
+uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
+        const std::string& timePeriod, const std::string& barSize)
+{
+    std::string whatToShow = "TRADES";
+    if (contract.secType == "CASH")
+        whatToShow = "MIDPOINT";
+    int id = GetNextRequestId();
+    historicalDataHandlers[id] = handler;
+    ibClient->reqHistoricalData(id, contract, "", timePeriod, barSize, whatToShow, 0, 2, true, nullptr);
+    return id;
+}
+
 void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attrib)
 {
     try 
@@ -325,8 +342,19 @@ void IBConnector::updateNewsBulletin(int msgId, int msgType, const std::string& 
             const std::string& originExch){}
 void IBConnector::managedAccounts( const std::string& accountsList){}
 void IBConnector::receiveFA(faDataType pFaDataType, const std::string& cxml){}
-void IBConnector::historicalData(TickerId reqId, const Bar& bar){}
-void IBConnector::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr){}
+void IBConnector::historicalData(TickerId reqId, const Bar& bar)
+{
+    auto* handler = historicalDataHandlers[reqId];
+    if (handler != nullptr)
+        handler->OnHistoricalData(reqId, bar);
+}
+void IBConnector::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr)
+{
+    auto* handler = historicalDataHandlers[reqId];
+    if (handler != nullptr)
+        handler->OnHistoricalDataEnd(reqId, startDateStr, endDateStr);
+}
+
 void IBConnector::scannerParameters(const std::string& xml){}
 void IBConnector::scannerData(int reqId, int rank, const ContractDetails& contractDetails, const std::string& distance,
             const std::string& benchmark, const std::string& projection, const std::string& legsStr){}
@@ -399,7 +427,12 @@ void IBConnector::historicalNews(int requestId, const std::string& time, const s
 void IBConnector::historicalNewsEnd(int requestId, bool hasMore){}
 void IBConnector::headTimestamp(int reqId, const std::string& headTimestamp){}
 void IBConnector::histogramData(int reqId, const HistogramDataVector& data){}
-void IBConnector::historicalDataUpdate(TickerId reqId, const Bar& bar){}
+void IBConnector::historicalDataUpdate(TickerId reqId, const Bar& bar)
+{
+    auto* handler = historicalDataHandlers[reqId];
+    if (handler != nullptr)
+        handler->OnHistoricalDataUpdate(reqId, bar);
+}
 void IBConnector::rerouteMktDataReq(int reqId, int conid, const std::string& exchange){}
 void IBConnector::rerouteMktDepthReq(int reqId, int conid, const std::string& exchange){}
 void IBConnector::marketRule(int marketRuleId, const std::vector<PriceIncrement> &priceIncrements){}
