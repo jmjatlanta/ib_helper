@@ -1,5 +1,8 @@
 #include "Action.hpp"
-#include <stdexept>
+#include <stdexcept>
+
+namespace ib_helper
+{
 
 std::string to_string(Action type)
 {
@@ -14,8 +17,9 @@ std::string to_string(Action type)
         case (Action::SLONG):
             return "SLONG";
         case(Action::UNKNOWN):
-            return "UNKNOWN"
+            return "UNKNOWN";
     }
+    return "UNKNOWN";
 }
 
 Action to_action(const std::string& in)
@@ -33,5 +37,5 @@ Action to_action(const std::string& in)
     return Action::UNKNOWN;
 }
 
-}
+} // namespace ib_helper
 
