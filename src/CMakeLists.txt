@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS "-g -O0")
 file(GLOB ib_src "ib_api/client/*.cpp")
 file(GLOB ib_helper "ib_helper/*.cpp" )
 file(GLOB util_src "util/*.cpp" )
+file(GLOB date_src "../date/src/*.cpp" )
 
 add_library( ib_helper ${ib_src} ${util_src} ${ib_helper} )
 target_include_directories( ib_helper PRIVATE ../date/include )
