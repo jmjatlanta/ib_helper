@@ -35,7 +35,6 @@ TEST(ExchangeTest, TimeFormatB)
     EXPECT_EQ(exch.marketClose(today), 1678222800); // 4:00PM EST
 }
 
-/*
 TEST(ExchangeTest, Chicago)
 {
     ContractDetails contractDetails;
@@ -65,4 +64,19 @@ TEST(ExchangeTest, ChicagoEarly)
     EXPECT_EQ(exch.marketOpen(today), 1678199400); // 8:30AM CST
     EXPECT_EQ(exch.marketClose(today), 1678222800); // 3:00PM CST
 }
-*/
+
+TEST(ExchangeTest, ManualOpenClose)
+{
+    ContractDetails contractDetails;
+    contractDetails.timeZoneId = "America/New_York";
+    // LiquidHours can be in 2 formats
+    contractDetails.liquidHours = "20230307:0830-20230307:1500;20230308:0830-20320308:1500"; // format B
+    Exchange exch(contractDetails);
+    exch.setStartTime("07:00");
+    exch.setStopTime("11:00");
+
+    time_t today = 1678206727; // 2023-3-7 4:31:52GMT (11:31:52 EST)
+    EXPECT_FALSE(exch.isWithinRange(today)); // 11:31am
+    exch.setStopTime("12:00");
+    EXPECT_TRUE(exch.isWithinRange(today)); // 11:31am
+}

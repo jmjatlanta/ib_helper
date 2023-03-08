@@ -29,11 +29,15 @@ hours parseHourFormatA(const std::string& in)
     std::string yyyymm = toParse.substr(0, colonPos);
     parseYYYYMM(yyyymm, retVal.open);
     parseYYYYMM(yyyymm, retVal.close);
+    parseYYYYMM(yyyymm, retVal.start);
+    parseYYYYMM(yyyymm, retVal.stop);
     int dashPos = toParse.find("-");
     std::string hhmm = toParse.substr(colonPos+1, dashPos);
     parseHHMM(hhmm, retVal.open);
+    parseHHMM(hhmm, retVal.start);
     hhmm = toParse.substr(dashPos+1);
     parseHHMM(hhmm, retVal.close);
+    parseHHMM(hhmm, retVal.stop);
     return retVal;
 }
 
@@ -50,15 +54,19 @@ hours parseHourFormatB(const std::string& in)
     int colonPos = toParse.find(":");
     std::string yyyymm = toParse.substr(0, colonPos);
     parseYYYYMM(yyyymm, retVal.open);
+    parseYYYYMM(yyyymm, retVal.start);
     std::string hhmm = toParse.substr(colonPos+1, colonPos+3);
     parseHHMM(hhmm, retVal.open);
+    parseHHMM(hhmm, retVal.start);
     int semiColon = in.find(";");
     toParse = in.substr(dashPos+1, semiColon);
     colonPos = toParse.find(":");
     yyyymm = toParse.substr(0, colonPos);
     parseYYYYMM(yyyymm, retVal.close);
+    parseYYYYMM(yyyymm, retVal.stop);
     hhmm = toParse.substr(colonPos + 1, colonPos + 3);
     parseHHMM(hhmm, retVal.close);
+    parseHHMM(hhmm, retVal.stop);
     return retVal;
 }
 
@@ -107,6 +115,42 @@ std::chrono::time_point<std::chrono::system_clock> Exchange::midnightAtExchange(
     return result;
 }
 
+std::string removeColon(const std::string& in)
+{
+    std::string out = in;
+    int pos = out.find(":");
+    if (pos != std::string::npos)
+        out = out.substr(0, pos) + out.substr(pos+1);
+    return out;
+}
+
+void Exchange::setStartTime(const std::string& in)
+{
+    // get rid of the colon if there is one
+    std::string cleaned = removeColon(in);
+    parseHHMM(cleaned, exchangeHours.start);
+}
+
+void Exchange::setStopTime(const std::string& in)
+{
+    // get rid of the colon if there is one
+    std::string cleaned = removeColon(in);
+    parseHHMM(cleaned, exchangeHours.stop);
+}
+
+bool Exchange::isWithinRange(time_t in)
+{
+    return in > marketStart(in) && in < marketStop(in);
+}
+
+time_t Exchange::calculateFromTm(time_t today, tm hour)
+{
+    auto clock = midnightAtExchange(today);
+    clock += std::chrono::hours(hour.tm_hour);
+    clock += std::chrono::minutes(hour.tm_min);
+    return std::chrono::system_clock::to_time_t(clock);
+}
+
 /***
  * When does the market open for trading today?
  * @param today the time (just to get the date)
@@ -114,27 +158,27 @@ std::chrono::time_point<std::chrono::system_clock> Exchange::midnightAtExchange(
  */
 time_t Exchange::premarketStart(time_t today)
 {
-    auto midnight = midnightAtExchange(today);
-    // now compute time_t of today
-    return std::chrono::system_clock::to_time_t(midnight);
+    tm midnight = {0};
+    return calculateFromTm(today, midnight);
 }
 
 time_t Exchange::marketOpen(time_t today)
 {
-    auto clock = midnightAtExchange(today);
-    // now add time to make it 9:30
-
-    clock += std::chrono::hours(exchangeHours.open.tm_hour);
-    clock += std::chrono::minutes(exchangeHours.open.tm_min);
-    return std::chrono::system_clock::to_time_t(clock);
+    return calculateFromTm(today, exchangeHours.open);
 }
 
 time_t Exchange::marketClose(time_t today)
 {
-    auto clock = midnightAtExchange(today);
-    // now add time to make it 4pm 
-    clock += std::chrono::hours(exchangeHours.close.tm_hour);
-    clock += std::chrono::minutes(exchangeHours.close.tm_min);
-    return std::chrono::system_clock::to_time_t(clock);
+    return calculateFromTm(today, exchangeHours.close);
+}
+
+time_t Exchange::marketStart(time_t today)
+{
+    return calculateFromTm(today, exchangeHours.start);
+}
+
+time_t Exchange::marketStop(time_t today)
+{
+    return calculateFromTm(today, exchangeHours.stop);
 }
 
