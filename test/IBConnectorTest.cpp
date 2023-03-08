@@ -198,6 +198,23 @@ TEST(IBConnectorTest, ContractExchanges)
     }
 }
 
+TEST(IBConnectorTest, FutureContractBuilderYM)
+{
+    ib_options ops;
+    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 2};
+    ASSERT_TRUE(isConnected(conn));
+    ib_helper::ContractBuilder contractBuilder(&conn);
+    try
+    {
+        auto ym = contractBuilder.BuildFuture("YM");
+        auto details = contractBuilder.GetDetails(ym);
+        EXPECT_EQ(details.contract.symbol, "YM");
+        EXPECT_EQ(details.contract.localSymbol, "YM   MAR 23"); 
+    } catch(const std::out_of_range& oor) {
+        FAIL();
+    }
+}
+
 TEST(IBConnectorTest, DISABLED_L2Book)
 {
     class MyMarketDataHandler : public ib_helper::MarketDepthHandler
@@ -264,3 +281,4 @@ TEST(IBConnectorTest, MockGetContractDetails)
         FAIL();
     }
 }
+

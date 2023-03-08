@@ -323,8 +323,13 @@ void IBConnector::nextValidId( OrderId orderId)
 }
 void IBConnector::contractDetails( int reqId, const ContractDetails& contractDetails)
 {
-    auto& promise = contractDetailsHandlers[reqId];
-    promise.set_value(contractDetails);
+    auto itr = contractDetailsHandlers.find(reqId);
+    if (itr != contractDetailsHandlers.end())
+    {
+        auto& promise = (*itr).second;
+        promise.set_value(contractDetails);
+        contractDetailsHandlers.erase(itr);
+    }
 }
 void IBConnector::bondContractDetails( int reqId, const ContractDetails& contractDetails){}
 void IBConnector::contractDetailsEnd( int reqId){}

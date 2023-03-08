@@ -1,27 +1,22 @@
 #pragma once
 #include "IBConnector.hpp"
 #include "../ib_api/client/Contract.h"
+#include "ContractRolloverCalendar.hpp"
+#include <iostream>
 
 namespace ib_helper {
 
 class ContractBuilder
 {
     public:
-    ContractBuilder(IBConnector* conn) : ib(conn) {}
-    Contract BuildStock(const std::string& ticker)
-    {
-        Contract retval;
-        retval.symbol = ticker;
-        retval.localSymbol = ticker;
-        retval.secType = "STK";
-        retval.exchange = "SMART";
-        retval.currency = "USD";
-        // get contract id
-        auto fut = ib->GetContractDetails(retval);
-        ContractDetails det = fut.get();
-        retval.conId = det.contract.conId;
-        return retval;
-    }
+    ContractBuilder(IBConnector* conn);
+
+    Contract BuildStock(const std::string& ticker);
+    
+    Contract BuildFuture(const std::string& ticker, time_t now = time(nullptr));
+
+    ContractDetails GetDetails(const Contract& in);
+
     private:
     IBConnector* ib = nullptr;
 };
