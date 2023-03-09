@@ -64,3 +64,12 @@ void MockIBConnector::AddConnectionMonitor(ib_helper::IBConnectionMonitor* in)
     in->OnConnect(this);
 }
 
+uint32_t MockIBConnector::SubscribeToHistoricalData(const Contract& contract, ib_helper::HistoricalDataHandler* handler,
+            const std::string& timePeriod, const std::string& barSize)
+{
+    int id = GetNextRequestId();
+    historicalDataHandlers[id] = handler;
+    return id;
+}
+
+
