@@ -85,6 +85,12 @@ void IBConnector::RemoveConnectionMonitor(IBConnectionMonitor* in)
 void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
 {
     connectionMonitors.push_back(in);
+    int counter = 0;
+    while(!ibClient->isConnected() && counter <= 500)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        counter += 100;
+    }
     if (ibClient->isConnected())
         in->OnConnect(this);
     else
@@ -101,7 +107,7 @@ void IBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Orde
     this->ibClient->placeOrder(orderId, contract, ord);
 }
 
-void IBConnector::IBConnector::processMessages(IBConnector* ibConnector) {
+void IBConnector::processMessages(IBConnector* ibConnector) {
 	while (!ibConnector->shuttingDown) {
 		// wait for connection
 		if (!ibConnector->fullyConnected) {
