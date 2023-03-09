@@ -32,7 +32,7 @@ class IBConnector : public EWrapper
     uint32_t GetNextOrderId() { return ++nextOrderId; }
     uint32_t GetNextRequestId() { return ++nextRequestId; }
     void SetDefaultAccount(const std::string& in) { defaultAccount = in; }
-    bool IsConnected() const { return fullyConnected; }
+    virtual bool IsConnected() const { return fullyConnected; }
     // subcriptions
     /***
      * Subscribe to tick data. What is returned is dependent on genericTickList
@@ -93,7 +93,7 @@ class IBConnector : public EWrapper
     void PlaceOrder(int orderId, const Contract& contract, const ::Order& order);
     void CancelOrder(int orderId, const std::string& time);
     std::future<ContractDetails> GetContractDetails(const Contract& contract);
-    void RequestPositions();
+    virtual void RequestPositions();
     void RequestAccountUpdates(bool subscribe, const std::string& account);
     void RequestOpenOrders();
 

@@ -44,3 +44,10 @@ std::future<ContractDetails> MockIBConnector::GetContractDetails(const Contract&
     doGetContractDetails(contract, promise);
     return promise.get_future();
 }
+
+bool MockIBConnector::IsConnected() const { return true; }
+
+void MockIBConnector::RequestPositions()
+{
+    positionEnd();
+}
