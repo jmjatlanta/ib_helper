@@ -11,6 +11,7 @@ class MockIBConnector : public ib_helper::IBConnector
     bool IsConnected() const override;
     void RequestPositions() override;
     void RequestOpenOrders() override;
+    void AddConnectionMonitor(ib_helper::IBConnectionMonitor* in) override;
     private:
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;

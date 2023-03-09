@@ -56,3 +56,11 @@ void MockIBConnector::RequestOpenOrders()
 {
     openOrderEnd();
 }
+
+void MockIBConnector::AddConnectionMonitor(ib_helper::IBConnectionMonitor* in)
+{
+    // add it to the list
+    connectionMonitors.push_back(in);
+    in->OnConnect(this);
+}
+
