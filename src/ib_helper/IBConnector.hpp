@@ -25,13 +25,13 @@ class IBConnector : public EWrapper
     IBConnector(const std::string& hostname, int port, int clientId);
     virtual ~IBConnector();
 
-    void AddAccountHandler(AccountHandler* in) { accountHandlers.push_back(in); }
-    void AddOrderHandler(OrderHandler* in) { orderHandlers.push_back(in); }
-    AccountHandler* GetDefaultAccountHandler();
-    const std::string GetDefaultAccount() { return defaultAccount; }
-    uint32_t GetNextOrderId() { return ++nextOrderId; }
-    uint32_t GetNextRequestId() { return ++nextRequestId; }
-    void SetDefaultAccount(const std::string& in) { defaultAccount = in; }
+    virtual void AddAccountHandler(AccountHandler* in) { accountHandlers.push_back(in); }
+    virtual void AddOrderHandler(OrderHandler* in) { orderHandlers.push_back(in); }
+    virtual AccountHandler* GetDefaultAccountHandler();
+    virtual const std::string GetDefaultAccount() { return defaultAccount; }
+    virtual uint32_t GetNextOrderId() { return ++nextOrderId; }
+    virtual uint32_t GetNextRequestId() { return ++nextRequestId; }
+    virtual void SetDefaultAccount(const std::string& in) { defaultAccount = in; }
     virtual bool IsConnected() const { return fullyConnected; }
     // subcriptions
     /***
@@ -44,14 +44,14 @@ class IBConnector : public EWrapper
      * @param mktDataOptions not currently used by us
      * @return the subscription id
      */
-    uint32_t SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
+    virtual uint32_t SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
             const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
             const TagValueListSPtr& mktDataOptions);
     /***
      * the opposite of SubscribeToMarketData
      * @param the subscription id
      */
-    void UnsubscribeFromMarketData(uint32_t reqId);
+    virtual void UnsubscribeFromMarketData(uint32_t reqId);
     /***
      * Subscribe to all ticks (more like T&S)
      * @param contract the contract
@@ -61,15 +61,15 @@ class IBConnector : public EWrapper
      * @param ignoreSize
      * @return the subscription id
      */
-    uint32_t SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
+    virtual uint32_t SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
             int numberOfTicks, bool ignoreSize);
     /***
      * The opposite of SubscribeToTickByTick
      * @param reqId the subscription id
      */
-    void UnsubscribeFromTickByTick(uint32_t reqId);
-    uint32_t SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines);
-    void UnsubscribeFromMarketDepth(uint32_t subscriptionId);
+    virtual void UnsubscribeFromTickByTick(uint32_t reqId);
+    virtual uint32_t SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines);
+    virtual void UnsubscribeFromMarketDepth(uint32_t subscriptionId);
     /***
      * Get historical bar data
      * @param contract the contract
@@ -78,24 +78,24 @@ class IBConnector : public EWrapper
      * @param barSize the period size of each bar
      * @return the subscription id
      */
-    uint32_t SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler, const std::string& timePeriod,
-            const std::string& barSize);
+    virtual uint32_t SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
+            const std::string& timePeriod, const std::string& barSize);
     /***
      * The opposite of SubscribeToHistoricalData
      * @param reqId the subscription id
      */
-    void UnsubscribeFromHistoricalData(uint32_t reqId);
-    void RemoveConnectionMonitor(IBConnectionMonitor* in);
-    void AddConnectionMonitor(IBConnectionMonitor* in);
+    virtual void UnsubscribeFromHistoricalData(uint32_t reqId);
+    virtual void RemoveConnectionMonitor(IBConnectionMonitor* in);
+    virtual void AddConnectionMonitor(IBConnectionMonitor* in);
     // end of subscriptions
-    std::future<std::vector<DepthMktDataDescription> > RequestMktDepthExchanges();
-    bool IsShuttingDown() const { return shuttingDown; }
-    void PlaceOrder(int orderId, const Contract& contract, const ::Order& order);
-    void CancelOrder(int orderId, const std::string& time);
-    std::future<ContractDetails> GetContractDetails(const Contract& contract);
+    virtual std::future<std::vector<DepthMktDataDescription> > RequestMktDepthExchanges();
+    virtual bool IsShuttingDown() const { return shuttingDown; }
+    virtual void PlaceOrder(int orderId, const Contract& contract, const ::Order& order);
+    virtual void CancelOrder(int orderId, const std::string& time);
+    virtual std::future<ContractDetails> GetContractDetails(const Contract& contract);
     virtual void RequestPositions();
-    void RequestAccountUpdates(bool subscribe, const std::string& account);
-    void RequestOpenOrders();
+    virtual void RequestAccountUpdates(bool subscribe, const std::string& account);
+    virtual void RequestOpenOrders();
 
     protected:
     IBConnector(); // used for testing/mocking

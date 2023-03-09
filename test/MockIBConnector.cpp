@@ -51,3 +51,8 @@ void MockIBConnector::RequestPositions()
 {
     positionEnd();
 }
+
+void MockIBConnector::RequestOpenOrders()
+{
+    openOrderEnd();
+}

@@ -10,6 +10,7 @@ class MockIBConnector : public ib_helper::IBConnector
     std::future<ContractDetails> GetContractDetails(const Contract& contract);
     bool IsConnected() const override;
     void RequestPositions() override;
+    void RequestOpenOrders() override;
     private:
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;
