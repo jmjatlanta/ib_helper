@@ -14,6 +14,8 @@ class MockIBConnector : public ib_helper::IBConnector
     void AddConnectionMonitor(ib_helper::IBConnectionMonitor* in) override;
     uint32_t SubscribeToHistoricalData(const Contract& contract, ib_helper::HistoricalDataHandler* handler,
             const std::string& timePeriod, const std::string& barSize) override;
+    uint32_t SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
+        const std::string& tickType, int numberOfTicks, bool ignoreSize) override;
     private:
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;
