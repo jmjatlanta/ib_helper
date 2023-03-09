@@ -17,13 +17,14 @@ uint32_t MockIBConnector::GetNextRequestId()
 
 void doGetContractDetails(const Contract& contract, std::promise<ContractDetails>& promise)
 {
-    if (contract.symbol == "ES" && contract.secType == "FUT")
+    if ((contract.symbol == "MSFT" && contract.secType == "STK")
+            || (contract.symbol == "ES" && contract.secType == "FUT"))
     {
         ContractDetails dets;
         dets.contract = contract;
         promise.set_value(dets);
     }
-    if (contract.symbol == "XYZABC")
+    else
     {
         try
         {
