@@ -86,7 +86,7 @@ void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
 {
     connectionMonitors.push_back(in);
     int counter = 0;
-    while(!ibClient->isConnected() && counter <= 500)
+    while(!IsConnected() && counter <= 500) // give a little extra time to get fully connected
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         counter += 100;
