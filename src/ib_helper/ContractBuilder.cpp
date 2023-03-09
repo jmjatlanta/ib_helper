@@ -14,6 +14,31 @@ static std::time_t to_time_t(const std::string& in, const std::string& format = 
 
 ContractBuilder::ContractBuilder(IBConnector* conn) : ib(conn) {}
 
+Contract ContractBuilder::Build(const std::string& secType, const std::string& ticker)
+{
+    if (secType == "FUT")
+        return BuildFuture(ticker);
+    if (secType == "STK")
+        return BuildStock(ticker);
+    if (secType == "CASH")
+        return BuildForex(ticker);
+    return Contract{};
+}
+
+Contract ContractBuilder::BuildForex(const std::string& ticker)
+{
+    int pos = ticker.find(".");
+	Contract c;
+    if (pos != std::string::npos)
+    {
+        c.symbol = ticker.substr(0, pos);
+        c.secType = "CASH";
+        c.currency = ticker.substr(pos+1);
+        c.exchange = "IDEALPRO";
+    }
+	return c;	
+}
+
 Contract ContractBuilder::BuildStock(const std::string& ticker)
 {
     Contract retval;
