@@ -1,3 +1,4 @@
+#pragma once
 #include "../src/ib_helper/IBConnector.hpp"
 
 class MockIBConnector : public ib_helper::IBConnector
