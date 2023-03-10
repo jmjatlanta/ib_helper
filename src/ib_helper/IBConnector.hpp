@@ -235,14 +235,15 @@ class IBConnector : public EWrapper
     std::unordered_map<uint32_t, TickHandler* > tickHandlers;
     std::unordered_map<uint32_t, MarketDepthHandler* > marketDepthHandlers;
     std::unordered_map<uint32_t, HistoricalDataHandler*> historicalDataHandlers;
-    std::vector<IBConnectionMonitor*> connectionMonitors{};
-    std::vector<AccountHandler*> accountHandlers{};
-    std::vector<OrderHandler*> orderHandlers{};
-    std::unordered_map<uint32_t, std::promise<ContractDetails> > contractDetailsHandlers{};
+    std::vector<IBConnectionMonitor*> connectionMonitors;
+    std::vector<AccountHandler*> accountHandlers;
+    std::vector<OrderHandler*> orderHandlers;
+    std::unordered_map<uint32_t, std::promise<ContractDetails> > contractDetailsHandlers;
+    std::unordered_map<uint32_t, std::promise<bool> > historicalDataUnsubscribePromises;
     private:
     std::string defaultAccount;
     std::mutex mktDepthExchangesPromisesMutex;
-    std::vector<std::promise<std::vector<DepthMktDataDescription> > > mktDepthExchangesPromises{};
+    std::vector<std::promise<std::vector<DepthMktDataDescription> > > mktDepthExchangesPromises;
 }; 
 
 } // namespace ib_helper

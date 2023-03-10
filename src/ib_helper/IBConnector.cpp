@@ -181,7 +181,13 @@ std::future<std::vector<DepthMktDataDescription> > IBConnector::RequestMktDepthE
 
 void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionId)
 {
+    auto& promise = historicalDataUnsubscribePromises[historicalSubscriptionId];
     ibClient->cancelHistoricalData(historicalSubscriptionId);
+    // now wait for it to complete
+    try
+    {
+        promise.get_future().get();
+    } catch(...) {}
 }
 
 uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
@@ -354,6 +360,16 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         if (itr != contractDetailsHandlers.end())
         {
             (*itr).second.set_exception(std::make_exception_ptr( std::out_of_range("Symbol not found")));
+            return;
+        }
+    }
+    if (errorCode == 162)
+    {
+        auto itr = historicalDataUnsubscribePromises.find(id);
+        if (itr != historicalDataUnsubscribePromises.end())
+        {
+            (*itr).second.set_value(true);
+            return;
         }
     }
     for(auto handler : accountHandlers)
