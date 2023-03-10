@@ -53,6 +53,22 @@ Contract ContractBuilder::BuildStock(const std::string& ticker)
     return retval;
 }
 
+std::vector<std::string> parseCSV(const std::string& in)
+{
+    std::vector<std::string> values;
+    std::string toProcess = in;
+    int pos = toProcess.find(",");
+    if (pos == std::string::npos)
+        values.push_back(in);
+    while (pos != std::string::npos)
+    {
+        values.push_back(toProcess.substr(0, pos));
+        toProcess = toProcess.substr(pos+1);
+        pos = toProcess.find(",");
+    }
+    return values;
+}
+
 Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
 {
     Contract retval;
@@ -70,10 +86,12 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
         // get next contract
         expiry += 60 * 60 * 24 * 28; // increase by about a month
         retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, expiry);
-        det = GetDetails(retval);
     }
     // get contract id
+    det = GetDetails(retval);
     retval.conId = det.contract.conId;
+    auto coll = parseCSV(det.validExchanges);
+    retval.exchange = det.validExchanges;
     return retval;
 }
 
