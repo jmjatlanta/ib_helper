@@ -51,6 +51,11 @@ class SecurityType
         return to_long_string( to_type(in) );
     }
 
+    static std::string to_string(const std::string& in)
+    {
+        return to_string(to_type(in));
+    }
+
     static Type to_type(const std::string& in)
     {
         if (in == "FUT" || in == "Future")

@@ -18,11 +18,16 @@ ContractBuilder::ContractBuilder(IBConnector* conn) : ib(conn), logger(util::Sys
 
 Contract ContractBuilder::Build(const std::string& secType, const std::string& ticker)
 {
-    if (secType == "FUT")
+    return Build( SecurityType::to_type(secType), ticker);
+}
+
+Contract ContractBuilder::Build(SecurityType::Type secType, const std::string& ticker)
+{
+    if (secType == SecurityType::Type::FUT)
         return BuildFuture(ticker);
-    if (secType == "STK")
+    if (secType == SecurityType::Type::STK)
         return BuildStock(ticker);
-    if (secType == "CASH")
+    if (secType == SecurityType::Type::FOREX)
         return BuildForex(ticker);
     return Contract{};
 }

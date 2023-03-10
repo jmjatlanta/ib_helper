@@ -3,6 +3,7 @@
 #include "../ib_api/client/Contract.h"
 #include "../util/SysLogger.h"
 #include "ContractRolloverCalendar.hpp"
+#include "SecurityType.hpp"
 #include <iostream>
 
 namespace ib_helper {
@@ -13,6 +14,7 @@ class ContractBuilder
     ContractBuilder(IBConnector* conn);
 
     Contract Build(const std::string& secType, const std::string& ticker);
+    Contract Build(SecurityType::Type secType, const std::string& ticker);
 
     Contract BuildStock(const std::string& ticker);
     
