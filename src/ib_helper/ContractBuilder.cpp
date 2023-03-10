@@ -91,7 +91,8 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
     det = GetDetails(retval);
     retval.conId = det.contract.conId;
     auto coll = parseCSV(det.validExchanges);
-    retval.exchange = det.validExchanges;
+    if (coll.size() > 0)
+        retval.exchange = coll[0];
     return retval;
 }
 
