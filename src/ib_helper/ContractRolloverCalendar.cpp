@@ -297,6 +297,11 @@ time_t ContractRolloverCalendar::calculateRolloverDate(const std::string& symbol
     return 0;
 }
 
+bool ContractRolloverCalendar::IsValid(const std::string& ticker)
+{
+    return !validMonths[ticker].empty();
+}
+
 /***
  * Get current contract month and year
  * @param symbol

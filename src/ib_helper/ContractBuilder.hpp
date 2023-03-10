@@ -1,6 +1,7 @@
 #pragma once
 #include "IBConnector.hpp"
 #include "../ib_api/client/Contract.h"
+#include "../util/SysLogger.h"
 #include "ContractRolloverCalendar.hpp"
 #include <iostream>
 
@@ -23,6 +24,7 @@ class ContractBuilder
 
     private:
     IBConnector* ib = nullptr;
+    util::SysLogger* logger = nullptr;
 };
 
 } // namespace ib_helper

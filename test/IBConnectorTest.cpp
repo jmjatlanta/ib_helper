@@ -198,6 +198,23 @@ TEST(IBConnectorTest, ContractExchanges)
     }
 }
 
+TEST(IBConnectorTest, FutureContractBuilderNG)
+{
+    ib_options ops;
+    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 3};
+    ASSERT_TRUE(isConnected(conn));
+    ib_helper::ContractBuilder contractBuilder(&conn);
+    try
+    {
+        auto ng = contractBuilder.BuildFuture("NG");
+        auto details = contractBuilder.GetDetails(ng);
+        EXPECT_EQ(details.contract.symbol, "NG");
+        EXPECT_EQ(details.contract.localSymbol, "NGJ3"); 
+    } catch(const std::out_of_range& oor) {
+        FAIL();
+    }
+}
+
 TEST(IBConnectorTest, FutureContractBuilderYM)
 {
     ib_options ops;
@@ -209,7 +226,7 @@ TEST(IBConnectorTest, FutureContractBuilderYM)
         auto ym = contractBuilder.BuildFuture("YM");
         auto details = contractBuilder.GetDetails(ym);
         EXPECT_EQ(details.contract.symbol, "YM");
-        EXPECT_EQ(details.contract.localSymbol, "YM   MAR 23"); 
+        EXPECT_EQ(details.contract.localSymbol, "YM   JUN 23"); 
     } catch(const std::out_of_range& oor) {
         FAIL();
     }

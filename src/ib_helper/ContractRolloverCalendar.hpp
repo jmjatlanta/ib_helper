@@ -142,6 +142,7 @@ class ContractRolloverCalendar
      * @returns the contract date ( i.e. 202303 )
      */
     std::string LiquidYearAndMonth(const std::string& symbol, time_t expiry, time_t t = time(nullptr));
+    bool IsValid(const std::string& symbol);
 };
 
 } // namesapce ib_helper
