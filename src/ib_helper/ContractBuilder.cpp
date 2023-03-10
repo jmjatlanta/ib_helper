@@ -87,8 +87,6 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
     if (!calendar.IsValid(ticker))
         return retval;
     retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker);
-    logger->debug("ContractBuilder", "Setting lastTradeDateOrCOntractMonth to " 
-            + retval.lastTradeDateOrContractMonth);
     // make sure it is liquid
     auto det = GetDetails(retval);
     int month = 60 * 60 * 24 * 28;
