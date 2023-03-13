@@ -100,3 +100,15 @@ uint32_t MockIBConnector::SubscribeToTickByTick(const Contract& contract, ib_hel
     return reqId;
 };
 
+void MockIBConnector::SendTick(int subId, double lastPrice)
+{
+    ib_helper::TickHandler* handler = tickHandlers[subId];
+    int tickType = 1;
+    time_t time = 1;
+    double size = 100;
+    TickAttribLast tickAttribLast;
+    std::string exchange;
+    std::string specialConditions;
+    handler->OnTickByTickAllLast(subId, tickType, time, lastPrice, size, tickAttribLast, exchange, specialConditions);
+}
+

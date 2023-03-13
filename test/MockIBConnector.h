@@ -23,6 +23,7 @@ class MockIBConnector : public ib_helper::IBConnector
      * Send a historical bar as if it came from IB
      */
     void SendBar(int subId, const Bar& in, bool inPast = false);
+    void SendTick(int subId, double lastPrice);
     private:
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;
