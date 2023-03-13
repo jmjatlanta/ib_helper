@@ -129,6 +129,9 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
 
 ContractDetails ContractBuilder::GetDetails(const Contract& in)
 {
+    if (ib == nullptr)
+        return ContractDetails{};
+
     auto fut = ib->GetContractDetails(in);
     try {
         return fut.get();
