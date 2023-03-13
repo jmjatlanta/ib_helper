@@ -122,6 +122,8 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
     auto coll = parseCSV(det.validExchanges);
     if (coll.size() > 0)
         retval.exchange = coll[0];
+    retval.localSymbol = det.contract.localSymbol;
+    retval.lastTradeDateOrContractMonth = det.contract.lastTradeDateOrContractMonth;
     return retval;
 }
 
