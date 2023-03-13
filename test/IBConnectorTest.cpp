@@ -37,6 +37,8 @@ TEST(IBConnectorTest, Connect)
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     ASSERT_TRUE(isConnected(connector));
+    // check managedAccounts
+    EXPECT_GT(connector.GetDefaultAccount().size(), 0);
 }
 
 TEST(IBConnectorTest, DISABLED_Ticks)

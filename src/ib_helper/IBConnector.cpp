@@ -411,7 +411,11 @@ std::vector<std::string> splitCSV(const std::string& in)
     {
         retval.push_back( leftover.substr(0, pos) );
         leftover = leftover.substr(pos + 1);
+        pos = leftover.find(",");
     }
+    // put in the last one
+    if (leftover.size() > 0)
+        retval.push_back(leftover);
     return retval;
 }
 
