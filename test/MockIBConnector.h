@@ -16,6 +16,11 @@ class MockIBConnector : public ib_helper::IBConnector
             const std::string& timePeriod, const std::string& barSize) override;
     uint32_t SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
         const std::string& tickType, int numberOfTicks, bool ignoreSize) override;
+    // bars
+    /***
+     * Send a historical bar as if it came from IB
+     */
+    void SendBar(int subId, const Bar& in, bool inPast = false);
     private:
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;

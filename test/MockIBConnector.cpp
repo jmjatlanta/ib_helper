@@ -73,6 +73,15 @@ uint32_t MockIBConnector::SubscribeToHistoricalData(const Contract& contract, ib
     return id;
 }
 
+void MockIBConnector::SendBar(int subId, const Bar& in, bool inPast)
+{
+    ib_helper::HistoricalDataHandler* handler = historicalDataHandlers[subId];
+    if (inPast)
+        handler->OnHistoricalData(subId, in);
+    else
+        handler->OnHistoricalDataUpdate(subId, in);
+}
+
 uint32_t MockIBConnector::SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
         const std::string& tickType, int numberOfTicks, bool ignoreSize)
 {
