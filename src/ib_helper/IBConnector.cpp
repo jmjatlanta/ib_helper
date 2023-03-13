@@ -401,7 +401,29 @@ void IBConnector::updateMktDepthL2(TickerId reqId, int position, const std::stri
 }
 void IBConnector::updateNewsBulletin(int msgId, int msgType, const std::string& newsMessage, 
             const std::string& originExch){}
-void IBConnector::managedAccounts( const std::string& accountsList){}
+std::vector<std::string> splitCSV(const std::string& in)
+{
+    std::vector<std::string> retval;
+
+    std::string leftover = in;
+    int pos = leftover.find(",");
+    while (pos != std::string::npos)
+    {
+        retval.push_back( leftover.substr(0, pos) );
+        leftover = leftover.substr(pos + 1);
+    }
+    return retval;
+}
+
+void IBConnector::managedAccounts( const std::string& accountsList)
+{
+    // split by comma
+    std::vector<std::string> accts = splitCSV(accountsList);
+    if (accts.size() == 1)
+        defaultAccount = accts[0];
+    if (accts.size() > 1)
+        defaultAccount = accts[1];
+}
 void IBConnector::receiveFA(faDataType pFaDataType, const std::string& cxml){}
 void IBConnector::historicalData(TickerId reqId, const Bar& bar)
 {
