@@ -52,7 +52,7 @@ Bar HistoricalBarFileReader::NextBar()
     std::getline(file, line);
     auto parts = parseLine(line);
     if (parts.size() != 8)
-        throw 1;
+        throw std::out_of_range("No more bars");
     return Bar{parts[0], to_double(parts[1]), to_double(parts[2]), to_double(parts[3]), to_double(parts[4]),
             to_decimal(parts[5]), to_decimal(parts[6]), to_int(parts[7])};
 }
