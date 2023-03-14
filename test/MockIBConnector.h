@@ -25,6 +25,7 @@ class MockIBConnector : public ib_helper::IBConnector
      */
     void SendBar(int subId, const Bar& in, bool inPast = false);
     void SendTick(int subId, double lastPrice);
+    void SendBidAsk(uint32_t subscriptionId, double bid, double ask);
     private:
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;

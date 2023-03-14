@@ -116,3 +116,12 @@ void MockIBConnector::RequestAccountUpdates(bool subscribe, const std::string& a
 {
 }
 
+void MockIBConnector::SendBidAsk(uint32_t subscriptionId, double bid, double ask)
+{
+    ib_helper::TickHandler* handler = tickHandlers[subscriptionId];
+    time_t time = 1;
+    TickAttribBidAsk tickAttribBidAsk;
+    Decimal bidSize = doubleToDecimal(100.0);
+    Decimal askSize = doubleToDecimal(100.0);
+    handler->OnTickByTickBidAsk(subscriptionId, time, bid, ask, bidSize, askSize, tickAttribBidAsk);
+}
