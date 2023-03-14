@@ -125,3 +125,28 @@ void MockIBConnector::SendBidAsk(uint32_t subscriptionId, double bid, double ask
     Decimal askSize = doubleToDecimal(100.0);
     handler->OnTickByTickBidAsk(subscriptionId, time, bid, ask, bidSize, askSize, tickAttribBidAsk);
 }
+
+void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Order& order)
+{
+    currentOrderId = orderId;
+    currentContract = contract;
+    currentOrder = order;
+    if (orderRejectCode == 0)
+    {
+        orderStatus(orderId, "Presubmitted", order.filledQuantity, order.totalQuantity, 
+                0.0, orderId, 0, 0.0, 123, "", 0.0);
+        if (processOrdersImmediately)
+            ProcessLastOrder();
+    }
+    else
+    {
+        error(orderId, orderRejectCode, "Order processing error string", "");
+    }
+}
+
+void MockIBConnector::ProcessLastOrder()
+{
+    // TODO Handle order processing
+    orderStatus(currentOrderId, "Presubmitted", currentOrder.totalQuantity, doubleToDecimal(0.0),
+                currentOrder.auxPrice, currentOrderId, 0, currentOrder.auxPrice, 123, "", 0.0);
+}

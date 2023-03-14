@@ -26,8 +26,20 @@ class MockIBConnector : public ib_helper::IBConnector
     void SendBar(int subId, const Bar& in, bool inPast = false);
     void SendTick(int subId, double lastPrice);
     void SendBidAsk(uint32_t subscriptionId, double bid, double ask);
+    // orders
+    void ProcessOrdersImmediately(bool yn) { processOrdersImmediately = yn; }
+    void SetOrderRejectReason(uint32_t code) { orderRejectCode = code; }
+    void PlaceOrder(int orderId, const Contract& contract, const ::Order& order) override;
+    void ProcessLastOrder();
+
     private:
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;
     std::unordered_map<uint32_t, std::promise<ContractDetails>> contractDetailsHandlers;
+    // orders
+    bool processOrdersImmediately = true;
+    uint32_t orderRejectCode = 0;
+    uint32_t currentOrderId = 0;
+    Contract currentContract;
+    Order currentOrder;
 };
