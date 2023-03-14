@@ -18,6 +18,7 @@ class MockIBConnector : public ib_helper::IBConnector
     uint32_t SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
         const std::string& tickType, int numberOfTicks, bool ignoreSize) override;
     void UnsubscribeFromTickByTick(uint32_t subId) override;
+    void RequestAccountUpdates(bool subscribe, const std::string& account) override;
     // bars
     /***
      * Send a historical bar as if it came from IB

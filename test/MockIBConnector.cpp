@@ -112,3 +112,7 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
     handler->OnTickByTickAllLast(subId, tickType, time, lastPrice, size, tickAttribLast, exchange, specialConditions);
 }
 
+void MockIBConnector::RequestAccountUpdates(bool subscribe, const std::string& account)
+{
+}
+
