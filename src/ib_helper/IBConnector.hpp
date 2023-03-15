@@ -25,8 +25,8 @@ class IBConnector : public EWrapper
     IBConnector(const std::string& hostname, int port, int clientId);
     virtual ~IBConnector();
 
-    virtual void AddAccountHandler(AccountHandler* in) { accountHandlers.push_back(in); }
-    virtual void AddOrderHandler(OrderHandler* in) { orderHandlers.push_back(in); }
+    virtual void AddAccountHandler(AccountHandler* in);
+    virtual void AddOrderHandler(OrderHandler* in);
     virtual AccountHandler* GetDefaultAccountHandler();
     virtual const std::string GetDefaultAccount() { return defaultAccount; }
     virtual uint32_t GetNextOrderId() { return ++nextOrderId; }
@@ -239,11 +239,16 @@ class IBConnector : public EWrapper
     std::vector<AccountHandler*> accountHandlers;
     std::vector<OrderHandler*> orderHandlers;
     std::unordered_map<uint32_t, std::promise<ContractDetails> > contractDetailsHandlers;
-    std::unordered_map<uint32_t, std::promise<bool> > historicalDataUnsubscribePromises;
     private:
     std::string defaultAccount;
     std::mutex mktDepthExchangesPromisesMutex;
     std::vector<std::promise<std::vector<DepthMktDataDescription> > > mktDepthExchangesPromises;
+    std::mutex tickHandlersMutex;
+    std::mutex marketDepthHandlersMutex;
+    std::mutex historicalDataHandlersMutex;
+    std::mutex connectionMonitorsMutex;
+    std::mutex accountHandlersMutex;
+    std::mutex orderHandlersMutex;
 }; 
 
 } // namespace ib_helper
