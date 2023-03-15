@@ -184,7 +184,14 @@ uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandle
     return reqId;
 };
 
-void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId) { ibClient->cancelTickByTickData(reqId); }
+void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId) 
+{ 
+    {
+        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        tickHandlers[reqId] = nullptr;
+    }
+    ibClient->cancelTickByTickData(reqId); 
+}
 
 uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines)
 {
