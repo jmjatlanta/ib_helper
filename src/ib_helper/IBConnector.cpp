@@ -207,7 +207,8 @@ void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, co
     try 
     {
         TickHandler* handler = tickHandlers.at(tickerId);
-        handler->OnTickPrice(tickerId, field, price, attrib);
+        if (handler != nullptr)
+            handler->OnTickPrice(tickerId, field, price, attrib);
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::tickSize(TickerId tickerId, TickType field, Decimal size)
@@ -215,7 +216,8 @@ void IBConnector::tickSize(TickerId tickerId, TickType field, Decimal size)
     try 
     {
         TickHandler* handler = tickHandlers.at(tickerId);
-        handler->OnTickSize(tickerId, field, size);
+        if (handler != nullptr)
+            handler->OnTickSize(tickerId, field, size);
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::tickOptionComputation( TickerId tickerId, TickType tickType, int tickAttrib, double impliedVol,
@@ -224,8 +226,9 @@ void IBConnector::tickOptionComputation( TickerId tickerId, TickType tickType, i
     try 
     {
         TickHandler* handler = tickHandlers.at(tickerId);
-        handler->OnTickOptionComputation(tickerId, tickType, tickAttrib, impliedVol, delta, optPrice, pvDividend, gamma,
-                vega, theta, undPrice);
+        if (handler != nullptr)
+            handler->OnTickOptionComputation(tickerId, tickType, tickAttrib, impliedVol, delta, optPrice, pvDividend,
+                    gamma, vega, theta, undPrice);
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::tickGeneric(TickerId tickerId, TickType tickType, double value)
@@ -233,7 +236,8 @@ void IBConnector::tickGeneric(TickerId tickerId, TickType tickType, double value
     try 
     {
         TickHandler* handler = tickHandlers.at(tickerId);
-        handler->OnTickGeneric(tickerId, tickType, value);
+        if (handler != nullptr)
+            handler->OnTickGeneric(tickerId, tickType, value);
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::tickString(TickerId tickerId, TickType tickType, const std::string& value)
@@ -241,7 +245,8 @@ void IBConnector::tickString(TickerId tickerId, TickType tickType, const std::st
     try 
     {
         TickHandler* handler = tickHandlers.at(tickerId);
-        handler->OnTickString(tickerId, tickType, value);
+        if (handler != nullptr)
+            handler->OnTickString(tickerId, tickType, value);
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::tickEFP(TickerId tickerId, TickType tickType, double basisPoints,
@@ -251,7 +256,8 @@ void IBConnector::tickEFP(TickerId tickerId, TickType tickType, double basisPoin
     try 
     {
         TickHandler* handler = tickHandlers.at(tickerId);
-        handler->OnTickEFP(tickerId, tickType, basisPoints, formattedBasisPoints, totalDividends, holdDays, 
+        if (handler != nullptr)
+            handler->OnTickEFP(tickerId, tickType, basisPoints, formattedBasisPoints, totalDividends, holdDays, 
                 futureLastTradeDate, dividendImpact, dividendsToLastTradeDate);
     } catch (const std::out_of_range& oor) {}
 }
@@ -262,7 +268,8 @@ void IBConnector::tickByTickAllLast(int reqId, int tickType, time_t time, double
     try 
     {
         TickHandler* handler = tickHandlers.at(reqId);
-        handler->OnTickByTickAllLast(reqId, tickType, time, price, size, tickAttribLast, exchange, specialConditions);
+        if(handler != nullptr)
+            handler->OnTickByTickAllLast(reqId, tickType, time, price, size, tickAttribLast, exchange, specialConditions);
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::tickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize,
@@ -271,7 +278,8 @@ void IBConnector::tickByTickBidAsk(int reqId, time_t time, double bidPrice, doub
     try 
     {
         TickHandler* handler = tickHandlers.at(reqId);
-        handler->OnTickByTickBidAsk(reqId, time, bidPrice, askPrice, bidSize, askSize, tickAttribBidAsk);
+        if (handler != nullptr)
+            handler->OnTickByTickBidAsk(reqId, time, bidPrice, askPrice, bidSize, askSize, tickAttribBidAsk);
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::tickByTickMidPoint(int reqId, time_t time, double midPoint)
@@ -279,38 +287,43 @@ void IBConnector::tickByTickMidPoint(int reqId, time_t time, double midPoint)
     try 
     {
         TickHandler* handler = tickHandlers.at(reqId);
-        handler->OnTickByTickMidPoint(reqId, time, midPoint);
+        if (handler != nullptr)
+            handler->OnTickByTickMidPoint(reqId, time, midPoint);
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::orderBound(long long orderId, int apiClientId, int apiOrderId)
 {
-    for(auto* handler : orderHandlers)
+    for(auto handler : orderHandlers)
     {
-        handler->OnOrderBound(orderId, apiClientId, apiOrderId);
+        if (handler != nullptr)
+            handler->OnOrderBound(orderId, apiClientId, apiOrderId);
     }
 }
 void IBConnector::orderStatus( OrderId orderId, const std::string& status, Decimal filled,
 	        Decimal remaining, double avgFillPrice, int permId, int parentId,
 	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice)
 {
-    for(auto* handler : orderHandlers)
+    for(auto handler : orderHandlers)
     {
-        handler->OnOrderStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, 
+        if (handler != nullptr)
+            handler->OnOrderStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, 
                 lastFillPrice, clientId, whyHeld, mktCapPrice);
     }
 }
 void IBConnector::openOrder( OrderId orderId, const Contract& contract, const ::Order& order, const OrderState& orderState)
 {
-    for(auto* handler : orderHandlers)
+    for(auto handler : orderHandlers)
     {
-        handler->OnOpenOrder(orderId, contract, order, orderState);
+        if (handler != nullptr)
+            handler->OnOpenOrder(orderId, contract, order, orderState);
     }
 }
 void IBConnector::openOrderEnd()
 {
-    for(auto* handler : orderHandlers)
+    for(auto handler : orderHandlers)
     {
-        handler->OnOpenOrderEnd();
+        if (handler != nullptr)
+            handler->OnOpenOrderEnd();
     }
 }
 void IBConnector::winError( const std::string& str, int lastError)
@@ -374,7 +387,8 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
     }
     for(auto handler : accountHandlers)
     {
-        handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);
+        if (handler != nullptr)
+            handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);
     }
     std::string msg = "Error id: " + std::to_string(id) 
         + " Code: " + std::to_string(errorCode) 
@@ -387,7 +401,8 @@ void IBConnector::updateMktDepth(TickerId reqId, int position, int operation, in
     try 
     {
         MarketDepthHandler* handler = marketDepthHandlers.at(reqId);
-        handler->OnUpdateMktDepth(reqId, position, operation, side, price, size);
+        if (handler != nullptr)
+            handler->OnUpdateMktDepth(reqId, position, operation, side, price, size);
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::updateMktDepthL2(TickerId reqId, int position, const std::string& marketMaker, int operation,
@@ -396,7 +411,8 @@ void IBConnector::updateMktDepthL2(TickerId reqId, int position, const std::stri
     try 
     {
         MarketDepthHandler* handler = marketDepthHandlers.at(reqId);
-        handler->OnUpdateMktDepthL2(reqId, position, marketMaker, operation, side, price, size, isSmartDepth);
+        if (handler != nullptr)
+            handler->OnUpdateMktDepthL2(reqId, position, marketMaker, operation, side, price, size, isSmartDepth);
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::updateNewsBulletin(int msgId, int msgType, const std::string& newsMessage, 
@@ -431,13 +447,13 @@ void IBConnector::managedAccounts( const std::string& accountsList)
 void IBConnector::receiveFA(faDataType pFaDataType, const std::string& cxml){}
 void IBConnector::historicalData(TickerId reqId, const Bar& bar)
 {
-    auto* handler = historicalDataHandlers[reqId];
+    auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
         handler->OnHistoricalData(reqId, bar);
 }
 void IBConnector::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr)
 {
-    auto* handler = historicalDataHandlers[reqId];
+    auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
         handler->OnHistoricalDataEnd(reqId, startDateStr, endDateStr);
 }
@@ -457,14 +473,15 @@ void IBConnector::commissionReport( const CommissionReport& commissionReport){}
 void IBConnector::position( const std::string& account, const Contract& contract, Decimal position, 
             double avgCost)
 {
-    for(auto* handler : accountHandlers)
+    for(auto handler : accountHandlers)
     {
-        handler->OnPosition(account, contract, position, avgCost);
+        if (handler != nullptr)
+            handler->OnPosition(account, contract, position, avgCost);
     }
 }
 void IBConnector::positionEnd()
 {
-    for(auto* handler : accountHandlers)
+    for(auto handler : accountHandlers)
     {
         handler->OnPositionEnd();
     }
@@ -520,7 +537,7 @@ void IBConnector::headTimestamp(int reqId, const std::string& headTimestamp){}
 void IBConnector::histogramData(int reqId, const HistogramDataVector& data){}
 void IBConnector::historicalDataUpdate(TickerId reqId, const Bar& bar)
 {
-    auto* handler = historicalDataHandlers[reqId];
+    auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
         handler->OnHistoricalDataUpdate(reqId, bar);
 }
