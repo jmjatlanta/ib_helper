@@ -149,9 +149,14 @@ void MockIBConnector::ProcessLastOrder()
 {
     // TODO Handle order processing
     currentOrder.filledQuantity = currentOrder.totalQuantity;
+    double price = 0.0;
+    if (currentOrder.orderType == "LMT")
+        price = currentOrder.lmtPrice;
+    if (currentOrder.orderType == "STP")
+        price = currentOrder.auxPrice;
     orderStatus(currentOrderId, "Filled", currentOrder.filledQuantity, 
-            sub(currentOrder.totalQuantity, currentOrder.filledQuantity), currentOrder.auxPrice, 
-            currentOrderId, 0, currentOrder.auxPrice, 123, "", 0.0);
+            sub(currentOrder.totalQuantity, currentOrder.filledQuantity), price, 
+            currentOrderId, 0, price, 123, "", 0.0);
 }
 
 void MockIBConnector::CancelOrder(int orderId, const std::string& time)
