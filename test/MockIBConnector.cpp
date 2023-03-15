@@ -116,6 +116,8 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
     {
         if (ord.totalQuantity != ord.filledQuantity)
         {
+            if (ord.orderType == "MKT")
+                processOrder(ord, lastPrice);
             if (ord.orderType == "LMT")
             {
                 if ( (ord.action == "BUY" && ord.lmtPrice <= lastPrice)
@@ -163,8 +165,6 @@ void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::
         // NOTE: Valid statuses: PreSubmitted, Submitted, Filled, Cancelled
         orderStatus(orderId, mOrder.status, order.filledQuantity, order.totalQuantity, 
                 0.0, orderId, 0, 0.0, 123, "", 0.0);
-        if (processOrdersImmediately && price != 0.0)
-            processOrder(mOrder, price);
     }
     else
     {
