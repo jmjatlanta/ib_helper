@@ -6,6 +6,7 @@
 MockIBConnector::MockIBConnector(const std::string& hostname, int port, int clientId) 
     : nextRequestId(1), nextOrderId(1)
 {
+    logger = util::SysLogger::getInstance();
 }
 
 MockIBConnector::~MockIBConnector() {}
@@ -158,6 +159,7 @@ void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::
             price = mOrder.lmtPrice;
         if (mOrder.orderType == "STP")
             price = mOrder.auxPrice;
+        logger->debug(clazz, "Order " + std::to_string(orderId) + " placed with price of " + std::to_string(price));
         // NOTE: Valid statuses: PreSubmitted, Submitted, Filled, Cancelled
         orderStatus(orderId, mOrder.status, order.filledQuantity, order.totalQuantity, 
                 0.0, orderId, 0, 0.0, 123, "", 0.0);

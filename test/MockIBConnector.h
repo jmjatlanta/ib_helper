@@ -1,6 +1,7 @@
 #pragma once
 #include "../src/ib_helper/IBConnector.hpp"
 #include "MockOrder.h"
+#include "../src/util/SysLogger.h"
 
 class MockIBConnector : public ib_helper::IBConnector
 {
@@ -42,4 +43,6 @@ class MockIBConnector : public ib_helper::IBConnector
     bool processOrdersImmediately = true;
     uint32_t orderRejectCode = 0;
     std::vector<MockOrder> orders;
+    const std::string clazz = "MockIBConnector";
+    util::SysLogger* logger = nullptr;
 };
