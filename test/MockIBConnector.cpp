@@ -133,7 +133,8 @@ void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::
     currentOrder = order;
     if (orderRejectCode == 0)
     {
-        orderStatus(orderId, "Presubmitted", order.filledQuantity, order.totalQuantity, 
+        // NOTE: Valid statuses: PreSubmitted, Submitted, Filled, Cancelled
+        orderStatus(orderId, "PreSubmitted", order.filledQuantity, order.totalQuantity, 
                 0.0, orderId, 0, 0.0, 123, "", 0.0);
         if (processOrdersImmediately)
             ProcessLastOrder();
@@ -147,6 +148,15 @@ void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::
 void MockIBConnector::ProcessLastOrder()
 {
     // TODO Handle order processing
-    orderStatus(currentOrderId, "Presubmitted", currentOrder.totalQuantity, doubleToDecimal(0.0),
+    currentOrder.filledQuantity = currentOrder.totalQuantity;
+    orderStatus(currentOrderId, "Filled", currentOrder.filledQuantity, 
+            sub(currentOrder.totalQuantity, currentOrder.filledQuantity), currentOrder.auxPrice, 
+            currentOrderId, 0, currentOrder.auxPrice, 123, "", 0.0);
+}
+
+void MockIBConnector::CancelOrder(int orderId, const std::string& time)
+{
+    orderStatus(orderId, "Cancelled", currentOrder.filledQuantity, 
+                sub(currentOrder.totalQuantity, currentOrder.filledQuantity),
                 currentOrder.auxPrice, currentOrderId, 0, currentOrder.auxPrice, 123, "", 0.0);
 }

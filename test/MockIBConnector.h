@@ -31,6 +31,7 @@ class MockIBConnector : public ib_helper::IBConnector
     void SetOrderRejectReason(uint32_t code) { orderRejectCode = code; }
     void PlaceOrder(int orderId, const Contract& contract, const ::Order& order) override;
     void ProcessLastOrder();
+    void CancelOrder(int orderId, const std::string& time) override;
 
     private:
     std::atomic<uint32_t> nextRequestId;
