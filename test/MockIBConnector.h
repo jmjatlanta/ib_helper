@@ -1,5 +1,6 @@
 #pragma once
 #include "../src/ib_helper/IBConnector.hpp"
+#include "MockOrder.h"
 
 class MockIBConnector : public ib_helper::IBConnector
 {
@@ -30,17 +31,15 @@ class MockIBConnector : public ib_helper::IBConnector
     void ProcessOrdersImmediately(bool yn) { processOrdersImmediately = yn; }
     void SetOrderRejectReason(uint32_t code) { orderRejectCode = code; }
     void PlaceOrder(int orderId, const Contract& contract, const ::Order& order) override;
-    void ProcessLastOrder();
     void CancelOrder(int orderId, const std::string& time) override;
 
     private:
+    void processOrder(MockOrder& order, double price);
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;
     std::unordered_map<uint32_t, std::promise<ContractDetails>> contractDetailsHandlers;
     // orders
     bool processOrdersImmediately = true;
     uint32_t orderRejectCode = 0;
-    uint32_t currentOrderId = 0;
-    Contract currentContract;
-    Order currentOrder;
+    std::vector<MockOrder> orders;
 };

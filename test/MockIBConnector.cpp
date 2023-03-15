@@ -110,6 +110,25 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
     std::string exchange;
     std::string specialConditions;
     handler->OnTickByTickAllLast(subId, tickType, time, lastPrice, size, tickAttribLast, exchange, specialConditions);
+    // process any pending orders
+    for(auto& ord : orders)
+    {
+        if (ord.totalQuantity != ord.filledQuantity)
+        {
+            if (ord.orderType == "LMT")
+            {
+                if ( (ord.action == "BUY" && ord.lmtPrice <= lastPrice)
+                        || (ord.action == "SELL" && ord.lmtPrice >= lastPrice))
+                    processOrder(ord, lastPrice);
+            }
+            if (ord.orderType == "STP")
+            {
+                if( (ord.action == "BUY" && ord.auxPrice >= lastPrice)
+                        || (ord.action == "SELL" && ord.auxPrice <= lastPrice))
+                    processOrder(ord, lastPrice);
+            }
+        }
+    }
 }
 
 void MockIBConnector::RequestAccountUpdates(bool subscribe, const std::string& account)
@@ -128,16 +147,22 @@ void MockIBConnector::SendBidAsk(uint32_t subscriptionId, double bid, double ask
 
 void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Order& order)
 {
-    currentOrderId = orderId;
-    currentContract = contract;
-    currentOrder = order;
     if (orderRejectCode == 0)
     {
+        orders.push_back(order);
+        MockOrder& mOrder = orders[orders.size()-1];
+        mOrder.contract = contract;
+        mOrder.status = "PreSubmitted";
+        double price = 0.0;
+        if (mOrder.orderType == "LMT")
+            price = mOrder.lmtPrice;
+        if (mOrder.orderType == "STP")
+            price = mOrder.auxPrice;
         // NOTE: Valid statuses: PreSubmitted, Submitted, Filled, Cancelled
-        orderStatus(orderId, "PreSubmitted", order.filledQuantity, order.totalQuantity, 
+        orderStatus(orderId, mOrder.status, order.filledQuantity, order.totalQuantity, 
                 0.0, orderId, 0, 0.0, 123, "", 0.0);
-        if (processOrdersImmediately)
-            ProcessLastOrder();
+        if (processOrdersImmediately && price != 0.0)
+            processOrder(mOrder, price);
     }
     else
     {
@@ -145,23 +170,35 @@ void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::
     }
 }
 
-void MockIBConnector::ProcessLastOrder()
+void MockIBConnector::processOrder(MockOrder& order, double price)
 {
-    // TODO Handle order processing
-    currentOrder.filledQuantity = currentOrder.totalQuantity;
-    double price = 0.0;
-    if (currentOrder.orderType == "LMT")
-        price = currentOrder.lmtPrice;
-    if (currentOrder.orderType == "STP")
-        price = currentOrder.auxPrice;
-    orderStatus(currentOrderId, "Filled", currentOrder.filledQuantity, 
-            sub(currentOrder.totalQuantity, currentOrder.filledQuantity), price, 
-            currentOrderId, 0, price, 123, "", 0.0);
+    order.filledQuantity = order.totalQuantity;
+    order.status = "Filled";
+    orderStatus(order.orderId, order.status, order.filledQuantity, 
+            sub(order.totalQuantity, order.filledQuantity), price, 
+            order.orderId, 0, price, 123, "", 0.0);
 }
 
 void MockIBConnector::CancelOrder(int orderId, const std::string& time)
 {
-    orderStatus(orderId, "Cancelled", currentOrder.filledQuantity, 
-                sub(currentOrder.totalQuantity, currentOrder.filledQuantity),
-                currentOrder.auxPrice, currentOrderId, 0, currentOrder.auxPrice, 123, "", 0.0);
+    // find order
+    for(auto ord : orders)
+    {
+        if (ord.orderId == orderId)
+        {
+            //TODO: These are probably wrong codes. Find out what IB sends in these situations
+            if (ord.status == "Cancelled")
+            {
+                error(orderId, 161, "Cannot cancel, already cancelled", "");
+            }
+            if (ord.totalQuantity == ord.filledQuantity)
+            {
+                error(orderId, 161, "Cannot cancel, already cancelled", "");
+            }
+            orderStatus(orderId, "Cancelled", ord.filledQuantity, 
+                sub(ord.totalQuantity, ord.filledQuantity),
+                ord.auxPrice, ord.orderId, 0, ord.auxPrice, 123, "", 0.0);
+            return;
+        }
+    }
 }
