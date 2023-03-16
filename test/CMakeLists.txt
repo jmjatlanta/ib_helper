@@ -19,6 +19,7 @@ file(GLOB date_src "../date/src/*.cpp" )
 find_library( intelrdfpmath
     NAMES gcc000libbid.a cl000libbid.lib
     HINTS ${CMAKE_SOURCE_DIR}/../IntelRDFPMathLib20U2/LIBRARY
+    HINTS ${CMAKE_SOURCE_DIR}/../../IntelRDFPMathLib20U2/LIBRARY
 )
 include(FetchContent)
 FetchContent_Declare(
