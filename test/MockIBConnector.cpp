@@ -156,6 +156,7 @@ void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::
         MockOrder& mOrder = orders[orders.size()-1];
         mOrder.contract = contract;
         mOrder.status = "PreSubmitted";
+        mOrder.orderId = orderId;
         double price = 0.0;
         if (mOrder.orderType == "LMT")
             price = mOrder.lmtPrice;
