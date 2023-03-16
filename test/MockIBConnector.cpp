@@ -120,14 +120,14 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
                 processOrder(ord, lastPrice);
             if (ord.orderType == "LMT")
             {
-                if ( (ord.action == "BUY" && ord.lmtPrice <= lastPrice)
-                        || (ord.action == "SELL" && ord.lmtPrice >= lastPrice))
+                if ( (ord.action == "BUY" && ord.lmtPrice >= lastPrice)
+                        || (ord.action == "SELL" && ord.lmtPrice <= lastPrice))
                     processOrder(ord, lastPrice);
             }
             if (ord.orderType == "STP")
             {
-                if( (ord.action == "BUY" && ord.auxPrice >= lastPrice)
-                        || (ord.action == "SELL" && ord.auxPrice <= lastPrice))
+                if( (ord.action == "BUY" && ord.auxPrice <= lastPrice)
+                        || (ord.action == "SELL" && ord.auxPrice >= lastPrice))
                     processOrder(ord, lastPrice);
             }
         }
