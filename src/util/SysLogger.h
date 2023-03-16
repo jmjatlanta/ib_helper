@@ -5,10 +5,9 @@
 #include <iostream>
 #include <iomanip>
 #include <mutex>
+#include <ctime>
 
-#ifdef WIN32
-#define localtime_r(_Time, _Tm) localtime_s(_Tm, _Time)
-#endif
+#undef ERROR
 
 namespace util {
 
@@ -82,18 +81,17 @@ class SysLogger
     private:
     std::string current_time_formatted()
     {
-        tm localTime;
         std::chrono::system_clock::time_point t = std::chrono::system_clock::now();
         time_t now = std::chrono::system_clock::to_time_t(t);
-        localtime_r(&now, &localTime);
+        tm* lt = localtime(&now);
 
         std::stringstream ss;
-        ss << (1900 + localTime.tm_year) << '-'
-            << std::setfill('0') << std::setw(2) << (localTime.tm_mon + 1) << '-'
-            << std::setfill('0') << std::setw(2) << localTime.tm_mday << ' '
-            << std::setfill('0') << std::setw(2) << localTime.tm_hour << ':'
-            << std::setfill('0') << std::setw(2) << localTime.tm_min << ':'
-            << std::setfill('0') << std::setw(2) << localTime.tm_sec;
+        ss << (1900 + lt->tm_year) << '-'
+            << std::setfill('0') << std::setw(2) << (lt->tm_mon + 1) << '-'
+            << std::setfill('0') << std::setw(2) << lt->tm_mday << ' '
+            << std::setfill('0') << std::setw(2) << lt->tm_hour << ':'
+            << std::setfill('0') << std::setw(2) << lt->tm_min << ':'
+            << std::setfill('0') << std::setw(2) << lt->tm_sec;
         if (includeMillis)
         {
             const std::chrono::duration<double> tse = t.time_since_epoch();
