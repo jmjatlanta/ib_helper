@@ -1,4 +1,5 @@
 #include "ContractBuilder.hpp"
+#include "ContractRolloverCalendar.hpp"
 
 #include <iomanip>
 #include <iostream>
