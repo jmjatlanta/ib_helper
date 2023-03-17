@@ -16,6 +16,7 @@ file(GLOB util_src "../src/util/*.cpp" )
 file(GLOB test_src "./*.cpp" )
 file(GLOB date_src "../date/src/*.cpp" )
 
+find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 find_library( intelrdfpmath
     NAMES gcc000libbid.a cl000libbid.lib
     HINTS ${CMAKE_SOURCE_DIR}/../IntelRDFPMathLib20U2/LIBRARY
@@ -40,5 +41,7 @@ target_link_libraries(ib_helper_tests
     ${intelrdfpmath}
     GTest::gtest
     GTest::gtest_main
+    Boost::log
+    Boost::log_setup
 )
 

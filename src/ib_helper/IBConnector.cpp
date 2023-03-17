@@ -1,19 +1,19 @@
 #include "IBConnector.hpp"
-#include "../util/SysLogger.h"
+#include "../util/Logger.h"
 
 namespace ib_helper {
 
-util::SysLogger* logger = nullptr;
+Logger* logger = nullptr;
 std::string logCategory("IBConnector");
 
 IBConnector::IBConnector()
 {
-    logger = util::SysLogger::getInstance();
+    logger = Logger::getInstance();
 }
 
 IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
 {
-    logger = util::SysLogger::getInstance();
+    logger = Logger::getInstance();
 	osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
 	ibClient = new EClientSocket(this, osSignal);
 	if (!ibClient->eConnect(hostname.c_str(), port, clientId, false))
