@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.10 )
+cmake_minimum_required(VERSION 3.25 )
+cmake_policy(VERSION 3.25)
 set(CMAKE_CXX_STANDARD 20)
 
 project ( ib_helper_tests )
@@ -17,6 +18,12 @@ file(GLOB test_src "./*.cpp" )
 file(GLOB date_src "../date/src/*.cpp" )
 
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
+message(STATUS "---------------------")
+message(STATUS "Boost_FOUND: ${Boost_FOUND}")
+message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
+message(STATUS "Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
+message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
+message(STATUS "---------------------")
 find_library( intelrdfpmath
     NAMES gcc000libbid.a cl000libbid.lib
     HINTS ${CMAKE_SOURCE_DIR}/../IntelRDFPMathLib20U2/LIBRARY
