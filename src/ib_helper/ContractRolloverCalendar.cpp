@@ -3,18 +3,33 @@
 namespace ib_helper
 {
 
-/*****
- * Given a letter, convert it to the number of the month of the year
- * @param in the letter
- * @return the month of the year
- */
-int ContractRolloverCalendar::letterToMonth(const char in)
+int ContractRolloverCalendar stringToMonth(const std::string& in)
 {
-    const static std::string monthOrder{"FGHJKMNQUVXZ"};
-    auto pos =  monthOrder.find(in);
-    if (pos == std::string::npos)
-        return 0;
-    return pos + 1;
+    if (in == "F" || in == "JAN")
+        return 1;
+    if (in == "G" || in == "FEB")
+        return 2;
+    if (in == "H" || in == "MAR")
+        return 3;
+    if (in == "J" || in == "APR")
+        return 4;
+    if (in == "K" || in == "MAY")
+        return 5;
+    if (in == "M" || in == "JUN")
+        return 6;
+    if (in == "N" || in == "JUL")
+        return 7;
+    if (in == "O" || in == "AUG")
+        return 8;
+    if (in == "U" || in == "SEP")
+        return 9;
+    if (in == "V" || in == "OCT")
+        return 10;
+    if (in == "X" || in == "NOV")
+        return 11;
+    if (in == "Z" || in == "DEC")
+        return 12;
+    return 0;
 }
 
 /****
@@ -40,7 +55,7 @@ std::vector<int> ContractRolloverCalendar::lettersToMonths(const std::string& in
     std::vector<int> retVal;
     for(const auto l : in)
     {
-        retVal.push_back(letterToMonth(l));
+        retVal.push_back(stringToMonth(l));
     }
     return retVal;
 }
@@ -318,6 +333,101 @@ bool ContractRolloverCalendar::IsValid(const std::string& ticker)
 }
 
 /***
+ * Convert "ABCH2" to 3 (H == March)
+ * @param in the string to parse
+ * @return the month number corresponding to the second to last letter
+ */
+int ContractRolloverCalendar::parseMonth(const std::string& in)
+{
+    return stringToMonth( in.substr(in.length()-2, in.length() - 1));
+}
+
+/***
+ * Turn ESH3 to 2023
+ * @param in the symbol with the year
+ * @returns the year or -1 on error
+ */
+int ContractRolloverCalendar::parseYear(const std::string& in)
+{
+    if (in.empty())
+        return -1;
+    std::string lastChar = in.substr(in.size()-1);
+    year = strtol( lastChar.c_str(), nullptr, 10);
+    if (year == 0 && lastChar != "0")
+        return -1;
+    tm ts;
+    localtime(&ts);
+    if(year == tm.tm_year % 10)
+        return tm_year;
+    if (year > tm.tm_year % 10)
+        return tm.tm_year / 10 * 10 + year;
+    // next decade
+    return (tm.tm_year / 10 + 1)  * 10 + year;
+}
+
+/****
+ * If there is a year and month suffix, remove it
+ * @param the symbol (i.e. "NQM3" or "YM  MAR 03")
+ * @return only the symbol (i.e "NQ" or "YM")
+ */
+std::string ContractRolloverCalendar::parseSymbol(const std::string& in)
+{
+    int pos = in.find(" ");
+    // spaces
+    if (pos != std::string::npos)
+        return in.substr(0, pos);
+    // last char is a digit
+    if (parseYear(in) < 0)
+        return in;
+    return in.substr(0, in.size()-2);
+}
+
+static inline void ltrim(std::string& s)
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+                return !std::isspace(ch);
+            }));
+}
+static inline void rtrim(std::string &s)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+                return !std::isspace(ch);
+            }).base(), s.end());
+}
+
+static inline void trim(std::string& s)
+{
+    rtrim(s);
+    ltrim(s);
+}
+
+std::string ContractRolloverCalendar::parseYearAndMonthWithSpaces(const std::string& in)
+{
+    std::string newString = in.substring(in.find(" "));
+    trim(newString);
+    int month = stringToMonth(newString.substring(0,3));
+    newString = newString.substr(newString.find(" ") + 1);
+    int year = strtol(newString.c_str(), nullptr, 10) + 2000;
+    if (month > 10)
+        return std::to_string(year) + std::to_string(month);
+    return std::to_string(year) + " " + std::to_string(month);
+}
+
+std::string ContractRolloverCalendar::parseYearAndMonth(const std::string& in)
+{
+    // spaces
+    if (in.find(" ") != std::string::npos)
+        return parseYearAndMonthWithSpaces(in);
+    int year = parseYear(in);
+    if (year < 0)
+        return "";
+    int month = parseMonth(in);
+    if (month > 10)
+        return std::to_string(year) + std::to_string(month);
+    return std::to_string(year) + "0" + std::to_string(month);
+}
+
+/***
  * Get current contract month and year
  * @param symbol
  * @param t the current time
@@ -325,6 +435,10 @@ bool ContractRolloverCalendar::IsValid(const std::string& ticker)
  */
 std::string ContractRolloverCalendar::CurrentMonthYYYYMM(const std::string& symbol, time_t t)
 {
+    // if the symbol already includes the month and year, use that
+    std::string parsed = parseYearAndMonth(symbol);
+    if (!parsed.empty())
+        return parsed;
     int closestMonth = 0;
     int addYear = 0;
     tm* tm_struct = gmtime(&t);
