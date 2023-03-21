@@ -308,6 +308,21 @@ time_t ContractRolloverCalendar::calculateRolloverDate(const std::string& symbol
                     t = plusDays(t, 3);
                 return nextMonday(t);
             }
+        case THIRD_WEEK_OF_PRIOR_MONTH:
+            {
+                time_t t = plusMonths(expiry, -1);
+                t = firstDayOfMonth(t);
+                tm* breakout = gmtime(&t);
+                if (breakout->tm_wday < 2  )
+                    t = plusDays(t, 3);
+                return nextMonday(t) + (60 * 60 * 24 * 7);
+            }
+        case FIFTEENTH_DAY_OF_PRIOR_MONTH:
+            {
+                time_t t = plusMonths(expiry, -1);
+                t = firstDayOfMonth(t);
+                return t + (60 * 60 * 24 * 15);
+            }
     }
     return 0;
 }

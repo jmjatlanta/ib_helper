@@ -8,8 +8,8 @@ class MockIBConnector : public ib_helper::IBConnector
     public:
     MockIBConnector(const std::string& hostname, int port, int clientId);
     ~MockIBConnector();
-    uint32_t GetNextRequestId();
-    std::future<ContractDetails> GetContractDetails(const Contract& contract);
+    uint32_t GetNextRequestId() override;
+    std::future<ContractDetails> GetContractDetails(const Contract& contract) override;
     bool IsConnected() const override;
     void RequestPositions() override;
     void RequestOpenOrders() override;
