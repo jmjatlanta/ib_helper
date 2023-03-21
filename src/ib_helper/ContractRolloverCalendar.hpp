@@ -20,7 +20,7 @@ class ContractRolloverCalendar
      * @param in the letter
      * @return the month of the year
      */
-    int letterToMonth(const char in);
+    int stringToMonth(const std::string& in);
 
     /****
      * convert a month number to the future letter
@@ -114,6 +114,12 @@ class ContractRolloverCalendar
      * @return the date the contract rolls over
      */
     time_t calculateRolloverDate(const std::string& symbol, time_t expiry);
+
+    std::string parseYearAndMonthWithSpaces(const std::string& in);
+    std::string parseYearAndMonth(const std::string& in);
+    std::string parseSymbol(const std::string& in);
+    int parseYear(const std::string& in);
+    int parseMonth(const std::string& in);
 
     public:
 
