@@ -3,6 +3,22 @@
 #include "MockOrder.h"
 #include "../src/util/SysLogger.h"
 
+struct MockPosition
+{
+    std::string account;
+    Contract contract;
+    Decimal position;
+    double avgCost;
+};
+
+struct MockOpenOrder
+{
+    int orderId;
+    Contract contract;
+    Order order;
+    OrderState orderState;
+};
+
 class MockIBConnector : public ib_helper::IBConnector
 {
     public:
@@ -26,6 +42,7 @@ class MockIBConnector : public ib_helper::IBConnector
      * Send a historical bar as if it came from IB
      */
     void SendBar(int subId, const Bar& in, bool inPast = false);
+    void SendBarWithTick(int barSubId, int tickSubId, int bidAskSubId, const Bar& bar, bool inPast = false);
     void SendTick(int subId, double lastPrice);
     void SendBidAsk(uint32_t subscriptionId, double bid, double ask);
     // orders
@@ -33,6 +50,24 @@ class MockIBConnector : public ib_helper::IBConnector
     void SetOrderRejectReason(uint32_t code) { orderRejectCode = code; }
     void PlaceOrder(int orderId, const Contract& contract, const ::Order& order) override;
     void CancelOrder(int orderId, const std::string& time) override;
+    void SetMaxOrderFillSize(double in) { maxOrderFillSize = in; }
+    /***
+     * @brief prep for reqOpenOrders to later call openOrder with the passed in information
+     * @param orderId the order id
+     * @param contract the contract
+     * @param order the order
+     * @param orderState the order state
+     */
+    void SendOpenOrder(int orderId, const Contract& contract, const Order& order, const OrderState& orderState);
+    // positions
+    /***
+     * @brief prep for reqPositions to later call position() with passed in information
+     * @param account the account
+     * @param contract the contract 
+     * @param position the position size 
+     * @param avgCost the average cost of the position 
+     */
+    void SendPosition(const std::string& account, const Contract& contract, Decimal position, double avgCost);
 
     private:
     void processOrder(MockOrder& order, double price);
@@ -45,4 +80,7 @@ class MockIBConnector : public ib_helper::IBConnector
     std::vector<MockOrder> orders;
     const std::string clazz = "MockIBConnector";
     util::SysLogger* logger = nullptr;
+    std::vector<MockOpenOrder> openOrders;
+    std::vector<MockPosition> positions;
+    double maxOrderFillSize = 100000.0; // how many shares can be bought on 1 tick
 };

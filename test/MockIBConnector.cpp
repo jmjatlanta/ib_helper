@@ -51,11 +51,19 @@ bool MockIBConnector::IsConnected() const { return true; }
 
 void MockIBConnector::RequestPositions()
 {
+    for(auto pos : positions)
+    {
+        position(pos.account, pos.contract, pos.position, pos.avgCost);
+    }
     positionEnd();
 }
 
 void MockIBConnector::RequestOpenOrders()
 {
+    for(auto o : openOrders)
+    {
+        openOrder(o.orderId, o.contract, o.order, o.orderState);
+    }
     openOrderEnd();
 }
 
@@ -84,13 +92,54 @@ void MockIBConnector::UnsubscribeFromTickByTick(uint32_t subId)
     // do nothing
 }
 
+void MockIBConnector::SendBarWithTick(int barSubId, int tickSubId, int bidAskSubId, const Bar& bar, bool inPast)
+{
+    if (inPast)
+    {
+        SendBar(barSubId, bar, inPast);
+    }
+    else
+    {
+        // open
+        Bar b(bar);
+        b.high = b.open;
+        b.low = b.open;
+        b.close = b.open;
+        SendBar(barSubId, b, inPast);
+        SendBidAsk(tickSubId, b.close - 0.01, b.close + 0.01);
+        SendTick(tickSubId, b.close);
+        // low
+        b.low = bar.low;
+        b.close = b.low;
+        SendBar(barSubId, b, false);
+        SendBidAsk(tickSubId, b.close - 0.01, b.close - 0.01);
+        SendTick(tickSubId, b.close);
+        // high
+        b.high = bar.high;
+        b.close = b.high;
+        SendBar(barSubId, b, false);
+        SendBidAsk(tickSubId, b.close - 0.01, b.close - 0.01);
+        SendTick(tickSubId, b.close);
+        // close
+        b.close = bar.high;
+        SendBar(barSubId, b, false);
+        SendBidAsk(tickSubId, b.close - 0.01, b.close - 0.01);
+        SendTick(tickSubId, b.close);
+    }
+}
+
 void MockIBConnector::SendBar(int subId, const Bar& in, bool inPast)
 {
-    ib_helper::HistoricalDataHandler* handler = historicalDataHandlers[subId];
-    if (inPast)
-        handler->OnHistoricalData(subId, in);
-    else
-        handler->OnHistoricalDataUpdate(subId, in);
+    try
+    {
+        ib_helper::HistoricalDataHandler* handler = historicalDataHandlers.at(subId);
+        if (inPast)
+            handler->OnHistoricalData(subId, in);
+        else
+            handler->OnHistoricalDataUpdate(subId, in);
+    } catch (const std::out_of_range& oor)
+    {
+    }
 }
 
 uint32_t MockIBConnector::SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
@@ -103,14 +152,19 @@ uint32_t MockIBConnector::SubscribeToTickByTick(const Contract& contract, ib_hel
 
 void MockIBConnector::SendTick(int subId, double lastPrice)
 {
-    ib_helper::TickHandler* handler = tickHandlers[subId];
     int tickType = 1;
     time_t time = 1;
     double size = 100;
     TickAttribLast tickAttribLast;
     std::string exchange;
     std::string specialConditions;
-    handler->OnTickByTickAllLast(subId, tickType, time, lastPrice, size, tickAttribLast, exchange, specialConditions);
+    try
+    {
+        ib_helper::TickHandler* handler = tickHandlers.at(subId);
+        handler->OnTickByTickAllLast(subId, tickType, time, lastPrice, size, tickAttribLast, exchange, specialConditions);
+    } catch(const std::out_of_range& oor)
+    {
+    }
     // process any pending orders
     for(auto& ord : orders)
     {
@@ -140,12 +194,17 @@ void MockIBConnector::RequestAccountUpdates(bool subscribe, const std::string& a
 
 void MockIBConnector::SendBidAsk(uint32_t subscriptionId, double bid, double ask)
 {
-    ib_helper::TickHandler* handler = tickHandlers[subscriptionId];
-    time_t time = 1;
-    TickAttribBidAsk tickAttribBidAsk;
-    Decimal bidSize = doubleToDecimal(100.0);
-    Decimal askSize = doubleToDecimal(100.0);
-    handler->OnTickByTickBidAsk(subscriptionId, time, bid, ask, bidSize, askSize, tickAttribBidAsk);
+    try
+    {
+        ib_helper::TickHandler* handler = tickHandlers.at(subscriptionId);
+        time_t time = 1;
+        TickAttribBidAsk tickAttribBidAsk;
+        Decimal bidSize = doubleToDecimal(100.0);
+        Decimal askSize = doubleToDecimal(100.0);
+        handler->OnTickByTickBidAsk(subscriptionId, time, bid, ask, bidSize, askSize, tickAttribBidAsk);
+    } catch (const std::out_of_range& oor)
+    {
+    }
 }
 
 void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Order& order)
@@ -175,7 +234,8 @@ void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::
 
 void MockIBConnector::processOrder(MockOrder& order, double price)
 {
-    order.filledQuantity = order.totalQuantity;
+    double fillQty = std::min( decimalToDouble(order.totalQuantity), maxOrderFillSize );
+    order.filledQuantity = doubleToDecimal(fillQty);
     order.status = "Filled";
     orderStatus(order.orderId, order.status, order.filledQuantity, 
             sub(order.totalQuantity, order.filledQuantity), price, 
@@ -205,3 +265,15 @@ void MockIBConnector::CancelOrder(int orderId, const std::string& time)
         }
     }
 }
+void MockIBConnector::SendOpenOrder(int orderId, const Contract& contract, const Order& order,
+        const OrderState& orderState)
+{
+    openOrders.push_back( MockOpenOrder{orderId, contract, order, orderState} );
+}
+
+void MockIBConnector::SendPosition(const std::string& account, const Contract& contract, 
+        Decimal pos, double avgCost)
+{
+    positions.push_back( MockPosition{ account, contract, pos, avgCost } );
+}
+
