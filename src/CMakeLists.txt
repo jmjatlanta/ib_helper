@@ -3,7 +3,11 @@ set(CMAKE_CXX_STANDARD 20)
 
 project ( ib_helper VERSION 1.0.1 DESCRIPTION "IB API Helper" )
 
-set(CMAKE_CXX_FLAGS "-g -O0 -DHAS_REMOTE_API=0")
+if(MSVC)
+    set(CMAKE_CXX_FLAGS "/EHsc -DHAS_REMOTE_API=0")
+else(MSVC)
+    set(CMAKE_CXX_FLAGS "-g -O0 -DHAS_REMOTE_API=0")
+endif(MSVC)
 
 file(GLOB ib_src "ib_api/client/*.cpp")
 file(GLOB ib_helper "ib_helper/*.cpp" )
