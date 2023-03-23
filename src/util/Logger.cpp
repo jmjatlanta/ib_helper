@@ -12,17 +12,17 @@
  * Include this file only once
  */
 
-Logger* logger_ = new Logger();
+std::shared_ptr<Logger> logger_ = std::make_shared<Logger>();
 
 Logger* Logger::getInstance() {
     boost::log::add_common_attributes();
     boost::log::core::get()->set_filter( boost::log::trivial::severity >= boost::log::trivial::debug);
-    return logger_;
+    return logger_.get();
 }
 
 Logger::Logger() {}
 
-Logger::~Logger() {}
+Logger::~Logger() { }
 
 void Logger::log_to_file(const std::string& fileNamePrefix)
 {
