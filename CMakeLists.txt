@@ -5,6 +5,5 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project ( ib_helper )
 
 add_subdirectory ( src )
-add_subdirectory ( googletest )
 add_subdirectory ( date )
 add_subdirectory ( test )
