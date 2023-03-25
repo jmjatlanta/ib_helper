@@ -18,17 +18,6 @@ file(GLOB test_src "./*.cpp" )
 file(GLOB date_src "../date/src/*.cpp" )
 
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
-message(STATUS "---------------------")
-message(STATUS "Boost_FOUND: ${Boost_FOUND}")
-message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
-message(STATUS "Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
-message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
-message(STATUS "---------------------")
-find_library( intelrdfpmath
-    NAMES gcc000libbid.a cl000libbid.lib
-    HINTS ${CMAKE_SOURCE_DIR}/../IntelRDFPMathLib20U2/LIBRARY
-    HINTS ${CMAKE_SOURCE_DIR}/../../IntelRDFPMathLib20U2/LIBRARY
-)
 include(FetchContent)
 FetchContent_Declare(
     googletest
@@ -45,6 +34,7 @@ target_include_directories(ib_helper_tests PRIVATE
 )
 
 target_link_libraries(ib_helper_tests 
+    dfp
     ${intelrdfpmath}
     GTest::gtest
     GTest::gtest_main
