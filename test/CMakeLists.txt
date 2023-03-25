@@ -35,7 +35,6 @@ target_include_directories(ib_helper_tests PRIVATE
 
 target_link_libraries(ib_helper_tests 
     dfp
-    ${intelrdfpmath}
     GTest::gtest
     GTest::gtest_main
     Boost::log
