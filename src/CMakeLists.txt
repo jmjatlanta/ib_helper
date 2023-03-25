@@ -3,8 +3,12 @@ set(CMAKE_CXX_STANDARD 20)
 
 project ( ib_helper VERSION 1.0.1 DESCRIPTION "IB API Helper" )
 
-add_definitions(-DBOOST_ALL_NO_LIB)
-add_definitions(-DBOOST_ALL_DYN_LINK)
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+
+add_compile_definitions(BOOST_ALL_NO_LIB)
+add_compile_definitions(BOOST_ALL_DYN_LINK)
 
 if(MSVC)
     set(CMAKE_CXX_FLAGS "/EHsc -DHAS_REMOTE_API=0")
