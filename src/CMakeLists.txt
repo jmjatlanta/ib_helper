@@ -3,6 +3,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 project ( ib_helper VERSION 1.0.1 DESCRIPTION "IB API Helper" )
 
+add_definitions(-DBOOST_ALL_NO_LIB)
 add_definitions(-DBOOST_ALL_DYN_LINK)
 
 if(MSVC)
