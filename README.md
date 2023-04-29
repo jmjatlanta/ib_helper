@@ -16,9 +16,10 @@ git submodule update --init --recursive
 mkdir build
 cd build
 cmake .. -DIB_CLIENT_DIR=/home/mydir/IBJts/client/cppclient/client
+make
 ```
 
-Things left TODO:
+Things left TODO (Mock/testing):
 - A cancel order comes in, the order is executed, the cancel is rejected because the order is filled
    - Need the ability to delay execution of an order
    - Need to handle cancel errors exactly as IB does it (what error code is thrown in this case?)
@@ -26,4 +27,3 @@ Things left TODO:
    - Need the ability to delay and partially execute an order
 - A partial fill happens, then a TP. The original order is still there. Should it be?
 NOTE: what happens in these cases are strategy dependent, but we need the ability to test this)
-
