@@ -1,5 +1,5 @@
 #pragma once
-#include "../src/ib_api/client/bar.h"
+#include "bar.h"
 #include <string>
 #include <fstream>
 

@@ -1,8 +1,8 @@
 #pragma once
-#include "../ib_api/client/TickAttrib.h"
-#include "../ib_api/client/TickAttribLast.h"
-#include "../ib_api/client/TickAttribBidAsk.h"
-#include "../ib_api/client/Decimal.h"
+#include "TickAttrib.h"
+#include "TickAttribLast.h"
+#include "TickAttribBidAsk.h"
+#include "Decimal.h"
 #include <string>
 
 namespace ib_helper {

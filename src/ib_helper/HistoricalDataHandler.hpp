@@ -1,5 +1,5 @@
 #pragma once
-#include "../ib_api/client/bar.h"
+#include "bar.h"
 #include <string>
 
 namespace ib_helper

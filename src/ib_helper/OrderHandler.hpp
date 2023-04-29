@@ -1,7 +1,7 @@
 #pragma once
-#include "../ib_api/client/Contract.h"
-#include "../ib_api/client/Order.h"
-#include "../ib_api/client/OrderState.h"
+#include "Contract.h"
+#include "Order.h"
+#include "OrderState.h"
 
 namespace ib_helper
 {

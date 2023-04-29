@@ -1,5 +1,5 @@
 #pragma once
-#include "../ib_api/client/Decimal.h"
+#include "Decimal.h"
 
 namespace ib_helper {
 

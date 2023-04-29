@@ -5,11 +5,11 @@
 #include "IBConnectionMonitor.hpp"
 #include "AccountHandler.hpp"
 #include "OrderHandler.hpp"
-#include "../ib_api/client/EReaderOSSignal.h"
-#include "../ib_api/client/EClientSocket.h"
-#include "../ib_api/client/EWrapper.h"
-#include "../ib_api/client/EReader.h"
-#include "../ib_api/client/TagValue.h"
+#include "EReaderOSSignal.h"
+#include "EClientSocket.h"
+#include "EWrapper.h"
+#include "EReader.h"
+#include "TagValue.h"
 #include <string>
 #include <thread>
 #include <unordered_map>

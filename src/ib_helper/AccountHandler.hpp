@@ -1,5 +1,5 @@
 #pragma once
-#include "../ib_api/client/Contract.h"
+#include "Contract.h"
 
 #include <string>
 

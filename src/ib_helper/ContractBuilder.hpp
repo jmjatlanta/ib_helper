@@ -1,6 +1,6 @@
 #pragma once
 #include "IBConnector.hpp"
-#include "../ib_api/client/Contract.h"
+#include "Contract.h"
 #include "../util/SysLogger.h"
 #include "ContractRolloverCalendar.hpp"
 #include "SecurityType.hpp"

@@ -16,16 +16,17 @@ else(MSVC)
     set(CMAKE_CXX_FLAGS "-g -O0 -DHAS_REMOTE_API=0")
 endif(MSVC)
 
-file(GLOB ib_src "ib_api/client/*.cpp")
 file(GLOB ib_helper "ib_helper/*.cpp" )
 file(GLOB util_src "util/*.cpp" )
 file(GLOB date_src "../date/src/*.cpp" )
+file(GLOB ib_src ${IB_CLIENT_DIR}/*.cpp)
 
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 
 add_library( ib_helper ${ib_src} ${util_src} ${ib_helper} ${date_src} )
 target_include_directories( ib_helper PRIVATE 
     ${CMAKE_CURRENT_LIST_DIR}/../date/include 
+    ${IB_CLIENT_DIR}
     ${Boost_INCLUDE_DIR}
 )
 set_target_properties(ib_helper PROPERTIES VERSION ${PROJECT_VERSION})

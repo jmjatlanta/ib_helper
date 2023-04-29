@@ -1,6 +1,6 @@
 #pragma once
-#include "../src/ib_api/client/Order.h"
-#include "../src/ib_api/client/Contract.h"
+#include "Order.h"
+#include "Contract.h"
 
 class MockOrder : public Order
 {
