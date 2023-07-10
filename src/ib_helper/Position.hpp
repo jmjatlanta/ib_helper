@@ -1,6 +1,6 @@
 #pragma once
-#include "../ib_api/client/Decimal.h"
-#include "../ib_api/client/Contract.h"
+#include "DecimalHelper.hpp"
+#include "Contract.h"
 #include <string>
 
 namespace ib_helper
