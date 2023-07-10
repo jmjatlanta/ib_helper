@@ -277,3 +277,14 @@ void MockIBConnector::SendPosition(const std::string& account, const Contract& c
     positions.push_back( MockPosition{ account, contract, pos, avgCost } );
 }
 
+void MockIBConnector::orderStatus( OrderId orderId, const std::string& status, Decimal filled,
+	        Decimal remaining, double avgFillPrice, int permId, int parentId,
+	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice)
+{
+    for(auto handler : orderHandlers)
+    {
+        if (handler != nullptr)
+            handler->OnOrderStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, 
+                lastFillPrice, clientId, whyHeld, mktCapPrice);
+    }
+}

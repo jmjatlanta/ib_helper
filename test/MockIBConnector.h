@@ -68,7 +68,9 @@ class MockIBConnector : public ib_helper::IBConnector
      * @param avgCost the average cost of the position 
      */
     void SendPosition(const std::string& account, const Contract& contract, Decimal position, double avgCost);
-
+    virtual void orderStatus( OrderId orderId, const std::string& status, Decimal filled,
+	        Decimal remaining, double avgFillPrice, int permId, int parentId,
+	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice) override;
     private:
     void processOrder(MockOrder& order, double price);
     std::atomic<uint32_t> nextRequestId;
