@@ -26,7 +26,9 @@ class IBConnector : public EWrapper
     virtual ~IBConnector();
 
     virtual void AddAccountHandler(AccountHandler* in);
+    virtual void RemoveAccountHandler(AccountHandler* in);
     virtual void AddOrderHandler(OrderHandler* in);
+    virtual void RemoveOrderHandler(OrderHandler* in);
     virtual AccountHandler* GetDefaultAccountHandler();
     virtual const std::string GetDefaultAccount() { return defaultAccount; }
     virtual uint32_t GetNextOrderId() { return ++nextOrderId; }
