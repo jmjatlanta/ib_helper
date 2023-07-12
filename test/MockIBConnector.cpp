@@ -2,6 +2,7 @@
 #include "../src/util/SysLogger.h"
 #include <stdexcept>
 #include <exception>
+#include <algorithm>
 
 MockIBConnector::MockIBConnector(const std::string& hostname, int port, int clientId) 
     : nextRequestId(1), nextOrderId(1)
