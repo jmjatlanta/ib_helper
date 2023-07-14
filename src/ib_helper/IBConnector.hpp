@@ -97,7 +97,16 @@ class IBConnector : public EWrapper
     virtual std::future<ContractDetails> GetContractDetails(const Contract& contract);
     virtual void RequestPositions();
     virtual void RequestAccountUpdates(bool subscribe, const std::string& account);
+    /***
+     * Request open orders submitted by this client id
+     * NOTE: responses are sent to openOrder
+     */
     virtual void RequestOpenOrders();
+    /***
+     * Request open orders submitted by any client id
+     * NOTE: responses are sent to openOrder
+     */
+    virtual void RequestAllOpenOrders();
 
     protected:
     IBConnector(); // used for testing/mocking

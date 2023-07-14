@@ -63,6 +63,11 @@ void IBConnector::RequestOpenOrders()
     this->ibClient->reqOpenOrders();
 }
 
+void IBConnector::RequestAllOpenOrders()
+{
+    this->ibClient->reqAllOpenOrders();
+}
+
 void IBConnector::AddAccountHandler(AccountHandler* in)
 {
     std::lock_guard<std::mutex> lock(accountHandlersMutex);
