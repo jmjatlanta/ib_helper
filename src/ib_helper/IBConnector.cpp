@@ -142,20 +142,31 @@ void IBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Orde
 }
 
 void IBConnector::processMessages(IBConnector* ibConnector) {
-	while (!ibConnector->shuttingDown) {
-		// wait for connection
-		if (!ibConnector->fullyConnected) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		}
-		if (!ibConnector->shuttingDown)
-        {
-		    ibConnector->osSignal->waitForSignal();
-            if (!ibConnector->shuttingDown)
+    try
+    {
+	    while (!ibConnector->shuttingDown) {
+	    	// wait for connection
+	    	if (!ibConnector->fullyConnected) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	    	}
+	    	if (!ibConnector->shuttingDown)
             {
-			    ibConnector->reader->processMsgs();
+	    	    ibConnector->osSignal->waitForSignal();
+                if (!ibConnector->shuttingDown)
+                {
+	    		    ibConnector->reader->processMsgs();
+                }
             }
-        }
-	}
+	    }
+    } 
+    catch(const std::exception& ex)
+    {
+        logger->error("IBConnector", "processMessages: Standard exception: " + std::string(ex.what()));
+    }
+    catch(...)
+    {
+        logger->error("IBConnector", "processMessages: Exception thrown");
+    }
 }
 
 /***
@@ -406,7 +417,8 @@ void IBConnector::winError( const std::string& str, int lastError)
 }
 void IBConnector::connectionClosed()
 {
-    std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+    // we cannot lock this, as the connection monitors need to unsubscribe themselves
+    //std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
     for(auto cm : connectionMonitors)
         cm->OnDisconnect(this);
 }
