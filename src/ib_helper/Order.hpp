@@ -1,7 +1,7 @@
 #pragma once
 #include "../util/SysLogger.h"
-#include "../ib_api/client/Contract.h"
-#include "../ib_api/client/Order.h"
+#include "Contract.h"
+#include "Order.h"
 #include "OrderStatus.hpp"
 
 namespace ib_helper
