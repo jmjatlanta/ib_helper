@@ -77,7 +77,7 @@ void IBConnector::AddAccountHandler(AccountHandler* in)
 void IBConnector::RemoveAccountHandler(AccountHandler* in)
 {
     std::lock_guard<std::mutex> lock(accountHandlersMutex);
-    remove_if(accountHandlers.begin(), accountHandlers.end(), [in](AccountHandler* sel)->bool { return sel == in; });
+    std::erase(accountHandlers, in);
 }
 
 void IBConnector::AddOrderHandler(OrderHandler* in)
@@ -89,7 +89,7 @@ void IBConnector::AddOrderHandler(OrderHandler* in)
 void IBConnector::RemoveOrderHandler(OrderHandler* in)
 {
     std::lock_guard<std::mutex> lock(orderHandlersMutex);
-    remove_if(orderHandlers.begin(), orderHandlers.end(), [in](OrderHandler* sel) -> bool { return sel == in; });
+    std::erase(orderHandlers, in);
 }
 
 AccountHandler* IBConnector::GetDefaultAccountHandler() 
