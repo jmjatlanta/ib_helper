@@ -41,3 +41,6 @@ target_link_libraries(ib_helper_tests
     Boost::log_setup
 )
 
+if(MSVC)
+    target_compile_definitions(ib_helper_tests PRIVATE NOMINMAX)
+endif(MSVC)
