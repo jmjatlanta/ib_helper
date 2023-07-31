@@ -68,6 +68,11 @@ void MockIBConnector::RequestOpenOrders()
     openOrderEnd();
 }
 
+void MockIBConnector::RequestAllOpenOrders()
+{
+    return RequestOpenOrders();
+}
+
 void MockIBConnector::AddConnectionMonitor(ib_helper::IBConnectionMonitor* in)
 {
     // add it to the list
@@ -222,7 +227,9 @@ void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::
             price = mOrder.lmtPrice;
         if (mOrder.orderType == "STP")
             price = mOrder.auxPrice;
-        logger->debug(clazz, "Order " + std::to_string(orderId) + " placed with price of " + std::to_string(price));
+        logger->debug(clazz, "Order " + std::to_string(orderId) 
+                + " placed with type of " + mOrder.orderType
+                + " and price of " + std::to_string(price));
         // NOTE: Valid statuses: PreSubmitted, Submitted, Filled, Cancelled
         orderStatus(orderId, mOrder.status, order.filledQuantity, order.totalQuantity, 
                 0.0, orderId, 0, 0.0, 123, "", 0.0);

@@ -29,6 +29,7 @@ class MockIBConnector : public ib_helper::IBConnector
     bool IsConnected() const override;
     void RequestPositions() override;
     void RequestOpenOrders() override;
+    void RequestAllOpenOrders() override;
     void AddConnectionMonitor(ib_helper::IBConnectionMonitor* in) override;
     uint32_t SubscribeToHistoricalData(const Contract& contract, ib_helper::HistoricalDataHandler* handler,
             const std::string& timePeriod, const std::string& barSize) override;
