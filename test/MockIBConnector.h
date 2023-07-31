@@ -74,6 +74,7 @@ class MockIBConnector : public ib_helper::IBConnector
 	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice) override;
     private:
     void processOrder(MockOrder& order, double price);
+    void submitOrder(MockOrder& order);
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;
     std::unordered_map<uint32_t, std::promise<ContractDetails>> contractDetailsHandlers;

@@ -176,20 +176,32 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
     {
         if (ord.totalQuantity != ord.filledQuantity)
         {
+            bool processed = false;
             if (ord.orderType == "MKT")
+            {
                 processOrder(ord, lastPrice);
+                processed = true;
+            }
             if (ord.orderType == "LMT")
             {
                 if ( (ord.action == "BUY" && ord.lmtPrice >= lastPrice)
                         || (ord.action == "SELL" && ord.lmtPrice <= lastPrice))
+                {
                     processOrder(ord, lastPrice);
+                    processed = true;
+                }
             }
             if (ord.orderType == "STP")
             {
                 if( (ord.action == "BUY" && ord.auxPrice <= lastPrice)
                         || (ord.action == "SELL" && ord.auxPrice >= lastPrice))
+                {
                     processOrder(ord, lastPrice);
+                    processed = true;
+                }
             }
+            if (!processed && ord.status == "PreSubmitted")
+                submitOrder(ord);
         }
     }
 }
@@ -248,6 +260,17 @@ void MockIBConnector::processOrder(MockOrder& order, double price)
     orderStatus(order.orderId, order.status, order.filledQuantity, 
             sub(order.totalQuantity, order.filledQuantity), price, 
             order.orderId, 0, price, 123, "", 0.0);
+}
+
+void MockIBConnector::submitOrder(MockOrder& order)
+{
+    if (order.status == "PreSubmitted")
+    {
+        order.status = "Submitted";
+        orderStatus(order.orderId, order.status, order.filledQuantity,
+                sub(order.totalQuantity, order.filledQuantity), 0.0,
+                order.orderId, 0, 0.0, 123, "", 0.0);
+    }
 }
 
 void MockIBConnector::CancelOrder(int orderId, const std::string& time)
