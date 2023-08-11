@@ -75,6 +75,7 @@ class MockIBConnector : public ib_helper::IBConnector
     private:
     void processOrder(MockOrder& order, double price);
     void submitOrder(MockOrder& order);
+    MockOrder& findOrderById(uint32_t orderId);
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;
     std::unordered_map<uint32_t, std::promise<ContractDetails>> contractDetailsHandlers;

@@ -200,7 +200,7 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
                     processed = true;
                 }
             }
-            if (!processed && ord.status == "PreSubmitted")
+            if (!processed && !ord.submitted)
                 submitOrder(ord);
         }
     }
@@ -225,26 +225,57 @@ void MockIBConnector::SendBidAsk(uint32_t subscriptionId, double bid, double ask
     }
 }
 
+MockOrder& MockIBConnector::findOrderById(uint32_t orderId)
+{
+    for(auto& ord : orders)
+    {
+        if (ord.orderId == orderId)
+            return ord;
+    }
+    throw std::out_of_range(std::string("Order Id ") + std::to_string(orderId) + " not found.");
+}
+
 void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Order& order)
 {
     if (orderRejectCode == 0)
     {
-        orders.push_back(order);
-        MockOrder& mOrder = orders[orders.size()-1];
-        mOrder.contract = contract;
-        mOrder.status = "PreSubmitted";
-        mOrder.orderId = orderId;
-        double price = 0.0;
-        if (mOrder.orderType == "LMT")
-            price = mOrder.lmtPrice;
-        if (mOrder.orderType == "STP")
-            price = mOrder.auxPrice;
-        logger->debug(clazz, "Order " + std::to_string(orderId) 
-                + " placed with type of " + mOrder.orderType
-                + " and price of " + std::to_string(price));
-        // NOTE: Valid statuses: PreSubmitted, Submitted, Filled, Cancelled
-        orderStatus(orderId, mOrder.status, order.filledQuantity, order.totalQuantity, 
-                0.0, orderId, 0, 0.0, 123, "", 0.0);
+        // are we adding or modifying?
+        try
+        {
+            MockOrder& mOrder = findOrderById(orderId);
+            mOrder.update(order);
+            double price = 0.0;
+            if (mOrder.orderType == "LMT")
+                price = mOrder.lmtPrice;
+            if (mOrder.orderType == "STP")
+                price = mOrder.auxPrice;
+            logger->debug(clazz, "Order " + std::to_string(orderId) 
+                    + " placed with type of " + mOrder.orderType
+                    + " and price of " + std::to_string(price)
+                    + " and size of " + std::to_string(decimalToDouble(mOrder.totalQuantity)));
+            // NOTE: Valid statuses: PreSubmitted, Submitted, Filled, Cancelled
+            orderStatus(orderId, mOrder.status, order.filledQuantity, order.totalQuantity, 
+                    0.0, orderId, 0, 0.0, 123, "", 0.0);
+        } catch( const std::out_of_range& oor)
+        {
+            orders.push_back(order);
+            MockOrder& mOrder = orders[orders.size()-1];
+            mOrder.contract = contract;
+            mOrder.status = "PreSubmitted";
+            mOrder.orderId = orderId;
+            double price = 0.0;
+            if (mOrder.orderType == "LMT")
+                price = mOrder.lmtPrice;
+            if (mOrder.orderType == "STP")
+                price = mOrder.auxPrice;
+            logger->debug(clazz, "Order " + std::to_string(orderId) 
+                    + " placed with type of " + mOrder.orderType
+                    + " and price of " + std::to_string(price)
+                    + " and size of " + std::to_string(decimalToDouble(mOrder.totalQuantity)));
+            // NOTE: Valid statuses: PreSubmitted, Submitted, Filled, Cancelled
+            orderStatus(orderId, mOrder.status, order.filledQuantity, order.totalQuantity, 
+                    0.0, orderId, 0, 0.0, 123, "", 0.0);
+        }
     }
     else
     {
@@ -266,7 +297,7 @@ void MockIBConnector::submitOrder(MockOrder& order)
 {
     if (order.status == "PreSubmitted")
     {
-        order.status = "Submitted";
+        order.submitted = true;
         orderStatus(order.orderId, order.status, order.filledQuantity,
                 sub(order.totalQuantity, order.filledQuantity), 0.0,
                 order.orderId, 0, 0.0, 123, "", 0.0);

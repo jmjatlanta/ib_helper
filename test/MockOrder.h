@@ -9,7 +9,14 @@ class MockOrder : public Order
     MockOrder(const Order& in) : Order(in)
     {
     }
+    void update(const Order& in)
+    {
+        totalQuantity = in.totalQuantity;
+        auxPrice = in.auxPrice;
+        lmtPrice = in.lmtPrice;
+    }
     public:
     Contract contract;
     std::string status;
+    bool submitted = false;
 };
