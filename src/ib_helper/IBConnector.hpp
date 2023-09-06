@@ -5,6 +5,7 @@
 #include "IBConnectionMonitor.hpp"
 #include "AccountHandler.hpp"
 #include "OrderHandler.hpp"
+#include "ExecutionHandler.hpp"
 #include "EReaderOSSignal.h"
 #include "EClientSocket.h"
 #include "EWrapper.h"
@@ -29,6 +30,8 @@ class IBConnector : public EWrapper
     virtual void RemoveAccountHandler(AccountHandler* in);
     virtual void AddOrderHandler(OrderHandler* in);
     virtual void RemoveOrderHandler(OrderHandler* in);
+    virtual void AddExecutionHandler(ExecutionHandler* in);
+    virtual void RemoveExecutionHandler(ExecutionHandler* in);
     virtual AccountHandler* GetDefaultAccountHandler();
     virtual const std::string GetDefaultAccount() { return defaultAccount; }
     virtual uint32_t GetNextOrderId() { return ++nextOrderId; }
@@ -96,6 +99,7 @@ class IBConnector : public EWrapper
     virtual void CancelOrder(int orderId, const std::string& time);
     virtual std::future<ContractDetails> GetContractDetails(const Contract& contract);
     virtual void RequestPositions();
+    virtual uint32_t RequestExecutionReports(const ExecutionFilter& filter);
     virtual void RequestAccountUpdates(bool subscribe, const std::string& account);
     /***
      * Request open orders submitted by this client id
@@ -250,6 +254,7 @@ class IBConnector : public EWrapper
     std::vector<AccountHandler*> accountHandlers;
     std::vector<OrderHandler*> orderHandlers;
     std::unordered_map<uint32_t, std::promise<ContractDetails> > contractDetailsHandlers;
+    std::vector<ExecutionHandler*> executionHandlers;
     private:
     std::string defaultAccount;
     std::mutex mktDepthExchangesPromisesMutex;
@@ -260,6 +265,7 @@ class IBConnector : public EWrapper
     std::mutex connectionMonitorsMutex;
     std::mutex accountHandlersMutex;
     std::mutex orderHandlersMutex;
+    std::mutex executionHandlersMutex;
 }; 
 
 } // namespace ib_helper
