@@ -73,6 +73,14 @@ void MockIBConnector::RequestAllOpenOrders()
     return RequestOpenOrders();
 }
 
+uint32_t MockIBConnector::RequestExecutionReports(const ExecutionFilter& filter)
+{
+    uint32_t id = GetNextRequestId();
+    for(auto h : executionHandlers)
+        h->OnExecDetailsEnd(id);
+    return id;
+}
+
 void MockIBConnector::AddConnectionMonitor(ib_helper::IBConnectionMonitor* in)
 {
     // add it to the list

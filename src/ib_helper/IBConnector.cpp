@@ -53,6 +53,13 @@ void IBConnector::RequestPositions()
     this->ibClient->reqPositions();
 }
 
+uint32_t IBConnector::RequestExecutionReports(const ExecutionFilter& filter)
+{
+    uint32_t reqId = GetNextRequestId();
+    ibClient->reqExecutions(reqId, filter);
+    return reqId;
+}
+
 void IBConnector::RequestAccountUpdates(bool subscribe, const std::string& account)
 {
     this->ibClient->reqAccountUpdates(subscribe, account);
@@ -90,6 +97,26 @@ void IBConnector::RemoveOrderHandler(OrderHandler* in)
 {
     std::lock_guard<std::mutex> lock(orderHandlersMutex);
     std::erase(orderHandlers, in);
+}
+
+void IBConnector::AddExecutionHandler(ExecutionHandler* in)
+{
+    std::lock_guard lock(executionHandlersMutex);
+    executionHandlers.push_back(in);
+}
+
+void IBConnector::RemoveExecutionHandler(ExecutionHandler* in)
+{
+    uint32_t toErase = 0;
+    std::lock_guard lock(executionHandlersMutex);
+    for(auto itr = executionHandlers.begin(); itr != executionHandlers.end(); ++itr)
+    {
+        if ((*itr) == in)
+        {
+            executionHandlers.erase(itr);
+            break;
+        }
+    }
 }
 
 AccountHandler* IBConnector::GetDefaultAccountHandler() 
@@ -445,8 +472,19 @@ void IBConnector::contractDetails( int reqId, const ContractDetails& contractDet
 }
 void IBConnector::bondContractDetails( int reqId, const ContractDetails& contractDetails){}
 void IBConnector::contractDetailsEnd( int reqId){}
-void IBConnector::execDetails( int reqId, const Contract& contract, const Execution& execution){}
-void IBConnector::execDetailsEnd( int reqId){}
+void IBConnector::execDetails( int reqId, const Contract& contract, const Execution& execution)
+{
+    std::lock_guard lock(executionHandlersMutex);
+    for(auto h : executionHandlers)
+        h->OnExecDetails(reqId, contract, execution);
+}
+void IBConnector::execDetailsEnd( int reqId)
+{
+    std::lock_guard lock(executionHandlersMutex);
+    for(auto h : executionHandlers)
+        h->OnExecDetailsEnd(reqId);
+}
+
 void IBConnector::error(int id, int errorCode, const std::string& errorString, 
             const std::string& advancedOrderRejectJson)
 {
@@ -559,7 +597,14 @@ void IBConnector::fundamentalData(TickerId reqId, const std::string& data){}
 void IBConnector::deltaNeutralValidation(int reqId, const DeltaNeutralContract& deltaNeutralContract){}
 void IBConnector::tickSnapshotEnd( int reqId){}
 void IBConnector::marketDataType( TickerId reqId, int marketDataType){}
-void IBConnector::commissionReport( const CommissionReport& commissionReport){}
+void IBConnector::commissionReport( const CommissionReport& commissionReport)
+{
+    std::lock_guard lock(executionHandlersMutex);
+    for(auto h : executionHandlers)
+    {
+        h->OnCommissionReport(commissionReport);
+    }
+}
 void IBConnector::position( const std::string& account, const Contract& contract, Decimal position, 
             double avgCost)
 {
