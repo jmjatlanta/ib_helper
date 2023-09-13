@@ -1,4 +1,5 @@
 #include "ContractRolloverCalendar.hpp"
+#include <algorithm>
 
 namespace ib_helper
 {
