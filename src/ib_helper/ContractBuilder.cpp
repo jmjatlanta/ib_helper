@@ -135,6 +135,12 @@ ContractDetails ContractBuilder::GetDetails(const Contract& in)
 
     auto fut = ib->GetContractDetails(in);
     try {
+        auto result = fut.wait_for(std::chrono::seconds(3));
+        if (result == std::future_status::timeout)
+        {
+            logger->error("ContractBuilder", "GetDetails: timeout retrieving contract " + in.symbol );
+            return ContractDetails{};
+        }
         return fut.get();
     } catch(const std::exception& e)
     {

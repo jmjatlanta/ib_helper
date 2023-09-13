@@ -42,7 +42,7 @@ IBConnector::~IBConnector() {
 
 std::future<ContractDetails> IBConnector::GetContractDetails(const Contract& contract)
 {
-    uint32_t promiseId = this->GetNextRequestId();
+    uint32_t promiseId = GetNextRequestId();
     auto& promise = contractDetailsHandlers[promiseId];
     ibClient->reqContractDetails(promiseId, contract);
     return promise.get_future();
@@ -471,7 +471,9 @@ void IBConnector::contractDetails( int reqId, const ContractDetails& contractDet
     }
 }
 void IBConnector::bondContractDetails( int reqId, const ContractDetails& contractDetails){}
-void IBConnector::contractDetailsEnd( int reqId){}
+void IBConnector::contractDetailsEnd( int reqId)
+{
+}
 void IBConnector::execDetails( int reqId, const Contract& contract, const Execution& execution)
 {
     std::lock_guard lock(executionHandlersMutex);

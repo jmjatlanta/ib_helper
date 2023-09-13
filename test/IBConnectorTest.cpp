@@ -200,10 +200,27 @@ TEST(IBConnectorTest, ContractExchanges)
     }
 }
 
-TEST(IBConnectorTest, FutureContractBuilderNG)
+TEST(IBConnectorTest, FutureContractBuilderES)
 {
     ib_options ops;
     ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 3};
+    ASSERT_TRUE(isConnected(conn));
+    ib_helper::ContractBuilder contractBuilder(&conn);
+    try
+    {
+        auto es = contractBuilder.BuildFuture("ES");
+        auto details = contractBuilder.GetDetails(es);
+        EXPECT_EQ(details.contract.symbol, "ES");
+        EXPECT_EQ(details.contract.localSymbol, "ESU3"); 
+    } catch(const std::out_of_range& oor) {
+        FAIL();
+    }
+}
+
+TEST(IBConnectorTest, FutureContractBuilderNG)
+{
+    ib_options ops;
+    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 4};
     ASSERT_TRUE(isConnected(conn));
     ib_helper::ContractBuilder contractBuilder(&conn);
     try
@@ -220,7 +237,7 @@ TEST(IBConnectorTest, FutureContractBuilderNG)
 TEST(IBConnectorTest, FutureContractBuilderYM)
 {
     ib_options ops;
-    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 2};
+    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 5};
     ASSERT_TRUE(isConnected(conn));
     ib_helper::ContractBuilder contractBuilder(&conn);
     try
