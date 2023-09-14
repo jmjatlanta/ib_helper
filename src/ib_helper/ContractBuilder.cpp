@@ -84,6 +84,10 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
     retval.localSymbol = "";
     retval.secType = "FUT";
     retval.currency = "USD";
+    if (ticker == "ES")
+    {
+        retval.exchange = "CME";
+    }
     ContractRolloverCalendar calendar;
     if (!calendar.IsValid(ticker))
         return retval;
@@ -135,6 +139,14 @@ ContractDetails ContractBuilder::GetDetails(const Contract& in)
 
     auto fut = ib->GetContractDetails(in);
     try {
+        /*
+        auto result = fut.wait_for(std::chrono::seconds(3));
+        if (result == std::future_status::timeout)
+        {
+            logger->error("ContractBuilder", "GetDetails: timeout retrieving contract " + in.symbol );
+            return ContractDetails{};
+        }
+        */
         return fut.get();
     } catch(const std::exception& e)
     {
