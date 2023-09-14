@@ -33,6 +33,7 @@ uint32_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute)
     // adjust hour and minute
     today.tm_hour = hour;
     today.tm_min = minute;
+    today.tm_sec = 0;
     // now convert back to epoch
     return mktime(&today);
 }
