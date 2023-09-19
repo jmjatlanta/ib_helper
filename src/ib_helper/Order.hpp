@@ -2,7 +2,6 @@
 #include "../util/SysLogger.h"
 #include "Contract.h"
 #include "Order.h"
-#include "OrderStatus.hpp"
 
 namespace ib_helper
 {
@@ -12,6 +11,71 @@ namespace ib_helper
  */
 class Order : public ::Order
 {
+    public:
+
+    enum class OrderStatus {
+        APIPENDING,
+        APICANCELLED,
+        PRESUBMITTED,
+        PENDINGCANCEL,
+        CANCELLED,
+        SUBMITTED,
+        FILLED,
+        INACTIVE,
+        PENDINGSUBMIT,
+        UNKNOWN
+    };
+
+    OrderStatus to_OrderStatus(const std::string& in)
+    {
+        if (in == "ApiPending")
+            return OrderStatus::APIPENDING;
+        if (in == "ApiCancelled")
+            return OrderStatus::APICANCELLED;
+        if (in == "PreSubmitted")
+            return OrderStatus::PRESUBMITTED;
+        if (in == "PendingCancel")
+            return OrderStatus::PENDINGCANCEL;
+        if (in == "Cancelled")
+            return OrderStatus::CANCELLED;
+        if (in == "Submitted")
+            return OrderStatus::SUBMITTED;
+        if (in == "Filled")
+            return OrderStatus::FILLED;
+        if (in == "Inactive")
+            return OrderStatus::INACTIVE;
+        if (in == "PendingSubmit")
+            return OrderStatus::PENDINGSUBMIT;
+        return OrderStatus::UNKNOWN;
+    }
+
+    std::string to_string(OrderStatus in)
+    {
+        switch (in)
+        {
+            case OrderStatus::APIPENDING:
+                return "ApiPending";
+            case OrderStatus::APICANCELLED:
+                return "ApiCancelled";
+            case OrderStatus::PRESUBMITTED:
+                return "PreSubmitted";
+            case OrderStatus::PENDINGCANCEL:
+                return "PendingCancel";
+            case OrderStatus::CANCELLED:
+                return "Cancelled";
+            case OrderStatus::SUBMITTED:
+                return "Submitted";
+            case OrderStatus::FILLED:
+                return "Filled";
+            case OrderStatus::INACTIVE:
+                return "Inactive";
+            case OrderStatus::PENDINGSUBMIT:
+                return "PendingSubmit";
+            default:
+                return "Unknown";
+        }
+    }
+
     public:
     Order() { logger = util::SysLogger::getInstance(); }
     Contract contract;
@@ -28,7 +92,7 @@ class Order : public ::Order
 
         bool somethingChanged = false;
         OrderStatus oldStatus = this->status;
-        this->status = ib_helper::to_OrderStatus(status);
+        this->status = to_OrderStatus(status);
         if (oldStatus != this->status)
             somethingChanged = true;
         Decimal oldValue = filledQuantity;
@@ -65,7 +129,7 @@ class Order : public ::Order
             aux = auxPrice;
         logger->debug("Order", std::to_string(orderId)
                 + "," + (contract.localSymbol.empty() ? contract.symbol : contract.localSymbol)
-                + "," + ib_helper::to_string(this->status)
+                + "," + to_string(this->status)
                 + "," + ( action == "BUY" ? "LONG" : "SHORT")
                 + "," + std::to_string(lmt)
                 + "," + std::to_string(aux)
