@@ -110,18 +110,21 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
     }
     time_t expiry = to_time_t(det.contract.lastTradeDateOrContractMonth);
     bool firstTry = true;
+    int16_t multiplier = 1;
     while( !calendar.IsLiquid(ticker, expiry, now ) )
     {
         firstTry = false;
         // get next contract
-        expiry += month; // increase by about a month
+        time_t old_expiry = expiry;
+        expiry += month * multiplier;
         retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, expiry);
-    }
-    // get contract id
-    if (!firstTry)
-    {
         retval.localSymbol = "";
         det = GetDetails(retval);
+        expiry = to_time_t(det.contract.lastTradeDateOrContractMonth);
+        if (expiry == old_expiry)
+        {
+            ++multiplier;
+        }
     }
     retval.conId = det.contract.conId;
     auto coll = parseCSV(det.validExchanges);
