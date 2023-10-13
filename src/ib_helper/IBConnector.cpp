@@ -503,9 +503,10 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
             return;
         }
     }
-    if (errorCode == 162)
+    if (errorCode == 162 || errorCode == 2109)
     {
         // we have successfully unsubscribed
+        // or Outside Regular Trading Hours warning
         return;
     }
     {

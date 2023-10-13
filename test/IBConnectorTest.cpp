@@ -1,33 +1,13 @@
 #include "../src/ib_helper/IBConnector.hpp"
 #include "../src/ib_helper/ContractBuilder.hpp"
 #include "../src/util/SysLogger.h"
+#include "test_helpers.h"
 
 #include "gtest/gtest.h"
 #include "MockIBConnector.h"
 
 #include <thread>
 #include <chrono>
-
-struct ib_options
-{
-    std::string host{"127.0.0.1"};
-    int port = 4002;
-    int connId = 1;
-};
-
-
-bool isConnected(const ib_helper::IBConnector& conn)
-{
-    int counter = 0;
-    while (true && counter < 20)
-    {
-        if (conn.IsConnected())
-            break;
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        counter++;
-    }
-    return conn.IsConnected();
-}
 
 TEST(IBConnectorTest, Connect)
 {

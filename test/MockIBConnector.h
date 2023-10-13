@@ -74,6 +74,7 @@ class MockIBConnector : public ib_helper::IBConnector
 	        Decimal remaining, double avgFillPrice, int permId, int parentId,
 	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice) override;
     private:
+    bool validateOrder(int orderId, const Contract& contract, const ::Order& order);
     void processOrder(MockOrder& order, double price);
     void submitOrder(MockOrder& order);
     MockOrder& findOrderById(uint32_t orderId);

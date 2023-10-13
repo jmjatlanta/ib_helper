@@ -8,6 +8,7 @@ MockIBConnector::MockIBConnector(const std::string& hostname, int port, int clie
     : nextRequestId(1), nextOrderId(1)
 {
     logger = util::SysLogger::getInstance();
+    this->SetDefaultAccount("ABC123");
 }
 
 MockIBConnector::~MockIBConnector() {}
@@ -172,13 +173,6 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
     TickAttribLast tickAttribLast;
     std::string exchange;
     std::string specialConditions;
-    try
-    {
-        ib_helper::TickHandler* handler = tickHandlers.at(subId);
-        handler->OnTickByTickAllLast(subId, tickType, time, lastPrice, size, tickAttribLast, exchange, specialConditions);
-    } catch(const std::out_of_range& oor)
-    {
-    }
     // process any pending orders
     for(auto& ord : orders)
     {
@@ -212,6 +206,14 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
                 submitOrder(ord);
         }
     }
+    // send tick to listeners
+    try
+    {
+        ib_helper::TickHandler* handler = tickHandlers.at(subId);
+        handler->OnTickByTickAllLast(subId, tickType, time, lastPrice, size, tickAttribLast, exchange, specialConditions);
+    } catch(const std::out_of_range& oor)
+    {
+    }
 }
 
 void MockIBConnector::RequestAccountUpdates(bool subscribe, const std::string& account)
@@ -243,10 +245,39 @@ MockOrder& MockIBConnector::findOrderById(uint32_t orderId)
     throw std::out_of_range(std::string("Order Id ") + std::to_string(orderId) + " not found.");
 }
 
+bool MockIBConnector::validateOrder(int orderId, const Contract& contract, const ::Order& order)
+{
+    // orderId
+    if (orderId <= 0)
+    {
+        error(orderId, 390, "Supplied routed order ID is invalid.", "");
+        return false;
+    }
+    if (decimalToDouble(order.totalQuantity) <= 0.0)
+    {
+        error(orderId, 160, "The size value cannot be zero.", "");
+        return false;
+    }
+    if (order.orderType == "LMT" && order.lmtPrice <= 0.0)
+    {
+        error(orderId, 361, "Invalid trigger price", "");
+        return false;
+    }
+    if (order.orderType == "STP" && order.auxPrice <= 0.0)
+    {
+        error(orderId, 361, "Invalid trigger price", "");
+        return false;
+    }
+    return true;
+}
+
 void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Order& order)
 {
     if (orderRejectCode == 0)
     {
+        // do some basic validation
+        if (!validateOrder(orderId, contract, order))
+            return;
         // are we adding or modifying?
         try
         {
@@ -351,10 +382,16 @@ void MockIBConnector::orderStatus( OrderId orderId, const std::string& status, D
 	        Decimal remaining, double avgFillPrice, int permId, int parentId,
 	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice)
 {
+    // to resolve locking issues, do each OnOrderStatus in a separate thread
     for(auto handler : orderHandlers)
     {
         if (handler != nullptr)
-            handler->OnOrderStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, 
-                lastFillPrice, clientId, whyHeld, mktCapPrice);
+        {
+            std::thread t([handler, orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice]() {
+                    handler->OnOrderStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, 
+                        lastFillPrice, clientId, whyHeld, mktCapPrice);
+            });
+            t.detach();
+        }
     }
 }
