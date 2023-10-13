@@ -25,7 +25,7 @@ std::string getDate()
  * @param minute the minute to adjust to
  * @returns the time_t of the epoch, adjusted to the hour/minute
  */
-uint32_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute)
+time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute)
 {
     // get "today"
     std::tm today;
