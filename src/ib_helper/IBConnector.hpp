@@ -117,7 +117,7 @@ class IBConnector : public EWrapper
     /***
      * message loop
      */
-    static void processMessages(IBConnector* ibConnector);
+    void processMessages();
     /***
      * EWrapper virtual functions
      */

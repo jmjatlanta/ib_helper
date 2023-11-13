@@ -61,6 +61,20 @@ Contract ContractBuilder::BuildStock(const std::string& ticker)
     return retval;
 }
 
+Contract ContractBuilder::BuildOption(const std::string& ticker)
+{
+    Contract retval;
+    retval.symbol = ticker;
+    retval.localSymbol = ticker;
+    retval.secType = "OPT";
+    retval.exchange = "SMART";
+    retval.currency = "USD";
+    // get contract id
+    auto det = GetDetails(retval);
+    retval.conId = det.contract.conId;
+    return retval;
+}
+
 std::vector<std::string> parseCSV(const std::string& in)
 {
     std::vector<std::string> values;

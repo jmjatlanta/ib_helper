@@ -13,7 +13,8 @@ class SecurityType
         UNKNOWN,
         FUT,
         STK,
-        FOREX
+        FOREX,
+        OPT
     };
 
     static std::string to_string(Type t)
@@ -26,6 +27,8 @@ class SecurityType
                 return "STK";
             case Type::FOREX:
                 return "CASH";
+            case Type::OPT:
+                return "OPT";
             default:
                 return "UNKNOWN";
         }
@@ -41,6 +44,8 @@ class SecurityType
                 return "Stock";
             case Type::FOREX:
                 return "Forex";
+            case Type::OPT:
+                return "Option";
             default:
                 return "Unknown";
         }
@@ -64,6 +69,8 @@ class SecurityType
             return Type::STK;
         if (in == "CASH" || in == "Forex")
             return Type::FOREX;
+        if (in == "OPT" || in == "Option")
+            return Type::OPT;
         return Type::UNKNOWN;
     }
 };

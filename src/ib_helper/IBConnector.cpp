@@ -23,7 +23,7 @@ IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
 	// message loop
 	reader = new EReader(ibClient, osSignal);
 	reader->start();
-	listenerThread = std::make_shared<std::thread>(processMessages, this);
+	listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
 }
 
 IBConnector::~IBConnector() {
@@ -168,20 +168,20 @@ void IBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Orde
     this->ibClient->placeOrder(orderId, contract, ord);
 }
 
-void IBConnector::processMessages(IBConnector* ibConnector) {
+void IBConnector::processMessages() {
     try
     {
-	    while (!ibConnector->shuttingDown) {
+	    while (!shuttingDown) {
 	    	// wait for connection
-	    	if (!ibConnector->fullyConnected) {
+	    	if (!fullyConnected) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	    	}
-	    	if (!ibConnector->shuttingDown)
+	    	if (!shuttingDown)
             {
-	    	    ibConnector->osSignal->waitForSignal();
-                if (!ibConnector->shuttingDown)
+	    	    osSignal->waitForSignal();
+                if (!shuttingDown)
                 {
-	    		    ibConnector->reader->processMsgs();
+	    		    reader->processMsgs();
                 }
             }
 	    }

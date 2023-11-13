@@ -23,7 +23,12 @@ file(GLOB ib_src ${IB_CLIENT_DIR}/*.cpp)
 
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 
-add_library( ib_helper ${ib_src} ${util_src} ${ib_helper} ${date_src} )
+add_library( ib_api ${ib_src} )
+target_include_directories( ib_api PRIVATE
+    ${IB_CLIENT_DIR}
+)
+
+add_library( ib_helper ${util_src} ${ib_helper} ${date_src} )
 target_include_directories( ib_helper PRIVATE 
     ${CMAKE_CURRENT_LIST_DIR}/../date/include 
     ${IB_CLIENT_DIR}

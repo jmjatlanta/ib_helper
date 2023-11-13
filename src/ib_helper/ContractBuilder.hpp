@@ -22,6 +22,8 @@ class ContractBuilder
 
     Contract BuildForex(const std::string& ticker);
 
+    Contract BuildOption(const std::string& ticker);
+
     ContractDetails GetDetails(const Contract& in);
 
     private:
