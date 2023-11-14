@@ -450,11 +450,31 @@ void IBConnector::connectionClosed()
         cm->OnDisconnect(this);
 }
 void IBConnector::updateAccountValue(const std::string& key, const std::string& val,
-            const std::string& currency, const std::string& accountName){}
+            const std::string& currency, const std::string& accountName)
+{
+    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    for(auto h : accountHandlers)
+        h->OnAccountValueUpdate(key, val, currency, accountName);
+}
 void IBConnector::updatePortfolio( const Contract& contract, Decimal position, double marketPrice, double marketValue,
-            double averageCost, double unrealizedPNL, double realizedPNL, const std::string& accountName){}
-void IBConnector::updateAccountTime(const std::string& timeStamp){}
-void IBConnector::accountDownloadEnd(const std::string& accountName){}
+            double averageCost, double unrealizedPNL, double realizedPNL, const std::string& accountName)
+{
+    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    for(auto h : accountHandlers)
+        h->OnPortfolioUpdate(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, realizedPNL, accountName);
+}
+void IBConnector::updateAccountTime(const std::string& timeStamp)
+{
+    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    for(auto h : accountHandlers)
+        h->OnUpdateAccountTime(timeStamp);
+}
+void IBConnector::accountDownloadEnd(const std::string& accountName)
+{
+    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    for(auto h : accountHandlers)
+        h->OnAccountDownloadEnd(accountName);
+}
 void IBConnector::nextValidId( OrderId orderId)
 {
     nextOrderId = orderId;

@@ -26,7 +26,7 @@ class Order : public ::Order
         UNKNOWN
     };
 
-    OrderStatus to_OrderStatus(const std::string& in)
+    static OrderStatus to_OrderStatus(const std::string& in)
     {
         if (in == "ApiPending")
             return OrderStatus::APIPENDING;
@@ -49,7 +49,7 @@ class Order : public ::Order
         return OrderStatus::UNKNOWN;
     }
 
-    std::string to_string(OrderStatus in)
+    static std::string to_string(OrderStatus in)
     {
         switch (in)
         {
@@ -74,6 +74,20 @@ class Order : public ::Order
             default:
                 return "Unknown";
         }
+    }
+
+    static std::string to_string(const Order& in)
+    {
+        std::stringstream ss;
+        ss << "Order: " << in.orderId
+                << " Type: " << in.orderType
+                << " Limit: " << in.lmtPrice
+                << " Aux: " << in.auxPrice
+                << " Qty: " << decimalToDouble(in.totalQuantity)
+                << " Filled: " << decimalToDouble(in.filledQuantity)
+                << " Status: " << to_string(in.status)
+                << " Action: " << in.action;
+        return ss.str();
     }
 
     public:
