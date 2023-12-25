@@ -26,6 +26,8 @@ class IBConnector : public EWrapper
     IBConnector(const std::string& hostname, int port, int clientId);
     virtual ~IBConnector();
 
+    virtual bool connect();
+    virtual bool disconnect();
     virtual void AddAccountHandler(AccountHandler* in);
     virtual void RemoveAccountHandler(AccountHandler* in);
     virtual void AddOrderHandler(OrderHandler* in);
@@ -239,6 +241,9 @@ class IBConnector : public EWrapper
     virtual void userInfo(int reqId, const std::string& whiteBrandingId) override;
 
     protected: // variables
+    std::string hostname;
+    int port;
+    int clientId;
     std::shared_ptr<std::thread> listenerThread = nullptr;
     volatile bool shuttingDown = false;
     bool fullyConnected = false;

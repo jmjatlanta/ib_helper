@@ -116,10 +116,12 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
         temp_date += month;
         retval.localSymbol = "";
         retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, temp_date);
+        logger->debug("ContractBuilder", "BuildFuture: upping the contract month for " + ticker + " to " + retval.lastTradeDateOrContractMonth);
         det = GetDetails(retval);
     }
     if (det.contract.conId <= 0)
     {
+        logger->debug("ContractBuilder", "BuildFuture: unable to get contract for " + ticker);
         return retval; // we were unsuccessful
     }
     time_t expiry = to_time_t(det.contract.lastTradeDateOrContractMonth);
@@ -149,6 +151,19 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
     return retval;
 }
 
+std::string to_string(const Contract& in)
+{
+    std::stringstream ss;
+    ss << "localSymbol: " << in.localSymbol
+        << " symbol: " << in.symbol
+        << " conId " << in.conId
+        << " lastTradeDateOrContractMonth: " << in.lastTradeDateOrContractMonth
+        << " currency: " << in.currency
+        << " secType: " << in.secType
+        << " exchange: " << in.exchange;
+    return ss.str();
+}
+
 ContractDetails ContractBuilder::GetDetails(const Contract& in)
 {
     if (ib == nullptr)
@@ -156,17 +171,23 @@ ContractDetails ContractBuilder::GetDetails(const Contract& in)
 
     auto fut = ib->GetContractDetails(in);
     try {
-        /*
+        logger->debug("ContractBuilder", "GetDetails: waiting for future for 3 seconds.");
         auto result = fut.wait_for(std::chrono::seconds(3));
         if (result == std::future_status::timeout)
         {
             logger->error("ContractBuilder", "GetDetails: timeout retrieving contract " + in.symbol );
             return ContractDetails{};
         }
-        */
+        if (result == std::future_status::deferred)
+        {
+            logger->error("ContractBuilder", "GetDetails: future deferred retrieving contract " + in.symbol );
+        }
+        logger->debug("ContractBuilder", "GetDetails: Future set, returning");
         return fut.get();
     } catch(const std::exception& e)
     {
+        logger->error("ContractBuilder", std::string("GetDetails: exception retrieving contract: ") + e.what() );
+        logger->error("ContractBuilder", "Contract: " + to_string(in));
         return ContractDetails{};
     }
 }

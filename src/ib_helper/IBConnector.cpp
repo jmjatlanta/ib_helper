@@ -11,40 +11,73 @@ IBConnector::IBConnector()
     logger = Logger::getInstance();
 }
 
-IBConnector::IBConnector(const std::string& hostname, int port, int clientId)
+IBConnector::IBConnector(const std::string& hostname, int port, int clientId) : hostname(hostname), port(port), clientId(clientId)
 {
     logger = Logger::getInstance();
-	osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
-	ibClient = new EClientSocket(this, osSignal);
-	if (!ibClient->eConnect(hostname.c_str(), port, clientId, false))
+    connect();
+}
+
+bool IBConnector::connect()
+{
+    if (!IsConnected())
     {
-		return;
+        disconnect();
+        shuttingDown = false;
+        logger->debug("IBConnector", "connect: Attempting to connect to IB host " + hostname + ":" + std::to_string(port));
+	    osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
+	    ibClient = new EClientSocket(this, osSignal);
+	    if (!ibClient->eConnect(hostname.c_str(), port, clientId, false))
+        {
+            logger->debug("IBConnector", "connect: eConnect failed for IB host " + hostname + ":" + std::to_string(port));
+	    	return false;
+        }
+        logger->debug("IBConnector", "connect: starting message loop");
+	    // message loop
+	    reader = new EReader(ibClient, osSignal);
+	    reader->start();
+	    listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
+        return true;
     }
-	// message loop
-	reader = new EReader(ibClient, osSignal);
-	reader->start();
-	listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
+    return true;
+}
+
+bool IBConnector::disconnect()
+{
+    logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
+    if (ibClient != nullptr)
+        ibClient->eDisconnect();
+    if (listenerThread != nullptr && listenerThread->joinable())
+	    listenerThread->join();
+    if (reader != nullptr)
+    {
+        delete reader;
+        reader = nullptr;
+    }
+    if (ibClient != nullptr)
+    {
+        delete ibClient;
+        ibClient = nullptr;
+    }
+    if (osSignal != nullptr)
+    {
+        delete osSignal;
+        osSignal = nullptr;
+    }
+    return true;
 }
 
 IBConnector::~IBConnector() {
 	shuttingDown = true;
-    if (ibClient != nullptr)
-        ibClient->eDisconnect();
-    if (listenerThread != nullptr)
-	    listenerThread->join();
-    if (reader != nullptr)
-        delete reader;
-    if (ibClient != nullptr)
-        delete ibClient;
-    if (osSignal != nullptr)
-        delete osSignal;
+    disconnect();
 }
 
 std::future<ContractDetails> IBConnector::GetContractDetails(const Contract& contract)
 {
     uint32_t promiseId = GetNextRequestId();
     auto& promise = contractDetailsHandlers[promiseId];
+    logger->debug("IBConnector", "GetContractDetails: about to request details for " + contract.symbol + " id: " + std::to_string(promiseId) );
     ibClient->reqContractDetails(promiseId, contract);
+    logger->debug("IBConnector", "GetContractDetails: request made for " + contract.symbol);
     return promise.get_future();
 }
 
@@ -478,21 +511,29 @@ void IBConnector::accountDownloadEnd(const std::string& accountName)
 void IBConnector::nextValidId( OrderId orderId)
 {
     nextOrderId = orderId;
+    logger->debug("IBConnector", "nextValidId: setting fullyConnected to true");
     fullyConnected = true;
 }
 void IBConnector::contractDetails( int reqId, const ContractDetails& contractDetails)
 {
+    logger->debug("IBConnector", "contractDetails: respose for id " + std::to_string(reqId) + " and symbol " + contractDetails.contract.symbol);
     auto itr = contractDetailsHandlers.find(reqId);
     if (itr != contractDetailsHandlers.end())
     {
         auto& promise = (*itr).second;
         promise.set_value(contractDetails);
         contractDetailsHandlers.erase(itr);
+        logger->debug("IBConnector", "contractDetails: id " + std::to_string(reqId) + " promise value set.");
+    }
+    else
+    {
+        logger->error("IBConnector", "contractDetails: id " + std::to_string(reqId) + " not found in collection");
     }
 }
 void IBConnector::bondContractDetails( int reqId, const ContractDetails& contractDetails){}
 void IBConnector::contractDetailsEnd( int reqId)
 {
+    logger->debug("IBConnector", "contractDetailsEnd: reqId: " + std::to_string(reqId) );
 }
 void IBConnector::execDetails( int reqId, const Contract& contract, const Execution& execution)
 {
@@ -510,9 +551,16 @@ void IBConnector::execDetailsEnd( int reqId)
 void IBConnector::error(int id, int errorCode, const std::string& errorString, 
             const std::string& advancedOrderRejectJson)
 {
+    std::string msg = "Error id: " + std::to_string(id) 
+        + " Code: " + std::to_string(errorCode) 
+        + ": " + errorString 
+        + ". JSON: " + advancedOrderRejectJson;
+    logger->error(logCategory, msg);
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 && !fullyConnected)
+    {
         this->shuttingDown = true;
+    }
     if (errorCode == 200) // no security definition found
     {
         // if the request id is found, set the exception in the promise/future
@@ -537,11 +585,6 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
                 handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);
         }
     }
-    std::string msg = "Error id: " + std::to_string(id) 
-        + " Code: " + std::to_string(errorCode) 
-        + ": " + errorString 
-        + ". JSON: " + advancedOrderRejectJson;
-    logger->error(logCategory, msg);
 }
 void IBConnector::updateMktDepth(TickerId reqId, int position, int operation, int side, double price, Decimal size)
 {
