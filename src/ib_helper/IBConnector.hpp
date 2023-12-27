@@ -23,7 +23,18 @@ namespace ib_helper {
 class IBConnector : public EWrapper
 {
     public:
-    IBConnector(const std::string& hostname, int port, int clientId);
+    enum class ConnectionStatus
+    {
+        UNKNOWN,
+        NOT_STARTED,
+        ATTEMPTING_CONNECTION,
+        PARTIALLY_CONNECTED,
+        FULLY_CONNECTED,
+        ATTEMPTING_SHUTDOWN,
+        SHUTDOWN
+    };
+
+    IBConnector(const std::string& hostname, int port, int clientId, IBConnectionMonitor* connMonitor = nullptr);
     virtual ~IBConnector();
 
     virtual bool connect();
@@ -39,7 +50,9 @@ class IBConnector : public EWrapper
     virtual uint32_t GetNextOrderId() { return ++nextOrderId; }
     virtual uint32_t GetNextRequestId() { return ++nextRequestId; }
     virtual void SetDefaultAccount(const std::string& in) { defaultAccount = in; }
-    virtual bool IsConnected() const { return fullyConnected; }
+    virtual bool IsConnected() const { return currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED; }
+    virtual bool IsConnecting() const { return currentConnectionStatus == ConnectionStatus::ATTEMPTING_CONNECTION; }
+    virtual ConnectionStatus GetConnectionStatus() const { return currentConnectionStatus; }
     // subcriptions
     /***
      * Subscribe to tick data. What is returned is dependent on genericTickList
@@ -96,7 +109,7 @@ class IBConnector : public EWrapper
     virtual void AddConnectionMonitor(IBConnectionMonitor* in);
     // end of subscriptions
     virtual std::future<std::vector<DepthMktDataDescription> > RequestMktDepthExchanges();
-    virtual bool IsShuttingDown() const { return shuttingDown; }
+    virtual bool IsShuttingDown() const { return currentConnectionStatus == ConnectionStatus::ATTEMPTING_SHUTDOWN || currentConnectionStatus == ConnectionStatus::SHUTDOWN; }
     virtual void PlaceOrder(int orderId, const Contract& contract, const ::Order& order);
     virtual void CancelOrder(int orderId, const std::string& time);
     virtual std::future<ContractDetails> GetContractDetails(const Contract& contract);
@@ -245,8 +258,6 @@ class IBConnector : public EWrapper
     int port;
     int clientId;
     std::shared_ptr<std::thread> listenerThread = nullptr;
-    volatile bool shuttingDown = false;
-    bool fullyConnected = false;
     EReaderOSSignal* osSignal = nullptr;
     EClientSocket* ibClient = nullptr;
     EReader* reader = nullptr;
@@ -271,7 +282,11 @@ class IBConnector : public EWrapper
     std::mutex accountHandlersMutex;
     std::mutex orderHandlersMutex;
     std::mutex executionHandlersMutex;
+    std::mutex connectionStatusMutex;
+    std::atomic<ConnectionStatus> currentConnectionStatus;
 }; 
+
+std::string to_string(IBConnector::ConnectionStatus in);
 
 } // namespace ib_helper
 

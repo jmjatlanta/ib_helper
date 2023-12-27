@@ -166,7 +166,7 @@ std::string to_string(const Contract& in)
 
 ContractDetails ContractBuilder::GetDetails(const Contract& in)
 {
-    if (ib == nullptr)
+    if (ib == nullptr || !ib->IsConnected())
         return ContractDetails{};
 
     auto fut = ib->GetContractDetails(in);

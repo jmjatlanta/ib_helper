@@ -6,50 +6,109 @@ namespace ib_helper {
 Logger* logger = nullptr;
 std::string logCategory("IBConnector");
 
+
+std::string to_string(IBConnector::ConnectionStatus in)
+{
+    switch(in)
+    {
+        case IBConnector::ConnectionStatus::NOT_STARTED:
+            return "NOT_STARTED";
+        case IBConnector::ConnectionStatus::ATTEMPTING_CONNECTION:
+            return "ATTEMPTING_CONNECTION";
+        case IBConnector::ConnectionStatus::PARTIALLY_CONNECTED:
+            return "PARTIALLY_CONNECTED";
+        case IBConnector::ConnectionStatus::FULLY_CONNECTED:
+            return "FULLY_CONNECTED";
+        case IBConnector::ConnectionStatus::ATTEMPTING_SHUTDOWN:
+            return "ATTEMPTING_SHUTDOWN";
+        case IBConnector::ConnectionStatus::SHUTDOWN:
+            return "SHUTDOWN";
+    }
+    return "UNKNOWN";
+}
+
 IBConnector::IBConnector()
 {
     logger = Logger::getInstance();
 }
 
-IBConnector::IBConnector(const std::string& hostname, int port, int clientId) : hostname(hostname), port(port), clientId(clientId)
+IBConnector::IBConnector(const std::string& hostname, int port, int clientId, IBConnectionMonitor* connMonitor) 
+        : hostname(hostname), port(port), clientId(clientId)
 {
     logger = Logger::getInstance();
+    if (connMonitor != nullptr)
+        AddConnectionMonitor(connMonitor);
     connect();
 }
 
 bool IBConnector::connect()
 {
-    if (!IsConnected())
+    if (!IsConnected() 
+            && currentConnectionStatus != ConnectionStatus::ATTEMPTING_CONNECTION 
+            && currentConnectionStatus != ConnectionStatus::PARTIALLY_CONNECTED)
     {
-        disconnect();
-        shuttingDown = false;
+        currentConnectionStatus = ConnectionStatus::ATTEMPTING_CONNECTION;
         logger->debug("IBConnector", "connect: Attempting to connect to IB host " + hostname + ":" + std::to_string(port));
 	    osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
 	    ibClient = new EClientSocket(this, osSignal);
 	    if (!ibClient->eConnect(hostname.c_str(), port, clientId, false))
         {
             logger->debug("IBConnector", "connect: eConnect failed for IB host " + hostname + ":" + std::to_string(port));
+            // clean up the mess
+            try
+            {
+                // stop listener thread
+                currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
+                if (ibClient != nullptr)
+                {
+                    ibClient->eDisconnect();
+                    //reader->processMsgs();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+                    //listenerThread->join();
+                    //listenerThread = nullptr;
+                    //delete reader;
+                    //reader = nullptr;
+                    delete ibClient;
+                    ibClient = nullptr;
+                }
+                if (osSignal != nullptr)
+                {
+                    delete osSignal;
+                    osSignal = nullptr;
+                }
+            } 
+            catch(...)
+            {
+                logger->error("IBConnector", "connect() threw an exception");
+            }
+            currentConnectionStatus = ConnectionStatus::NOT_STARTED;
 	    	return false;
         }
-        logger->debug("IBConnector", "connect: starting message loop");
-	    // message loop
 	    reader = new EReader(ibClient, osSignal);
-	    reader->start();
+        reader->start();
 	    listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
+        currentConnectionStatus = ConnectionStatus::PARTIALLY_CONNECTED;
         return true;
     }
-    return true;
+    return false;
 }
 
 bool IBConnector::disconnect()
 {
     logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
+    currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
     if (ibClient != nullptr)
+    {
         ibClient->eDisconnect();
+        // give some time to inform other threads
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
     if (listenerThread != nullptr && listenerThread->joinable())
 	    listenerThread->join();
     if (reader != nullptr)
     {
+        // flush any last message
+        reader->processMsgs();
         delete reader;
         reader = nullptr;
     }
@@ -63,16 +122,22 @@ bool IBConnector::disconnect()
         delete osSignal;
         osSignal = nullptr;
     }
+    currentConnectionStatus = ConnectionStatus::SHUTDOWN;
     return true;
 }
 
 IBConnector::~IBConnector() {
-	shuttingDown = true;
     disconnect();
 }
 
 std::future<ContractDetails> IBConnector::GetContractDetails(const Contract& contract)
 {
+    if (ibClient == nullptr)
+    {
+        std::promise<ContractDetails> p;
+        p.set_exception(std::exception_ptr{});
+        return p.get_future();
+    }
     uint32_t promiseId = GetNextRequestId();
     auto& promise = contractDetailsHandlers[promiseId];
     logger->debug("IBConnector", "GetContractDetails: about to request details for " + contract.symbol + " id: " + std::to_string(promiseId) );
@@ -83,29 +148,34 @@ std::future<ContractDetails> IBConnector::GetContractDetails(const Contract& con
 
 void IBConnector::RequestPositions()
 {
-    this->ibClient->reqPositions();
+    if (ibClient != nullptr)
+        ibClient->reqPositions();
 }
 
 uint32_t IBConnector::RequestExecutionReports(const ExecutionFilter& filter)
 {
     uint32_t reqId = GetNextRequestId();
-    ibClient->reqExecutions(reqId, filter);
+    if (ibClient != nullptr)
+        ibClient->reqExecutions(reqId, filter);
     return reqId;
 }
 
 void IBConnector::RequestAccountUpdates(bool subscribe, const std::string& account)
 {
-    this->ibClient->reqAccountUpdates(subscribe, account);
+    if (ibClient != nullptr)
+        ibClient->reqAccountUpdates(subscribe, account);
 }
 
 void IBConnector::RequestOpenOrders()
 {
-    this->ibClient->reqOpenOrders();
+    if (ibClient != nullptr)
+        ibClient->reqOpenOrders();
 }
 
 void IBConnector::RequestAllOpenOrders()
 {
-    this->ibClient->reqAllOpenOrders();
+    if (ibClient != nullptr)
+        ibClient->reqAllOpenOrders();
 }
 
 void IBConnector::AddAccountHandler(AccountHandler* in)
@@ -123,6 +193,9 @@ void IBConnector::RemoveAccountHandler(AccountHandler* in)
 void IBConnector::AddOrderHandler(OrderHandler* in)
 {
     std::lock_guard<std::mutex> lock(orderHandlersMutex);
+    for(auto* handler : orderHandlers)
+        if (handler == in)
+            return;
     orderHandlers.push_back(in);
 }
 
@@ -135,6 +208,9 @@ void IBConnector::RemoveOrderHandler(OrderHandler* in)
 void IBConnector::AddExecutionHandler(ExecutionHandler* in)
 {
     std::lock_guard lock(executionHandlersMutex);
+    for(auto* handler : executionHandlers)
+        if (handler == in)
+            return;
     executionHandlers.push_back(in);
 }
 
@@ -179,43 +255,29 @@ void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
         std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
         connectionMonitors.push_back(in);
     }
-    int counter = 0;
-    while(!IsConnected() && counter <= 500) // give a little extra time to get fully connected
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        counter += 100;
-    }
-    if (ibClient->isConnected())
-        in->OnConnect(this);
-    else
-        in->OnDisconnect(this);
 }
 
 void IBConnector::CancelOrder(int orderId, const std::string& time)
 {
-    this->ibClient->cancelOrder(orderId, time);
+    if (ibClient != nullptr)
+        ibClient->cancelOrder(orderId, time);
 }
 
 void IBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Order& ord)
 {
-    this->ibClient->placeOrder(orderId, contract, ord);
+    if (ibClient != nullptr)
+        ibClient->placeOrder(orderId, contract, ord);
 }
 
 void IBConnector::processMessages() {
     try
     {
-	    while (!shuttingDown) {
-	    	// wait for connection
-	    	if (!fullyConnected) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	    	}
-	    	if (!shuttingDown)
+        logger->debug("IBConnector", "processMessages: Loop starting");
+	    while (currentConnectionStatus != ConnectionStatus::ATTEMPTING_SHUTDOWN) {
+	        osSignal->waitForSignal();
+            if (currentConnectionStatus != ConnectionStatus::ATTEMPTING_SHUTDOWN)
             {
-	    	    osSignal->waitForSignal();
-                if (!shuttingDown)
-                {
-	    		    reader->processMsgs();
-                }
+	            reader->processMsgs();
             }
 	    }
     } 
@@ -227,6 +289,7 @@ void IBConnector::processMessages() {
     {
         logger->error("IBConnector", "processMessages: Exception thrown");
     }
+    logger->debug("IBConnector", "processMessages loop complete");
 }
 
 /***
@@ -242,6 +305,9 @@ uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandle
         const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
         const TagValueListSPtr& mktDataOptions)
 {
+    if (ibClient == nullptr)
+        return 0;
+
     uint32_t reqId = GetNextRequestId();
     {
         std::lock_guard<std::mutex> lock(tickHandlersMutex);
@@ -257,7 +323,8 @@ void IBConnector::UnsubscribeFromMarketData(uint32_t reqId)
         std::lock_guard<std::mutex> lock(tickHandlersMutex);
         tickHandlers[reqId] = nullptr;
     }
-    ibClient->cancelMktData(reqId); 
+    if (ibClient != nullptr)
+        ibClient->cancelMktData(reqId); 
 }
 
 uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
@@ -268,7 +335,8 @@ uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandle
         std::lock_guard<std::mutex> lock(tickHandlersMutex);
         tickHandlers[reqId] = handler;
     }
-    ibClient->reqTickByTickData(reqId, contract, tickType, numberOfTicks, ignoreSize);
+    if (ibClient != nullptr)
+        ibClient->reqTickByTickData(reqId, contract, tickType, numberOfTicks, ignoreSize);
     return reqId;
 };
 
@@ -278,7 +346,8 @@ void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId)
         std::lock_guard<std::mutex> lock(tickHandlersMutex);
         tickHandlers[reqId] = nullptr;
     }
-    ibClient->cancelTickByTickData(reqId); 
+    if (ibClient != nullptr)
+        ibClient->cancelTickByTickData(reqId); 
 }
 
 uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines)
@@ -288,8 +357,11 @@ uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDep
         std::lock_guard<std::mutex> lock(marketDepthHandlersMutex);
         marketDepthHandlers[reqId] = depthHandler;
     }
-    TagValueListSPtr mktDepthOptions;
-    ibClient->reqMktDepth(reqId, contract, numLines, true, mktDepthOptions);
+    if (ibClient != nullptr)
+    {
+        TagValueListSPtr mktDepthOptions;
+        ibClient->reqMktDepth(reqId, contract, numLines, true, mktDepthOptions);
+    }
     return reqId;
 }
 
@@ -299,14 +371,16 @@ void IBConnector::UnsubscribeFromMarketDepth(uint32_t subscriptionId)
         std::lock_guard<std::mutex> lock(marketDepthHandlersMutex);
         marketDepthHandlers[subscriptionId] = nullptr;
     }
-    ibClient->cancelMktDepth(subscriptionId, true);
+    if (ibClient != nullptr)
+        ibClient->cancelMktDepth(subscriptionId, true);
 }
 
 std::future<std::vector<DepthMktDataDescription> > IBConnector::RequestMktDepthExchanges()
 {
     std::lock_guard<std::mutex> lock(mktDepthExchangesPromisesMutex);
     auto& promise = mktDepthExchangesPromises.emplace_back( );
-    ibClient->reqMktDepthExchanges();
+    if (ibClient != nullptr)
+        ibClient->reqMktDepthExchanges();
     return promise.get_future();
 }
 
@@ -316,12 +390,15 @@ void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionI
         std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
         historicalDataHandlers[historicalSubscriptionId] = nullptr;
     }
-    ibClient->cancelHistoricalData(historicalSubscriptionId);
+    if (ibClient != nullptr)
+        ibClient->cancelHistoricalData(historicalSubscriptionId);
 }
 
 uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
         const std::string& timePeriod, const std::string& barSize)
 {
+    if (ibClient == nullptr)
+        return 0;
     std::string whatToShow = "TRADES";
     if (contract.secType == "CASH")
         whatToShow = "MIDPOINT";
@@ -477,8 +554,10 @@ void IBConnector::winError( const std::string& str, int lastError)
 }
 void IBConnector::connectionClosed()
 {
+    logger->debug(logCategory, "connectionClosed called");
     // we cannot lock this, as the connection monitors need to unsubscribe themselves
     //std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+    currentConnectionStatus == ConnectionStatus::SHUTDOWN;
     for(auto cm : connectionMonitors)
         cm->OnDisconnect(this);
 }
@@ -512,7 +591,9 @@ void IBConnector::nextValidId( OrderId orderId)
 {
     nextOrderId = orderId;
     logger->debug("IBConnector", "nextValidId: setting fullyConnected to true");
-    fullyConnected = true;
+    currentConnectionStatus = ConnectionStatus::FULLY_CONNECTED;
+    for(auto monitor : connectionMonitors)
+        monitor->OnFullConnect(this);
 }
 void IBConnector::contractDetails( int reqId, const ContractDetails& contractDetails)
 {
@@ -557,9 +638,25 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         + ". JSON: " + advancedOrderRejectJson;
     logger->error(logCategory, msg);
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
-    if (errorCode == 502 && !fullyConnected)
+    if (errorCode == 502 // couldn't connect to TWS
+        || errorCode == 509 ) // error reading socket
     {
-        this->shuttingDown = true;
+        // these could be messages stuck in the buffer( partially connected) or legit messages
+        if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED)
+        {
+            logger->error("IBConnector", "Received 502 while being fully connected. Attempting disconnect");
+            // they're legit
+            currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
+            disconnect();
+            for(auto* monitor : connectionMonitors)
+            {
+                monitor->OnError(this, msg);
+            }
+        }
+    }
+    if (errorCode = 504) // not connected
+    {
+        // should we alert the conneciton monitors?
     }
     if (errorCode == 200) // no security definition found
     {
