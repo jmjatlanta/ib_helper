@@ -90,7 +90,7 @@ bool IBConnector::connect()
         currentConnectionStatus = ConnectionStatus::PARTIALLY_CONNECTED;
         return true;
     }
-    return false;
+    return IsConnected();
 }
 
 bool IBConnector::disconnect()
