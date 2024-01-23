@@ -1,5 +1,6 @@
 #include "IBConnector.hpp"
 #include "../util/Logger.h"
+#include "ScannerSubscription.h"
 
 namespace ib_helper {
 
@@ -188,6 +189,36 @@ void IBConnector::RemoveAccountHandler(AccountHandler* in)
 {
     std::lock_guard<std::mutex> lock(accountHandlersMutex);
     std::erase(accountHandlers, in);
+}
+
+void IBConnector::AddScannerHandler(ScannerHandler* in)
+{
+    std::lock_guard<std::mutex> lock(scannerHandlerMutex);
+    scannerHandlers.push_back(in);
+}
+
+void IBConnector::RemoveScannerHandler(ScannerHandler* in)
+{
+    std::lock_guard<std::mutex> lock(scannerHandlerMutex);
+    std::erase(scannerHandlers, in);
+}
+
+void IBConnector::RequestScannerParameters()
+{
+    ibClient->reqScannerParameters();
+}
+
+int IBConnector::RequestScannerSubscription( ScannerSubscription scannerSubscription, 
+            TagValueListSPtr scannerSubscriptionOptions, TagValueListSPtr scannerSubscriptionFilterOptions)
+{
+    int nextReq = ++nextRequestId;
+    this->ibClient->reqScannerSubscription(nextReq, scannerSubscription, scannerSubscriptionOptions, scannerSubscriptionFilterOptions);
+    return nextReq;
+}
+
+void IBConnector::CancelScannerSubscription(int reqId)
+{
+    ibClient->cancelScannerSubscription(reqId);
 }
 
 void IBConnector::AddOrderHandler(OrderHandler* in)
@@ -749,10 +780,26 @@ void IBConnector::historicalDataEnd(int reqId, const std::string& startDateStr, 
         handler->OnHistoricalDataEnd(reqId, startDateStr, endDateStr);
 }
 
-void IBConnector::scannerParameters(const std::string& xml){}
+void IBConnector::scannerParameters(const std::string& xml)
+{
+    std::lock_guard<std::mutex> lock(scannerHandlerMutex);
+    for(auto handler : scannerHandlers)
+        handler->OnScannerParameters(this, xml);
+}
+
 void IBConnector::scannerData(int reqId, int rank, const ContractDetails& contractDetails, const std::string& distance,
-            const std::string& benchmark, const std::string& projection, const std::string& legsStr){}
-void IBConnector::scannerDataEnd(int reqId){}
+            const std::string& benchmark, const std::string& projection, const std::string& legsStr)
+{
+    std::lock_guard<std::mutex> lock(scannerHandlerMutex);
+    for(auto handler : scannerHandlers)
+        handler->OnScannerData(this, reqId, rank, contractDetails, distance, benchmark, projection, legsStr);
+}
+void IBConnector::scannerDataEnd(int reqId)
+{
+    std::lock_guard<std::mutex> lock(scannerHandlerMutex);
+    for(auto handler : scannerHandlers)
+        handler->OnScannerDataEnd(this, reqId);
+}
 void IBConnector::realtimeBar(TickerId reqId, long time, double open, double high, double low, double close,
 	        Decimal volume, Decimal wap, int count){}
 void IBConnector::currentTime(long time){}
