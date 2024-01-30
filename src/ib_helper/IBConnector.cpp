@@ -685,7 +685,7 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
             }
         }
     }
-    if (errorCode = 504) // not connected
+    if (errorCode == 504) // not connected
     {
         // should we alert the conneciton monitors?
     }
@@ -699,10 +699,17 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
             return;
         }
     }
-    if (errorCode == 162 || errorCode == 2109)
+    if (errorCode == 162)
     {
         // we have successfully unsubscribed
-        // or Outside Regular Trading Hours warning
+        std::scoped_lock lock(scannerHandlerMutex);
+        for(auto& h : scannerHandlers)
+            h->OnScannerSubscriptionEnd(this, id); 
+        return;
+    }
+    if (errorCode == 2109)
+    {
+        // Outside Regular Trading Hours warning
         return;
     }
     {
