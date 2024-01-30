@@ -588,7 +588,7 @@ void IBConnector::connectionClosed()
     logger->debug(logCategory, "connectionClosed called");
     // we cannot lock this, as the connection monitors need to unsubscribe themselves
     //std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
-    currentConnectionStatus == ConnectionStatus::SHUTDOWN;
+    currentConnectionStatus = ConnectionStatus::SHUTDOWN;
     for(auto cm : connectionMonitors)
         cm->OnDisconnect(this);
 }
