@@ -25,7 +25,7 @@ class MockIBConnector : public ib_helper::IBConnector
     MockIBConnector(const std::string& hostname, int port, int clientId);
     ~MockIBConnector();
     uint32_t GetNextRequestId() override;
-    std::future<ContractDetails> GetContractDetails(const Contract& contract) override;
+    std::future<std::vector<ContractDetails>> GetContractDetails(const Contract& contract) override;
     bool IsConnected() const override;
     void RequestPositions() override;
     void RequestOpenOrders() override;
@@ -80,7 +80,7 @@ class MockIBConnector : public ib_helper::IBConnector
     MockOrder& findOrderById(uint32_t orderId);
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;
-    std::unordered_map<uint32_t, std::promise<ContractDetails>> contractDetailsHandlers;
+    std::unordered_map<uint32_t, std::promise<std::vector<ContractDetails>>> contractDetailsHandlers;
     // orders
     bool processOrdersImmediately = true;
     uint32_t orderRejectCode = 0;

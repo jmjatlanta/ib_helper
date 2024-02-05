@@ -30,6 +30,8 @@ Contract ContractBuilder::Build(SecurityType::Type secType, const std::string& t
         return BuildStock(ticker);
     if (secType == SecurityType::Type::FOREX)
         return BuildForex(ticker);
+    if (secType == SecurityType::Type::OPT)
+        return BuildOption(ticker);
     return Contract{};
 }
 
@@ -57,21 +59,88 @@ Contract ContractBuilder::BuildStock(const std::string& ticker)
     retval.currency = "USD";
     // get contract id
     auto det = GetDetails(retval);
-    retval.conId = det.contract.conId;
+    if (det.size() > 0)
+        retval.conId = det[0].contract.conId;
+    return retval;
+}
+
+struct OptionDetails
+{
+    enum class OptionType
+    {
+        CALL,
+        PUT,
+        UNKNOWN
+    };
+
+    std::string underlying;
+    std::string yyyymmdd;
+    double strike = 0.0;
+    OptionType type = OptionType::UNKNOWN;
+};
+
+inline std::string& ltrim(std::string& in)
+{
+    in.erase(in.begin(), std::find_if(in.begin(), in.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+    return in;
+}
+inline std::string& rtrim(std::string& in)
+{
+    in.erase(std::find_if(in.rbegin(), in.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), in.end());
+    return in;
+}
+
+inline std::string trim(const std::string& in)
+{
+    std::string retval = in;
+    return rtrim(ltrim(retval));
+}
+
+OptionDetails getDetails(const std::string& in)
+{
+    OptionDetails retval;
+    size_t pos = in.find(" ");
+    if (pos == std::string::npos)
+    {
+        retval.underlying = in;
+        return retval;
+    }
+    retval.underlying = in.substr(0, pos);
+    std::string remainder = trim(in.substr(pos));
+    pos = remainder.find("P");
+    if (pos == std::string::npos)
+    {
+        pos = remainder.find("C");
+        if (pos == std::string::npos)
+            return retval; // Neither C nor P
+        retval.type = OptionDetails::OptionType::CALL;
+    }
+    else
+        retval.type = OptionDetails::OptionType::PUT;
+    retval.yyyymmdd = "20" + remainder.substr(0, pos);
+    std::string strikeStr = remainder.substr(pos+1);
+    uint64_t strikeInt = strtol(strikeStr.c_str(), nullptr, 10);
+    retval.strike = ((double)strikeInt) / 1000;
     return retval;
 }
 
 Contract ContractBuilder::BuildOption(const std::string& ticker)
 {
     Contract retval;
-    retval.symbol = ticker;
-    retval.localSymbol = ticker;
+    OptionDetails dets = getDetails(ticker);
+    retval.symbol = dets.underlying;
     retval.secType = "OPT";
     retval.exchange = "SMART";
     retval.currency = "USD";
-    // get contract id
-    auto det = GetDetails(retval);
-    retval.conId = det.contract.conId;
+    if (dets.yyyymmdd.size() != 0)
+        retval.lastTradeDateOrContractMonth = dets.yyyymmdd;
+    retval.strike = dets.strike;
+    if (dets.type != OptionDetails::OptionType::UNKNOWN)
+        retval.localSymbol = ticker;
     return retval;
 }
 
@@ -108,9 +177,12 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
     retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker);
     // make sure it is liquid
     auto det = GetDetails(retval);
+    ContractDetails currDetails;
+    if (det.size() > 0)
+        currDetails = det[0];
     int month = 60 * 60 * 24 * 28;
     time_t temp_date = now;
-    while (det.contract.conId <= 0 && temp_date < now + ( month * 4) )
+    while (currDetails.contract.conId <= 0 && temp_date < now + ( month * 4) )
     {
         // perhaps the contract is expired
         temp_date += month;
@@ -118,13 +190,15 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
         retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, temp_date);
         logger->debug("ContractBuilder", "BuildFuture: upping the contract month for " + ticker + " to " + retval.lastTradeDateOrContractMonth);
         det = GetDetails(retval);
+        if (det.size() > 0)
+            currDetails = det[0];
     }
-    if (det.contract.conId <= 0)
+    if (currDetails.contract.conId <= 0)
     {
         logger->debug("ContractBuilder", "BuildFuture: unable to get contract for " + ticker);
         return retval; // we were unsuccessful
     }
-    time_t expiry = to_time_t(det.contract.lastTradeDateOrContractMonth);
+    time_t expiry = to_time_t(currDetails.contract.lastTradeDateOrContractMonth);
     bool firstTry = true;
     int16_t multiplier = 1;
     while( !calendar.IsLiquid(ticker, expiry, now ) )
@@ -135,19 +209,22 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
         expiry += month * multiplier;
         retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, expiry);
         retval.localSymbol = "";
+        currDetails = ContractDetails{};
         det = GetDetails(retval);
-        expiry = to_time_t(det.contract.lastTradeDateOrContractMonth);
+        if (det.size() > 0)
+            currDetails = det[0];
+        expiry = to_time_t(currDetails.contract.lastTradeDateOrContractMonth);
         if (expiry == old_expiry)
         {
             ++multiplier;
         }
     }
-    retval.conId = det.contract.conId;
-    auto coll = parseCSV(det.validExchanges);
+    retval.conId = currDetails.contract.conId;
+    auto coll = parseCSV(currDetails.validExchanges);
     if (coll.size() > 0)
         retval.exchange = coll[0];
-    retval.localSymbol = det.contract.localSymbol;
-    retval.lastTradeDateOrContractMonth = det.contract.lastTradeDateOrContractMonth;
+    retval.localSymbol = currDetails.contract.localSymbol;
+    retval.lastTradeDateOrContractMonth = currDetails.contract.lastTradeDateOrContractMonth;
     return retval;
 }
 
@@ -164,19 +241,46 @@ std::string to_string(const Contract& in)
     return ss.str();
 }
 
-ContractDetails ContractBuilder::GetDetails(const Contract& in)
+std::vector<SecurityDefinitionOptionParameter> ContractBuilder::GetOptionParameters(const Contract& opt)
 {
     if (ib == nullptr || !ib->IsConnected())
-        return ContractDetails{};
+        return std::vector<SecurityDefinitionOptionParameter>{};
 
+    int waitSeconds = 60;
+    // we need to get the underlying
+    auto underlying = BuildStock(opt.symbol);
+    if (underlying.conId <= 0)
+        throw std::invalid_argument("option must have conId to get security definition parameters");
+    auto fut = ib->GetOptionParameters(underlying);
+    auto result = fut.wait_for(std::chrono::seconds(waitSeconds));
+    if (result == std::future_status::timeout)
+    {
+        logger->error("ContractBuilder", "GetDetails: timeout retrieving contract " + opt.symbol );
+        return std::vector<SecurityDefinitionOptionParameter>{};
+    }
+    if (result == std::future_status::deferred)
+    {
+        logger->error("ContractBuilder", "GetDetails: future deferred retrieving contract " + opt.symbol );
+    }
+    return fut.get();
+}
+
+std::vector<ContractDetails> ContractBuilder::GetDetails(const Contract& in)
+{
+    if (ib == nullptr || !ib->IsConnected())
+        return std::vector<ContractDetails>{};
+
+    int waitSeconds = 3;
+    if (in.secType == "OPT")
+        waitSeconds = 60;
     auto fut = ib->GetContractDetails(in);
     try {
-        logger->debug("ContractBuilder", "GetDetails: waiting for future for 3 seconds.");
-        auto result = fut.wait_for(std::chrono::seconds(3));
+        logger->debug("ContractBuilder", "GetDetails: waiting for future for " + std::to_string(waitSeconds) + " seconds.");
+        auto result = fut.wait_for(std::chrono::seconds(waitSeconds));
         if (result == std::future_status::timeout)
         {
             logger->error("ContractBuilder", "GetDetails: timeout retrieving contract " + in.symbol );
-            return ContractDetails{};
+            return std::vector<ContractDetails>{};
         }
         if (result == std::future_status::deferred)
         {
@@ -188,7 +292,7 @@ ContractDetails ContractBuilder::GetDetails(const Contract& in)
     {
         logger->error("ContractBuilder", std::string("GetDetails: exception retrieving contract: ") + e.what() );
         logger->error("ContractBuilder", "Contract: " + to_string(in));
-        return ContractDetails{};
+        return std::vector<ContractDetails>{};
     }
 }
 

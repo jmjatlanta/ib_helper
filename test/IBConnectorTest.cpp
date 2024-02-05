@@ -158,7 +158,7 @@ TEST(IBConnectorTest, ContractExchanges)
     contract.secType = "FUT";
     contract.currency = "USD";
     contract.exchange = "SMART";
-    std::future<ContractDetails> fut1= conn.GetContractDetails(contract);
+    std::future<std::vector<ContractDetails>> fut1= conn.GetContractDetails(contract);
     try
     {
         auto dets = fut1.get();
@@ -173,7 +173,8 @@ TEST(IBConnectorTest, ContractExchanges)
     try
     {
         auto dets = fut1.get();
-        EXPECT_EQ(dets.contract.symbol, "ES");
+        ASSERT_GT(dets.size(), 0);
+        EXPECT_EQ(dets[0].contract.symbol, "ES");
     } catch(const std::out_of_range& oor)
     {
         FAIL();
@@ -189,7 +190,9 @@ TEST(IBConnectorTest, FutureContractBuilderES)
     try
     {
         auto es = contractBuilder.BuildFuture("ES");
-        auto details = contractBuilder.GetDetails(es);
+        auto vec = contractBuilder.GetDetails(es);
+        ASSERT_GT(vec.size(), 0);
+        auto details = vec[0];
         EXPECT_EQ(details.contract.symbol, "ES");
         EXPECT_EQ(details.contract.localSymbol, "ESU3"); 
     } catch(const std::out_of_range& oor) {
@@ -206,7 +209,9 @@ TEST(IBConnectorTest, FutureContractBuilderNG)
     try
     {
         auto ng = contractBuilder.BuildFuture("NG");
-        auto details = contractBuilder.GetDetails(ng);
+        auto vec = contractBuilder.GetDetails(ng);
+        ASSERT_GT(vec.size(), 0);
+        auto details = vec[0];
         EXPECT_EQ(details.contract.symbol, "NG");
         EXPECT_EQ(details.contract.localSymbol, "NGJ3"); 
     } catch(const std::out_of_range& oor) {
@@ -223,9 +228,85 @@ TEST(IBConnectorTest, FutureContractBuilderYM)
     try
     {
         auto ym = contractBuilder.BuildFuture("YM");
-        auto details = contractBuilder.GetDetails(ym);
+        auto vec = contractBuilder.GetDetails(ym);
+        ASSERT_GT(vec.size(), 1);
+        auto details = vec[0];
         EXPECT_EQ(details.contract.symbol, "YM");
         EXPECT_EQ(details.contract.localSymbol, "YM   JUN 23"); 
+    } catch(const std::out_of_range& oor) {
+        FAIL();
+    }
+}
+
+TEST(IBConnectorTest, OptionChainParameters)
+{
+    ib_options ops;
+    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 6};
+    ASSERT_TRUE(isConnected(conn));
+    ib_helper::ContractBuilder contractBuilder(&conn);
+    try
+    {
+        // make sure passing a localSymbol gets parsed correctly
+        auto opt = contractBuilder.BuildOption("AAPL");
+        auto params = contractBuilder.GetOptionParameters(opt);
+        ASSERT_GT(params.size(), 0);
+        for(auto& p : params)
+        {
+            std::cout << "Param: Exchange: " << p.exchange
+                << " Expiries:\n";
+            for(auto& e : p.expirations)
+            {
+                std::cout << " " << e << "\n";
+            }
+            std::cout << "Strikes:\n";
+            for(auto& s : p.strikes)
+            {
+                std::cout << " " << s << "\n";
+            }
+            std::cout << "\n";
+        }
+    } catch(const std::out_of_range& oor) {
+        FAIL();
+    }
+}
+
+TEST(IBConnectorTest, OptionContractBuilderAAPL)
+{
+    ib_options ops;
+    ib_helper::IBConnector conn{ops.host, ops.port, ops.connId + 6};
+    ASSERT_TRUE(isConnected(conn));
+    ib_helper::ContractBuilder contractBuilder(&conn);
+    try
+    {
+        // make sure passing a localSymbol gets parsed correctly
+        auto und = contractBuilder.BuildOption("AAPL  240621C00010000");
+        ASSERT_EQ(und.localSymbol, "AAPL  240621C00010000");
+        ASSERT_EQ(und.symbol, "AAPL");
+        ASSERT_EQ(und.strike, 10.0);
+        ASSERT_EQ(und.lastTradeDateOrContractMonth, "20240621");
+        // now attempt to get the whole chain
+        und = contractBuilder.BuildOption("AAPL");
+        auto whole_chain = contractBuilder.GetDetails(und);
+        size_t whole_chain_size = whole_chain.size();
+        ASSERT_GT(whole_chain_size, 1);
+        // now just get 1 strike
+        und.strike = whole_chain[0].contract.strike;
+        auto one_strike = contractBuilder.GetDetails(und);
+        size_t one_strike_size = one_strike.size();
+        EXPECT_GT(one_strike_size, 0);
+        EXPECT_LT(one_strike_size, whole_chain_size);
+        // all strikes for an expiry
+        und.strike = 0.0;
+        und.lastTradeDateOrContractMonth = whole_chain[0].contract.lastTradeDateOrContractMonth;
+        auto one_expiry = contractBuilder.GetDetails(und);
+        size_t one_expiry_size = one_expiry.size();
+        EXPECT_LT(one_expiry_size, whole_chain_size);
+        EXPECT_GT(one_expiry_size, 0);
+        ContractDetails dets = whole_chain[0];
+        std::cout << "Example option last trade date: " + whole_chain[0].contract.lastTradeDateOrContractMonth + "\n";
+        std::cout << "Example option symbol         : " + whole_chain[0].contract.localSymbol + "\n";
+        std::cout << "Example option price          : " + std::to_string(whole_chain[0].contract.strike) + "\n";
+
     } catch(const std::out_of_range& oor) {
         FAIL();
     }
@@ -283,7 +364,7 @@ TEST(IBConnectorTest, MockGetContractDetails)
     try
     {
 
-        ContractDetails dets = fut.get();
+        std::vector<ContractDetails> dets = fut.get();
         FAIL();
     } 
     catch(const std::out_of_range& oor)

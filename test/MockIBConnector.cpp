@@ -18,14 +18,16 @@ uint32_t MockIBConnector::GetNextRequestId()
     return ++nextRequestId;
 }
 
-void doGetContractDetails(const Contract& contract, std::promise<ContractDetails>& promise)
+void doGetContractDetails(const Contract& contract, std::promise<std::vector<ContractDetails>>& promise)
 {
     if ((contract.symbol == "MSFT" && contract.secType == "STK")
             || (contract.symbol == "ES" && contract.secType == "FUT"))
     {
         ContractDetails dets;
         dets.contract = contract;
-        promise.set_value(dets);
+        std::vector<ContractDetails> retval;
+        retval.push_back(dets);
+        promise.set_value(retval);
     }
     else
     {
@@ -40,7 +42,7 @@ void doGetContractDetails(const Contract& contract, std::promise<ContractDetails
     }
 }
 
-std::future<ContractDetails> MockIBConnector::GetContractDetails(const Contract& contract)
+std::future<std::vector<ContractDetails>> MockIBConnector::GetContractDetails(const Contract& contract)
 {
     // we have some that are good and some that are bad
     uint32_t promiseId = GetNextRequestId();
