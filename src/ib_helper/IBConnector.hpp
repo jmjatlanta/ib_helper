@@ -2,6 +2,7 @@
 #include "TickHandler.hpp"
 #include "HistoricalDataHandler.hpp"
 #include "MarketDepthHandler.hpp"
+#include "ScannerHandler.hpp"
 #include "IBConnectionMonitor.hpp"
 #include "AccountHandler.hpp"
 #include "OrderHandler.hpp"
@@ -56,6 +57,12 @@ class IBConnector : public EWrapper
     virtual void RemoveOrderHandler(OrderHandler* in);
     virtual void AddExecutionHandler(ExecutionHandler* in);
     virtual void RemoveExecutionHandler(ExecutionHandler* in);
+    virtual void AddScannerHandler(ScannerHandler* in);
+    virtual void RemoveScannerHandler(ScannerHandler* in);
+    virtual void RequestScannerParameters();
+    virtual int RequestScannerSubscription( ScannerSubscription scannerSubscription, 
+            TagValueListSPtr scannerSubscriptionOptions, TagValueListSPtr scannerSubscriptionFilterOptions);
+    virtual void CancelScannerSubscription(int reqId);
     virtual AccountHandler* GetDefaultAccountHandler();
     virtual const std::string GetDefaultAccount() { return defaultAccount; }
     virtual uint32_t GetNextOrderId() { return ++nextOrderId; }
@@ -285,6 +292,8 @@ class IBConnector : public EWrapper
     std::unordered_map<uint32_t, std::vector<ContractDetails>> contractDetailsData;
     std::unordered_map<uint32_t, std::promise<std::vector<SecurityDefinitionOptionParameter>> > securityDefinitionHandlers;
     std::unordered_map<uint32_t, std::vector<SecurityDefinitionOptionParameter>> securityDefinitionData;
+    std::mutex scannerHandlerMutex;
+    std::vector<ScannerHandler*> scannerHandlers;
     std::vector<ExecutionHandler*> executionHandlers;
     private:
     std::string defaultAccount;
