@@ -3,13 +3,6 @@ set(CMAKE_CXX_STANDARD 20)
 
 project ( ib_helper VERSION 1.0.1 DESCRIPTION "IB API Helper" )
 
-set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
-
-add_compile_definitions(BOOST_ALL_NO_LIB)
-add_compile_definitions(BOOST_ALL_DYN_LINK)
-
 if(MSVC)
     set(CMAKE_CXX_FLAGS "/EHsc -DHAS_REMOTE_API=0")
 else(MSVC)
@@ -22,6 +15,12 @@ file(GLOB date_src "../date/src/*.cpp" )
 file(GLOB ib_src ${IB_CLIENT_DIR}/*.cpp)
 
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
+
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+add_compile_definitions(BOOST_ALL_NO_LIB)
+add_compile_definitions(BOOST_ALL_DYN_LINK)
 
 add_library( ib_api ${ib_src} )
 target_include_directories( ib_api PRIVATE

@@ -21,6 +21,17 @@
 
 namespace ib_helper {
 
+struct SecurityDefinitionOptionParameter
+{
+    int reqId;
+    std::string exchange;
+    int underlyingConId;
+    std::string tradingClass;
+    std::string multiplier;
+    std::set<std::string> expirations;
+    std::set<double> strikes;
+};
+
 class IBConnector : public EWrapper
 {
     public:
@@ -119,7 +130,8 @@ class IBConnector : public EWrapper
     virtual bool IsShuttingDown() const { return currentConnectionStatus == ConnectionStatus::ATTEMPTING_SHUTDOWN || currentConnectionStatus == ConnectionStatus::SHUTDOWN; }
     virtual void PlaceOrder(int orderId, const Contract& contract, const ::Order& order);
     virtual void CancelOrder(int orderId, const std::string& time);
-    virtual std::future<ContractDetails> GetContractDetails(const Contract& contract);
+    virtual std::future<std::vector<ContractDetails>> GetContractDetails(const Contract& contract);
+    virtual std::future<std::vector<SecurityDefinitionOptionParameter>> GetOptionParameters(const Contract& contract);
     virtual void RequestPositions();
     virtual uint32_t RequestExecutionReports(const ExecutionFilter& filter);
     virtual void RequestAccountUpdates(bool subscribe, const std::string& account);
@@ -276,9 +288,12 @@ class IBConnector : public EWrapper
     std::vector<IBConnectionMonitor*> connectionMonitors;
     std::vector<AccountHandler*> accountHandlers;
     std::vector<OrderHandler*> orderHandlers;
+    std::unordered_map<uint32_t, std::promise<std::vector<ContractDetails>> > contractDetailsHandlers;
+    std::unordered_map<uint32_t, std::vector<ContractDetails>> contractDetailsData;
+    std::unordered_map<uint32_t, std::promise<std::vector<SecurityDefinitionOptionParameter>> > securityDefinitionHandlers;
+    std::unordered_map<uint32_t, std::vector<SecurityDefinitionOptionParameter>> securityDefinitionData;
     std::mutex scannerHandlerMutex;
     std::vector<ScannerHandler*> scannerHandlers;
-    std::unordered_map<uint32_t, std::promise<ContractDetails> > contractDetailsHandlers;
     std::vector<ExecutionHandler*> executionHandlers;
     private:
     std::string defaultAccount;

@@ -24,8 +24,10 @@ class ContractBuilder
 
     Contract BuildOption(const std::string& ticker);
 
-    ContractDetails GetDetails(const Contract& in);
     ContractDetails GetStockDetails(const std::string& in);
+    std::vector<ContractDetails> GetDetails(const Contract& in);
+
+    std::vector<ib_helper::SecurityDefinitionOptionParameter> GetOptionParameters(const Contract& opt);
 
     private:
     IBConnector* ib = nullptr;
