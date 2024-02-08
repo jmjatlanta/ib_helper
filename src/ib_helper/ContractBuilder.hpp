@@ -25,6 +25,7 @@ class ContractBuilder
     Contract BuildOption(const std::string& ticker);
 
     ContractDetails GetDetails(const Contract& in);
+    ContractDetails GetStockDetails(const std::string& in);
 
     private:
     IBConnector* ib = nullptr;

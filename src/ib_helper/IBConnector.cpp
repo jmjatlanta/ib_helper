@@ -141,9 +141,9 @@ std::future<ContractDetails> IBConnector::GetContractDetails(const Contract& con
     }
     uint32_t promiseId = GetNextRequestId();
     auto& promise = contractDetailsHandlers[promiseId];
-    logger->debug("IBConnector", "GetContractDetails: about to request details for " + contract.symbol + " id: " + std::to_string(promiseId) );
+    //logger->debug("IBConnector", "GetContractDetails: about to request details for " + contract.symbol + " id: " + std::to_string(promiseId) );
     ibClient->reqContractDetails(promiseId, contract);
-    logger->debug("IBConnector", "GetContractDetails: request made for " + contract.symbol);
+    //logger->debug("IBConnector", "GetContractDetails: request made for " + contract.symbol);
     return promise.get_future();
 }
 
@@ -628,14 +628,14 @@ void IBConnector::nextValidId( OrderId orderId)
 }
 void IBConnector::contractDetails( int reqId, const ContractDetails& contractDetails)
 {
-    logger->debug("IBConnector", "contractDetails: respose for id " + std::to_string(reqId) + " and symbol " + contractDetails.contract.symbol);
+    //logger->debug("IBConnector", "contractDetails: respose for id " + std::to_string(reqId) + " and symbol " + contractDetails.contract.symbol);
     auto itr = contractDetailsHandlers.find(reqId);
     if (itr != contractDetailsHandlers.end())
     {
         auto& promise = (*itr).second;
         promise.set_value(contractDetails);
         contractDetailsHandlers.erase(itr);
-        logger->debug("IBConnector", "contractDetails: id " + std::to_string(reqId) + " promise value set.");
+        //logger->debug("IBConnector", "contractDetails: id " + std::to_string(reqId) + " promise value set.");
     }
     else
     {
@@ -645,7 +645,7 @@ void IBConnector::contractDetails( int reqId, const ContractDetails& contractDet
 void IBConnector::bondContractDetails( int reqId, const ContractDetails& contractDetails){}
 void IBConnector::contractDetailsEnd( int reqId)
 {
-    logger->debug("IBConnector", "contractDetailsEnd: reqId: " + std::to_string(reqId) );
+    //logger->debug("IBConnector", "contractDetailsEnd: reqId: " + std::to_string(reqId) );
 }
 void IBConnector::execDetails( int reqId, const Contract& contract, const Execution& execution)
 {
