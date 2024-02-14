@@ -16,12 +16,6 @@ file(GLOB ib_src ${IB_CLIENT_DIR}/*.cpp)
 
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 
-set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
-add_compile_definitions(BOOST_ALL_NO_LIB)
-add_compile_definitions(BOOST_ALL_DYN_LINK)
-
 add_library( ib_api ${ib_src} )
 target_include_directories( ib_api PRIVATE
     ${IB_CLIENT_DIR}
