@@ -65,12 +65,12 @@ bool IBConnector::connect()
             && currentConnectionStatus != ConnectionStatus::PARTIALLY_CONNECTED)
     {
         currentConnectionStatus = ConnectionStatus::ATTEMPTING_CONNECTION;
-        logger->debug("IBConnector", "connect: Attempting to connect to IB host " + hostname + ":" + std::to_string(port));
+        //logger->debug("IBConnector", "connect: Attempting to connect to IB host " + hostname + ":" + std::to_string(port));
 	    osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
 	    ibClient = new EClientSocket(this, osSignal);
 	    if (!ibClient->eConnect(hostname.c_str(), port, clientId, false))
         {
-            logger->debug("IBConnector", "connect: eConnect failed for IB host " + hostname + ":" + std::to_string(port));
+            //logger->debug("IBConnector", "connect: eConnect failed for IB host " + hostname + ":" + std::to_string(port));
             // clean up the mess
             try
             {
@@ -103,7 +103,7 @@ bool IBConnector::connect()
         }
         if (currentConnectionStatus != ConnectionStatus::FULLY_CONNECTED)
             currentConnectionStatus = ConnectionStatus::PARTIALLY_CONNECTED;
-        logger->debug("IBConnector", "connect:: eConnect returned true, creating EReader");
+        //logger->debug("IBConnector", "connect:: eConnect returned true, creating EReader");
 	    reader = new EReader(ibClient, osSignal);
         reader->start();
 	    listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
@@ -114,7 +114,7 @@ bool IBConnector::connect()
 
 bool IBConnector::disconnect()
 {
-    logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
+    //logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
     currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
     if (ibClient != nullptr)
     {
@@ -160,9 +160,9 @@ std::future<std::vector<SecurityDefinitionOptionParameter>> IBConnector::GetOpti
     uint32_t promiseId = GetNextRequestId();
     auto& promise = securityDefinitionHandlers[promiseId];
     auto& vec = securityDefinitionData[promiseId]; // put the vector in there
-    logger->debug("IBConnector", "GetOptionParameters: about to request details for " + contract.symbol + " id: " + std::to_string(promiseId) );
+    //logger->debug("IBConnector", "GetOptionParameters: about to request details for " + contract.symbol + " id: " + std::to_string(promiseId) );
     ibClient->reqSecDefOptParams(promiseId, contract.symbol, "", contract.secType, contract.conId);
-    logger->debug("IBConnector", "GetContractDetails: request made for " + contract.symbol);
+    //logger->debug("IBConnector", "GetContractDetails: request made for " + contract.symbol);
     return promise.get_future();
 }
 std::future<std::vector<ContractDetails>> IBConnector::GetContractDetails(const Contract& contract)
@@ -343,7 +343,7 @@ static bool ConnectionShuttingDown(IBConnector::ConnectionStatus in)
 void IBConnector::processMessages() {
     try
     {
-        logger->debug("IBConnector", "processMessages: Loop starting");
+        //logger->debug("IBConnector", "processMessages: Loop starting");
 	    while (!ConnectionShuttingDown(currentConnectionStatus)) 
         {
 	        osSignal->waitForSignal();
@@ -361,7 +361,7 @@ void IBConnector::processMessages() {
     {
         logger->error("IBConnector", "processMessages: Exception thrown");
     }
-    logger->debug("IBConnector", "processMessages loop complete");
+    //logger->debug("IBConnector", "processMessages loop complete");
 }
 
 /***
@@ -661,7 +661,7 @@ void IBConnector::accountDownloadEnd(const std::string& accountName)
 void IBConnector::nextValidId( OrderId orderId)
 {
     nextOrderId = orderId;
-    logger->debug("IBConnector", "nextValidId: setting fullyConnected to true");
+    //logger->debug("IBConnector", "nextValidId: setting fullyConnected to true");
     if (currentConnectionStatus == ConnectionStatus::PARTIALLY_CONNECTED)
         currentConnectionStatus = ConnectionStatus::FULLY_CONNECTED;
     for(auto monitor : connectionMonitors)
@@ -669,8 +669,8 @@ void IBConnector::nextValidId( OrderId orderId)
 }
 void IBConnector::contractDetails( int reqId, const ContractDetails& contractDetails)
 {
-    logger->debug("IBConnector", "contractDetails: response for id " + std::to_string(reqId) 
-            + " and symbol " + contractDetails.contract.symbol);
+    //logger->debug("IBConnector", "contractDetails: response for id " + std::to_string(reqId) 
+    //        + " and symbol " + contractDetails.contract.symbol);
     auto itr = contractDetailsData.find(reqId);
     if (itr != contractDetailsData.end())
     {
@@ -685,7 +685,7 @@ void IBConnector::contractDetails( int reqId, const ContractDetails& contractDet
 void IBConnector::bondContractDetails( int reqId, const ContractDetails& contractDetails){}
 void IBConnector::contractDetailsEnd( int reqId)
 {
-    logger->debug("IBConnector", "contractDetailsEnd: reqId: " + std::to_string(reqId) );
+    //logger->debug("IBConnector", "contractDetailsEnd: reqId: " + std::to_string(reqId) );
     auto itr = contractDetailsHandlers.find(reqId);
     auto dataItr = contractDetailsData.find(reqId);
     std::vector<ContractDetails> vec;
@@ -697,7 +697,7 @@ void IBConnector::contractDetailsEnd( int reqId)
         promise.set_value(vec);
         contractDetailsHandlers.erase(itr);
         contractDetailsData.erase(dataItr);
-        logger->debug("IBConnector", "contractDetails: id " + std::to_string(reqId) + " promise value set.");
+        //logger->debug("IBConnector", "contractDetails: id " + std::to_string(reqId) + " promise value set.");
     }
     else
     {
@@ -922,8 +922,8 @@ void IBConnector::securityDefinitionOptionalParameter(int reqId, const std::stri
             const std::string& tradingClass, const std::string& multiplier, const std::set<std::string>& expirations,
             const std::set<double>& strikes) 
 {
-    logger->debug("IBConnector", "securityDefinitionOptionalParameter: response for id " + std::to_string(reqId) 
-            + " and conid " + std::to_string(underlyingConId));
+    //logger->debug("IBConnector", "securityDefinitionOptionalParameter: response for id " + std::to_string(reqId) 
+    //        + " and conid " + std::to_string(underlyingConId));
     auto itr = securityDefinitionData.find(reqId);
     if (itr != securityDefinitionData.end())
     {
@@ -945,7 +945,7 @@ void IBConnector::securityDefinitionOptionalParameter(int reqId, const std::stri
 }
 void IBConnector::securityDefinitionOptionalParameterEnd(int reqId)
 {
-    logger->debug("IBConnector", "securityDefinitionOptionalParameterEnd: reqId: " + std::to_string(reqId) );
+    //logger->debug("IBConnector", "securityDefinitionOptionalParameterEnd: reqId: " + std::to_string(reqId) );
     auto itr = securityDefinitionHandlers.find(reqId);
     auto dataItr = securityDefinitionData.find(reqId);
     std::vector<SecurityDefinitionOptionParameter> vec;
@@ -957,7 +957,7 @@ void IBConnector::securityDefinitionOptionalParameterEnd(int reqId)
         promise.set_value(vec);
         securityDefinitionHandlers.erase(itr);
         securityDefinitionData.erase(dataItr);
-        logger->debug("IBConnector", "securityDefinitionOptionalParameterEnd: id " + std::to_string(reqId) + " promise value set.");
+        //logger->debug("IBConnector", "securityDefinitionOptionalParameterEnd: id " + std::to_string(reqId) + " promise value set.");
     }
     else
     {
