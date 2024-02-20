@@ -724,7 +724,6 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         + " Code: " + std::to_string(errorCode) 
         + ": " + errorString 
         + ". JSON: " + advancedOrderRejectJson;
-    logger->error(logCategory, msg);
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 // couldn't connect to TWS
         || errorCode == 509 ) // error reading socket
@@ -777,6 +776,7 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
                 handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);
         }
     }
+    logger->error(logCategory, msg);
 }
 void IBConnector::updateMktDepth(TickerId reqId, int position, int operation, int side, double price, Decimal size)
 {

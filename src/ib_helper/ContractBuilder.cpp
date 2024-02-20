@@ -189,7 +189,7 @@ Contract ContractBuilder::BuildFuture(const std::string &ticker, time_t now)
         temp_date += month;
         retval.localSymbol = "";
         retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, temp_date);
-        logger->debug("ContractBuilder", "BuildFuture: upping the contract month for " + ticker + " to " + retval.lastTradeDateOrContractMonth);
+        //logger->debug("ContractBuilder", "BuildFuture: upping the contract month for " + ticker + " to " + retval.lastTradeDateOrContractMonth);
         det = GetDetails(retval);
         if (det.size() > 0)
             currDetails = det[0];
@@ -290,7 +290,7 @@ std::vector<ContractDetails> ContractBuilder::GetDetails(const Contract& in)
         waitSeconds = 60;
     auto fut = ib->GetContractDetails(in);
     try {
-        logger->debug("ContractBuilder", "GetDetails: waiting for future for " + std::to_string(waitSeconds) + " seconds.");
+        //logger->debug("ContractBuilder", "GetDetails: waiting for future for " + std::to_string(waitSeconds) + " seconds.");
         auto result = fut.wait_for(std::chrono::seconds(waitSeconds));
         if (result == std::future_status::timeout)
         {
