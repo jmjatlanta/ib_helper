@@ -38,7 +38,7 @@ TEST(MockIBConnectorTest, Basics)
     MockIBConnector conn("localhost", 123, 45);
     MockHistoricalDataHandler handler;
     Contract contract;
-    int subscriptionId = conn.SubscribeToHistoricalData(contract, &handler, "2 day", "2 mins");
+    int subscriptionId = conn.SubscribeToHistoricalData(contract, &handler, "", "2 day", "2 mins");
     HistoricalBarFileReader reader("temp.csv");
     Bar bar = reader.NextBar();
     conn.SendBar(subscriptionId, bar, true);
@@ -63,7 +63,7 @@ TEST(MockIBConnectorTest, PartialFill)
     conn.SetMaxOrderFillSize(25.0);
     // contract and tick data
     Contract contract;
-    int historicalSubId = conn.SubscribeToHistoricalData(contract, &historicalHandler, "5 mins", "2 mins");
+    int historicalSubId = conn.SubscribeToHistoricalData(contract, &historicalHandler, "", "5 mins", "2 mins");
     int tickSubId = 0;
     int bidAskSubId = 0;
     // place order

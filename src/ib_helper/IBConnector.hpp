@@ -117,7 +117,7 @@ class IBConnector : public EWrapper
      * @return the subscription id
      */
     virtual uint32_t SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
-            const std::string& timePeriod, const std::string& barSize);
+            const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize);
     /***
      * The opposite of SubscribeToHistoricalData
      * @param reqId the subscription id

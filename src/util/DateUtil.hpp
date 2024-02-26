@@ -17,3 +17,18 @@ std::string getDate();
  */
 time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute);
 
+#ifdef MOCK_TIME
+
+time_t mock_time;
+
+void set_current_time(time_t in) { mock_time = in; }
+time_t current_time() { return mock_time; }
+
+#else
+
+time_t current_time()
+{
+    return ::time(nullptr);
+}
+
+#endif
