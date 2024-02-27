@@ -17,3 +17,7 @@ std::string getDate();
  */
 time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute);
 
+time_t to_next_friday(time_t in);
+
+time_t to_4pm_ny(time_t in);
+

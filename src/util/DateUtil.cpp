@@ -38,4 +38,25 @@ time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute)
     return mktime(&today);
 }
 
+time_t to_next_friday(time_t in)
+{
+    auto tm = *gmtime(&in);
+    if (tm.tm_wday < 5)
+        tm.tm_mday += (5 - tm.tm_wday);
+    if (tm.tm_wday == 6)
+        tm.tm_mday += 4;
+    return mktime(&tm);
+}
+
+time_t to_4pm_ny(time_t in)
+{
+    auto tm = *gmtime(&in);
+    tm.tm_gmtoff = 0;
+    tm.tm_zone = "Etc/UTC";
+    tm.tm_hour = 21;
+    tm.tm_min = 0;
+    tm.tm_sec = 0;
+    return timegm(&tm);
+}
+
 
