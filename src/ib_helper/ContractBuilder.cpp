@@ -3,6 +3,7 @@
 #include "../util/StringHelper.hpp"
 #include <iomanip>
 #include <iostream>
+#include <algorithm>
 
 namespace ib_helper {
 
@@ -107,7 +108,7 @@ OptionDetails getDetails(const std::string& in)
     return retval;
 }
 
-Contract ContractBuilder::BuildOption(const std::string& ticker)
+Contract ContractBuilder::BuildOption(const std::string &ticker)
 {
     Contract retval;
     OptionDetails dets = getDetails(ticker);
@@ -123,7 +124,7 @@ Contract ContractBuilder::BuildOption(const std::string& ticker)
     return retval;
 }
 
-std::vector<std::string> parseCSV(const std::string& in)
+std::vector<std::string> parseCSV(const std::string &in)
 {
     std::vector<std::string> values;
     std::string toProcess = in;
@@ -133,13 +134,13 @@ std::vector<std::string> parseCSV(const std::string& in)
     while (pos != std::string::npos)
     {
         values.push_back(toProcess.substr(0, pos));
-        toProcess = toProcess.substr(pos+1);
+        toProcess = toProcess.substr(pos + 1);
         pos = toProcess.find(",");
     }
     return values;
 }
 
-Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
+Contract ContractBuilder::BuildFuture(const std::string &ticker, time_t now)
 {
     Contract retval;
     retval.symbol = ticker;
@@ -167,7 +168,7 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
         temp_date += month;
         retval.localSymbol = "";
         retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, temp_date);
-        logger->debug("ContractBuilder", "BuildFuture: upping the contract month for " + ticker + " to " + retval.lastTradeDateOrContractMonth);
+        //logger->debug("ContractBuilder", "BuildFuture: upping the contract month for " + ticker + " to " + retval.lastTradeDateOrContractMonth);
         det = GetDetails(retval);
         if (det.size() > 0)
             currDetails = det[0];
@@ -180,7 +181,7 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
     time_t expiry = to_time_t(currDetails.contract.lastTradeDateOrContractMonth);
     bool firstTry = true;
     int16_t multiplier = 1;
-    while( !calendar.IsLiquid(ticker, expiry, now ) )
+    while (!calendar.IsLiquid(ticker, expiry, now))
     {
         firstTry = false;
         // get next contract
@@ -207,17 +208,31 @@ Contract ContractBuilder::BuildFuture(const std::string& ticker, time_t now)
     return retval;
 }
 
-std::string to_string(const Contract& in)
+std::string to_string(const Contract &in)
 {
     std::stringstream ss;
-    ss << "localSymbol: " << in.localSymbol
-        << " symbol: " << in.symbol
-        << " conId " << in.conId
-        << " lastTradeDateOrContractMonth: " << in.lastTradeDateOrContractMonth
-        << " currency: " << in.currency
-        << " secType: " << in.secType
-        << " exchange: " << in.exchange;
+    ss << "localSymbol: [" << in.localSymbol
+       << "] symbol: [" << in.symbol
+       << "] conId " << in.conId
+       << " lastTradeDateOrContractMonth: " << in.lastTradeDateOrContractMonth
+       << " currency: " << in.currency
+       << " secType: " << in.secType
+       << " exchange: " << in.exchange;
     return ss.str();
+}
+
+ContractDetails ContractBuilder::GetStockDetails(const std::string &ticker)
+{
+    Contract retval;
+    retval.symbol = ticker;
+    retval.localSymbol = ticker;
+    retval.secType = "STK";
+    retval.exchange = "SMART";
+    retval.currency = "USD";
+    auto vec = GetDetails(retval);
+    if (vec.size() > 0)
+        return vec[0];
+    return ContractDetails{};
 }
 
 std::vector<SecurityDefinitionOptionParameter> ContractBuilder::GetOptionParameters(const Contract& opt)
@@ -254,7 +269,7 @@ std::vector<ContractDetails> ContractBuilder::GetDetails(const Contract& in)
         waitSeconds = 60;
     auto fut = ib->GetContractDetails(in);
     try {
-        logger->debug("ContractBuilder", "GetDetails: waiting for future for " + std::to_string(waitSeconds) + " seconds.");
+        //logger->debug("ContractBuilder", "GetDetails: waiting for future for " + std::to_string(waitSeconds) + " seconds.");
         auto result = fut.wait_for(std::chrono::seconds(waitSeconds));
         if (result == std::future_status::timeout)
         {
@@ -263,18 +278,16 @@ std::vector<ContractDetails> ContractBuilder::GetDetails(const Contract& in)
         }
         if (result == std::future_status::deferred)
         {
-            logger->error("ContractBuilder", "GetDetails: future deferred retrieving contract " + in.symbol );
+            logger->error("ContractBuilder", "GetDetails: future deferred retrieving contract " + in.symbol);
         }
-        logger->debug("ContractBuilder", "GetDetails: Future set, returning");
         return fut.get();
-    } catch(const std::exception& e)
+    }
+    catch (const std::exception &e)
     {
-        logger->error("ContractBuilder", std::string("GetDetails: exception retrieving contract: ") + e.what() );
+        logger->error("ContractBuilder", std::string("GetDetails: exception retrieving contract: ") + e.what());
         logger->error("ContractBuilder", "Contract: " + to_string(in));
         return std::vector<ContractDetails>{};
     }
 }
 
 } // namespace ib_helper
-
-

@@ -21,3 +21,18 @@ time_t to_next_friday(time_t in);
 
 time_t to_4pm_ny(time_t in);
 
+#ifdef MOCK_TIME
+
+time_t mock_time;
+
+void set_current_time(time_t in) { mock_time = in; }
+time_t current_time() { return mock_time; }
+
+#else
+
+time_t current_time()
+{
+    return ::time(nullptr);
+}
+
+#endif
