@@ -38,4 +38,36 @@ time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute)
     return mktime(&today);
 }
 
+time_t mock_time;
 
+void set_current_time(time_t in) { mock_time = in; }
+
+time_t current_time()
+{
+    if (mock_time > 0)
+        return mock_time;
+    return ::time(nullptr);
+}
+
+std::pair<uint16_t, uint16_t> split_time(const std::string& in)
+{
+    std::pair<uint16_t, uint16_t> retval;
+    // find the colon
+    auto pos = in.find(":");
+    if (pos != std::string::npos && pos >= 2)
+    {
+        retval.first = strtol(in.substr(pos - 2, 2).c_str(), nullptr, 10);
+        retval.second = strtol(in.substr(pos+1).c_str(), nullptr, 10);
+    }
+    return retval;
+}
+
+std::time_t to_time_t(const std::string& in, std::time_t now)
+{
+    std::pair<uint16_t, uint16_t> hhmm = split_time(in);
+    auto tm = *gmtime(&now);
+    tm.tm_hour = hhmm.first;
+    tm.tm_min = hhmm.second;
+    tm.tm_sec = 0;
+    return mktime(&tm);
+}
