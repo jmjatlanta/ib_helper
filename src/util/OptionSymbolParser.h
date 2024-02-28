@@ -27,13 +27,23 @@ class OptionDetails
     */
     OptionDetails(const std::string& occSymbol)
     {
-        underlying = stringhelper::trim(occSymbol.substr(0, 6));
-        expiry = occSymbol.substr(6, 6);
-        if (occSymbol.substr(12, 1) == "P")
-            type = Type::PUT;
-        if (occSymbol.substr(12, 1) == "C")
-            type = Type::CALL;
-        strikePrice = strtoll(occSymbol.substr(13).c_str(), nullptr, 10) / (double)1000; 
+        if (occSymbol.size() > 15)
+        {
+            underlying = stringhelper::trim(occSymbol.substr(0, 6));
+            expiry = occSymbol.substr(6, 6);
+            if (occSymbol.substr(12, 1) == "P")
+                type = Type::PUT;
+            if (occSymbol.substr(12, 1) == "C")
+                type = Type::CALL;
+            strikePrice = strtoll(occSymbol.substr(13).c_str(), nullptr, 10) / (double)1000; 
+        }
+        else
+        {
+            underlying = occSymbol;
+            expiry = "";
+            type = Type::UNKNOWN;
+            strikePrice = 0.0;
+        }
     }
 
     OptionDetails(const std::string& und, std::string exp, Type typ, double price)
