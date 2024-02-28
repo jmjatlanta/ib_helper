@@ -21,10 +21,22 @@ time_t to_next_friday(time_t in);
 
 time_t to_4pm_ny(time_t in);
 
-#ifdef MOCK_TIME
+/***
+ * @param in a time as a string in the format "HH:MM"
+ * @param now a date/time to be adjusted
+ * @return now, adjusted by in
+*/
+std::time_t to_time_t(const std::string& in, std::time_t now);
+/**
+ * @brief split a string "HH:MM" into their 2 parts
+ * 
+ * @param in  the string
+ * @return  the two values
+ */
+std::pair<uint16_t, uint16_t> split_time(const std::string& in);
 
-time_t mock_time;
-void set_current_time(time_t in) { mock_time = in; }
+#ifdef MOCK_TIME
+void set_current_time(time_t in);
 #endif
 
 time_t current_time();
