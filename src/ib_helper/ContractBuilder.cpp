@@ -1,6 +1,6 @@
 #include "ContractBuilder.hpp"
 #include "ContractRolloverCalendar.hpp"
-
+#include "../util/StringHelper.hpp"
 #include <iomanip>
 #include <iostream>
 #include <algorithm>
@@ -80,27 +80,6 @@ struct OptionDetails
     OptionType type = OptionType::UNKNOWN;
 };
 
-inline std::string& ltrim(std::string& in)
-{
-    in.erase(in.begin(), std::find_if(in.begin(), in.end(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }));
-    return in;
-}
-inline std::string& rtrim(std::string& in)
-{
-    in.erase(std::find_if(in.rbegin(), in.rend(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }).base(), in.end());
-    return in;
-}
-
-inline std::string trim(const std::string& in)
-{
-    std::string retval = in;
-    return rtrim(ltrim(retval));
-}
-
 OptionDetails getDetails(const std::string& in)
 {
     OptionDetails retval;
@@ -111,7 +90,7 @@ OptionDetails getDetails(const std::string& in)
         return retval;
     }
     retval.underlying = in.substr(0, pos);
-    std::string remainder = trim(in.substr(pos));
+    std::string remainder = stringhelper::trim(in.substr(pos));
     pos = remainder.find("P");
     if (pos == std::string::npos)
     {
