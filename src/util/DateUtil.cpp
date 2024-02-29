@@ -51,12 +51,16 @@ time_t to_next_friday(time_t in)
 time_t to_4pm_ny(time_t in)
 {
     auto tm = *gmtime(&in);
-    tm.tm_gmtoff = 0;
-    tm.tm_zone = "Etc/UTC";
+    //tm.tm_gmtoff = 0;
+    //tm.tm_zone = "Etc/UTC";
     tm.tm_hour = 21;
     tm.tm_min = 0;
     tm.tm_sec = 0;
+#ifdef _WIN32
+    return _mkgmtime(&tm);
+#else
     return timegm(&tm);
+#endif
 }
 
 time_t mock_time;
