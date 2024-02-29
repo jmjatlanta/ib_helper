@@ -467,7 +467,7 @@ void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionI
 }
 
 uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
-        const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize)
+        const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize, bool rth)
 {
     if (ibClient == nullptr)
         return 0;
@@ -479,7 +479,7 @@ uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, Histor
         std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
         historicalDataHandlers[id] = handler;
     }
-    ibClient->reqHistoricalData(id, contract, endDateTime, timePeriod, barSize, whatToShow, 0, 2, endDateTime.empty(), nullptr);
+    ibClient->reqHistoricalData(id, contract, endDateTime, timePeriod, barSize, whatToShow, rth, 2, endDateTime.empty(), nullptr);
     return id;
 }
 

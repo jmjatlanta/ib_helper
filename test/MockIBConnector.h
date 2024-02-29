@@ -33,7 +33,7 @@ class MockIBConnector : public ib_helper::IBConnector
     uint32_t RequestExecutionReports(const ExecutionFilter& filter) override;
     void AddConnectionMonitor(ib_helper::IBConnectionMonitor* in) override;
     uint32_t SubscribeToHistoricalData(const Contract& contract, ib_helper::HistoricalDataHandler* handler,
-            const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize) override;
+            const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize, bool rth = true) override;
     void UnsubscribeFromHistoricalData(uint32_t subId) override;
     uint32_t SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
         const std::string& tickType, int numberOfTicks, bool ignoreSize) override;
