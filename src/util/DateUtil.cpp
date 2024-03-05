@@ -78,9 +78,9 @@ std::pair<uint16_t, uint16_t> split_time(const std::string& in)
     std::pair<uint16_t, uint16_t> retval;
     // find the colon
     auto pos = in.find(":");
-    if (pos != std::string::npos && pos >= 2)
+    if (pos != std::string::npos && pos >= 1)
     {
-        retval.first = strtol(in.substr(pos - 2, 2).c_str(), nullptr, 10);
+        retval.first = strtol(in.substr(0, pos).c_str(), nullptr, 10);
         retval.second = strtol(in.substr(pos+1).c_str(), nullptr, 10);
     }
     return retval;
