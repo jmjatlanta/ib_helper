@@ -16,6 +16,13 @@ static std::time_t to_time_t(const std::string& in, const std::string& format = 
     return mktime(&t);
 }
 
+static std::string to_upper(const std::string& in)
+{
+    std::string retval = in;
+    std::transform(retval.begin(), retval.end(), retval.begin(), ::toupper);
+    return retval;
+}
+
 ContractBuilder::ContractBuilder(IBConnector* conn) : ib(conn), logger(util::SysLogger::getInstance()) {}
 
 Contract ContractBuilder::Build(const std::string& secType, const std::string& ticker)
@@ -42,9 +49,9 @@ Contract ContractBuilder::BuildForex(const std::string& ticker)
 	Contract c;
     if (pos != std::string::npos)
     {
-        c.symbol = ticker.substr(0, pos);
+        c.symbol = to_upper(ticker.substr(0, pos));
         c.secType = "CASH";
-        c.currency = ticker.substr(pos+1);
+        c.currency = to_upper(ticker.substr(pos+1));
         c.exchange = "IDEALPRO";
     }
 	return c;	
@@ -53,8 +60,8 @@ Contract ContractBuilder::BuildForex(const std::string& ticker)
 Contract ContractBuilder::BuildStock(const std::string& ticker)
 {
     Contract retval;
-    retval.symbol = ticker;
-    retval.localSymbol = ticker;
+    retval.symbol = to_upper(ticker);
+    retval.localSymbol = to_upper(ticker);
     retval.secType = "STK";
     retval.exchange = "SMART";
     retval.currency = "USD";
@@ -86,10 +93,10 @@ OptionDetails getDetails(const std::string& in)
     size_t pos = in.find(" ");
     if (pos == std::string::npos)
     {
-        retval.underlying = in;
+        retval.underlying = to_upper(in);
         return retval;
     }
-    retval.underlying = in.substr(0, pos);
+    retval.underlying = to_upper(in.substr(0, pos));
     std::string remainder = stringhelper::trim(in.substr(pos));
     pos = remainder.find("P");
     if (pos == std::string::npos)
@@ -143,7 +150,7 @@ std::vector<std::string> parseCSV(const std::string &in)
 Contract ContractBuilder::BuildFuture(const std::string &ticker, time_t now)
 {
     Contract retval;
-    retval.symbol = ticker;
+    retval.symbol = to_upper(ticker);
     retval.localSymbol = "";
     retval.secType = "FUT";
     retval.currency = "USD";
@@ -224,8 +231,8 @@ std::string to_string(const Contract &in)
 ContractDetails ContractBuilder::GetStockDetails(const std::string &ticker)
 {
     Contract retval;
-    retval.symbol = ticker;
-    retval.localSymbol = ticker;
+    retval.symbol = to_upper(ticker);
+    retval.localSymbol = to_upper(ticker);
     retval.secType = "STK";
     retval.exchange = "SMART";
     retval.currency = "USD";
