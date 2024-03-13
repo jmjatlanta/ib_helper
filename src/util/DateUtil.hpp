@@ -17,9 +17,15 @@ std::string getDate();
  */
 time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute);
 
+bool is_monday(time_t in);
+bool is_friday(time_t in);
+
+time_t to_previous_friday(time_t in);
 time_t to_next_friday(time_t in);
 
+time_t to_930am_ny(time_t in);
 time_t to_4pm_ny(time_t in);
+time_t to_midnight_ny(time_t in);
 
 /***
  * @param in a time as a string in the format "HH:MM"

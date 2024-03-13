@@ -38,14 +38,48 @@ time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute)
     return mktime(&today);
 }
 
+bool is_monday(time_t in)
+{
+    auto tm = *gmtime(&in);
+    return tm.tm_wday == 1;
+}
+
+bool is_friday(time_t in)
+{
+    auto tm = *gmtime(&in);
+    return tm.tm_wday == 5;
+}
+
+time_t to_previous_friday(time_t in)
+{
+    auto tm = *gmtime(&in);
+    if (tm.tm_wday < 6) // sun through fri
+        tm.tm_mday -= (2 + tm.tm_wday);
+    tm.tm_mday -= 1; // sat
+    return mktime(&tm);
+}
 time_t to_next_friday(time_t in)
 {
     auto tm = *gmtime(&in);
-    if (tm.tm_wday < 5)
+    if (tm.tm_wday < 5) // sun through thurs
         tm.tm_mday += (5 - tm.tm_wday);
-    if (tm.tm_wday == 6)
-        tm.tm_mday += 4;
+    tm.tm_mday += 7 - (tm.tm_wday-5); // fri and sat
     return mktime(&tm);
+}
+
+time_t to_930am_ny(time_t in)
+{
+    auto tm = *gmtime(&in);
+    //tm.tm_gmtoff = 0;
+    //tm.tm_zone = "Etc/UTC";
+    tm.tm_hour = 14;
+    tm.tm_min = 30;
+    tm.tm_sec = 0;
+#ifdef _WIN32
+    return _mkgmtime(&tm);
+#else
+    return timegm(&tm);
+#endif
 }
 
 time_t to_4pm_ny(time_t in)
@@ -54,6 +88,21 @@ time_t to_4pm_ny(time_t in)
     //tm.tm_gmtoff = 0;
     //tm.tm_zone = "Etc/UTC";
     tm.tm_hour = 21;
+    tm.tm_min = 0;
+    tm.tm_sec = 0;
+#ifdef _WIN32
+    return _mkgmtime(&tm);
+#else
+    return timegm(&tm);
+#endif
+}
+
+time_t to_midnight_ny(time_t in)
+{
+    auto tm = *gmtime(&in);
+    //tm.tm_gmtoff = 0;
+    //tm.tm_zone = "Etc/UTC";
+    tm.tm_hour = 5;
     tm.tm_min = 0;
     tm.tm_sec = 0;
 #ifdef _WIN32
