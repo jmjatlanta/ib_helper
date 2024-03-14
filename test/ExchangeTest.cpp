@@ -65,13 +65,22 @@ TEST(ExchangeTest, ChicagoEarly)
     EXPECT_EQ(exch.marketClose(today), 1678222800); // 3:00PM CST
 }
 
+class MockExchange : public Exchange
+{
+    public:
+    MockExchange(const ContractDetails& contractDetails) : Exchange(contractDetails) {}
+
+    void setStartTime(const std::string& in) { Exchange::setStartTime(in); }
+    void setStopTime(const std::string& in) { Exchange::setStopTime(in); }
+};
+
 TEST(ExchangeTest, ManualOpenClose)
 {
     ContractDetails contractDetails;
     contractDetails.timeZoneId = "America/New_York";
     // LiquidHours can be in 2 formats
     contractDetails.liquidHours = "20230307:0830-20230307:1500;20230308:0830-20320308:1500"; // format B
-    Exchange exch(contractDetails);
+    MockExchange exch(contractDetails);
     exch.setStartTime("07:00");
     exch.setStopTime("11:00");
 
@@ -79,4 +88,29 @@ TEST(ExchangeTest, ManualOpenClose)
     EXPECT_FALSE(exch.isWithinRange(today)); // 11:31am
     exch.setStopTime("12:00");
     EXPECT_TRUE(exch.isWithinRange(today)); // 11:31am
+}
+
+ContractDetails buildStockContractDetails(const std::string& ticker)
+{
+    ContractDetails contractDetails;
+    contractDetails.contract.symbol = ticker;
+    contractDetails.contract.localSymbol = ticker;
+    contractDetails.validExchanges = "SMART,AMEX,NYSE,CBOE,PHLX,ISE,CHX,ARCA,ISLAND,DRCTEDGE,BEX,BATS,EDGEA,BYX,IEX,EDGX,FOXRIVER,PEARL,NYSENAT,LTSE,MEMX,TPLUS1,IBEOS,OVERNIGHT,PSX";
+    contractDetails.tradingHours = "20240314:0400-20240314:2000;20240315:0400-20240315:2000;20240316:CLOSED;20240317:CLOSED;20240318:0400-20240318:2000;20240319:0400-20240319:2000";
+    contractDetails.liquidHours = "20240314:0930-20240314:1600;20240315:0930-20240315:1600;20240316:CLOSED;20240317:CLOSED;20240318:0930-20240318:1600;20240319:0930-20240319:1600";
+    contractDetails.timeZoneId = "US/Eastern";
+    return contractDetails;
+}
+
+TEST(ExchangeTest, PreviousTradingDay)
+{
+    std::time_t currentTime = 1710422529; // 2024-3-14 13:22:09 GMT (8:23 Panama, 9:23 NY)
+    std::time_t laterTime = 1710423363; // 2024-3-14 13:36:03 GMT (8:36 Panama, 9:36 NY)
+    ContractDetails contractDetails = buildStockContractDetails("REAL");
+    Exchange exchange(contractDetails);
+    EXPECT_FALSE( exchange.isWithinRange(currentTime) );
+    EXPECT_EQ( exchange.premarketStart(currentTime), 1710388800); // 2024-03-14 04:00:00 (Midnight NY)
+    EXPECT_EQ( exchange.marketOpen(currentTime), 1710423000); // 2024-03-14 13:30:00 (9:30AM NY)
+    EXPECT_EQ( exchange.marketClose(currentTime), 1710446400); // 2024-03-14 20:00:00 (4PM NY)
+    EXPECT_TRUE( exchange.isWithinRange(laterTime) );
 }

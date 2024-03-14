@@ -102,6 +102,7 @@ Exchange::Exchange(const ContractDetails& contractDetails)
     // LiquidHours can be in 2 formats
     // 20090507:0700-1830,1830-2330;20090508:CLOSED
     // 20180323:0400-20180323:2000;20180326:0400-20180326:2000
+    tradingHours = contractDetails.tradingHours;
 }
 
 std::chrono::time_point<std::chrono::system_clock> Exchange::midnightAtExchange(time_t today)
