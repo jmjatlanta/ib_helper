@@ -2,6 +2,8 @@
 #include <string>
 #include <ctime>
 
+class Bar; // an IB bar
+
 /***
  * convert today into YYYYMMDD
  * @return string of YYYYMMDD
@@ -33,6 +35,15 @@ time_t to_midnight_ny(time_t in);
  * @return now, adjusted by in
 */
 std::time_t to_time_t(const std::string& in, std::time_t now);
+
+/**
+ * @brief convert a bar time to time_t
+ * 
+ * @param bar the bar
+ * @return the time
+ */
+std::time_t to_time_t(const Bar& bar);
+
 /**
  * @brief split a string "HH:MM" into their 2 parts
  * 
@@ -46,3 +57,10 @@ void set_current_time(time_t in);
 #endif
 
 time_t current_time();
+
+/***
+ * @brief how UTC compares to NY
+ * @param now the time you want to compare
+ * @return the difference between NY and UTC on the date/time given
+*/
+int32_t diff_with_ny(std::time_t now);

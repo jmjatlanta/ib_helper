@@ -1,7 +1,11 @@
 #include "DateUtil.hpp"
+#include "bar.h"
 #include <iomanip>
 #include <sstream>
+//#include <iostream>
 #include <cstring>
+#include "date/tz.h"
+#include <chrono>
 
 /***
  * convert today into YYYYMMDD
@@ -69,47 +73,50 @@ time_t to_next_friday(time_t in)
 
 time_t to_930am_ny(time_t in)
 {
-    auto tm = *gmtime(&in);
-    //tm.tm_gmtoff = 0;
-    //tm.tm_zone = "Etc/UTC";
-    tm.tm_hour = 14;
-    tm.tm_min = 30;
-    tm.tm_sec = 0;
-#ifdef _WIN32
-    return _mkgmtime(&tm);
-#else
-    return timegm(&tm);
-#endif
+    // add 9 1/2 hours
+    return to_midnight_ny(in) + 34200;
 }
 
 time_t to_4pm_ny(time_t in)
 {
+    // add 16 hours
+    return to_midnight_ny(in) + 57600;
+}
+
+int32_t diff_with_ny(std::time_t now)
+{
+    auto utc = std::chrono::system_clock::from_time_t(now);
+    auto ny_time = date::make_zoned("America/New_York", utc);
+    auto cnt = ny_time.get_info().offset;
+    return cnt.count();
+}
+
+uint32_t secs_since_midnight_utc(time_t in)
+{
     auto tm = *gmtime(&in);
-    //tm.tm_gmtoff = 0;
-    //tm.tm_zone = "Etc/UTC";
-    tm.tm_hour = 21;
-    tm.tm_min = 0;
-    tm.tm_sec = 0;
-#ifdef _WIN32
-    return _mkgmtime(&tm);
-#else
-    return timegm(&tm);
-#endif
+    return (tm.tm_hour * 3600) + (tm.tm_min * 60) + tm.tm_sec;
 }
 
 time_t to_midnight_ny(time_t in)
 {
+    int32_t diff = diff_with_ny(in);
+    // NOTE: If the diff_with_ny is greater than the secs since midnight UTC, the day of year rolled over
+    // in UTC, so we'll need to back that out.
+    // convert to midnight UTC
     auto tm = *gmtime(&in);
     //tm.tm_gmtoff = 0;
     //tm.tm_zone = "Etc/UTC";
-    tm.tm_hour = 5;
+    tm.tm_hour = 0;
     tm.tm_min = 0;
     tm.tm_sec = 0;
+    if (secs_since_midnight_utc(in) < (diff * -1))
+        tm.tm_mday--;
 #ifdef _WIN32
-    return _mkgmtime(&tm);
+    time_t temp =  _mkgmtime(&tm);
 #else
-    return timegm(&tm);
+    time_t temp =  timegm(&tm);
 #endif
+    return temp - diff_with_ny(in);
 }
 
 time_t mock_time;
@@ -143,4 +150,28 @@ std::time_t to_time_t(const std::string& in, std::time_t now)
     tm.tm_min = hhmm.second;
     tm.tm_sec = 0;
     return mktime(&tm);
+}
+
+/***
+ * @param bar the bar
+ * @return the time_t of the bar time
+*/
+std::time_t to_time_t(const Bar& bar)
+{
+    // compute time
+    // if > 30000000, the time is time_t
+    time_t l = strtol(bar.time.c_str(), nullptr, 10);
+    if (bar.time.size() == 8)
+    {
+        // convert from YYYYMMDD
+        std::string newTime = bar.time.substr(0,4) + "-" + bar.time.substr(4, 2) + "-" + bar.time.substr(6, 2) + " 09:30:00";
+        std::time_t temp = ::time(nullptr);
+        tm t = *gmtime(&temp);
+        std::istringstream ss(newTime);
+        ss >> std::get_time(&t, "%Y-%m-%d %H:%M:%S");
+        time_t tempTime = mktime(&t);
+        l = to_midnight_ny(tempTime);
+        //std::cout << "Converted " << tempTime  << " to " << l << "\n";
+    }
+    return l;
 }
