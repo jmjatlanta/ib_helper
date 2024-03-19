@@ -2,7 +2,7 @@
 #include <string>
 #include <ctime>
 
-class Bar; // an IB bar
+struct Bar; // an IB bar
 
 /***
  * convert today into YYYYMMDD
