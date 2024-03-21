@@ -11,7 +11,7 @@ namespace ib_helper {
 class ContractBuilder
 {
     public:
-    ContractBuilder(IBConnector* conn);
+    ContractBuilder(IBConnector* conn, bool cacheResults = true);
 
     Contract Build(const std::string& secType, const std::string& ticker);
     Contract Build(SecurityType::Type secType, const std::string& ticker);
@@ -29,9 +29,25 @@ class ContractBuilder
 
     std::vector<ib_helper::SecurityDefinitionOptionParameter> GetOptionParameters(const Contract& opt);
 
+    protected:
+    /***
+     * @param type STK, FUT, etc.
+     * @param ticker the ticker symbol
+     * @return the matching ContractDetails object (check contract.conId for validity)
+    */
+    ContractDetails checkCache(SecurityType::Type type, const std::string& ticker);
+    /***
+     * @brief add a ContractDetails object to the cache
+     * @param type STK, FUT, etc.
+     * @param contractDetails the contract to add
+    */
+    void addToCache(SecurityType::Type type, const ContractDetails& contractDetails);
+
     private:
+    bool cacheEnabled = true;
     IBConnector* ib = nullptr;
     util::SysLogger* logger = nullptr;
+    std::unordered_map<SecurityType::Type, std::unordered_map<std::string, ContractDetails>> contractDetailsCaches;
 };
 
 } // namespace ib_helper

@@ -23,7 +23,8 @@ static std::string to_upper(const std::string& in)
     return retval;
 }
 
-ContractBuilder::ContractBuilder(IBConnector* conn) : ib(conn), logger(util::SysLogger::getInstance()) {}
+ContractBuilder::ContractBuilder(IBConnector* conn, bool cacheResults) 
+        : ib(conn), cacheEnabled(cacheResults), logger(util::SysLogger::getInstance()) {}
 
 Contract ContractBuilder::Build(const std::string& secType, const std::string& ticker)
 {
@@ -57,19 +58,49 @@ Contract ContractBuilder::BuildForex(const std::string& ticker)
 	return c;	
 }
 
+ContractDetails ContractBuilder::checkCache(SecurityType::Type type, const std::string& ticker)
+{
+    if (cacheEnabled)
+    {
+        auto& map = contractDetailsCaches[type];
+        auto pos = map.find(ticker);
+        if (pos != map.end())
+            return (*pos).second;
+    }
+    return ContractDetails{};
+}
+
+void ContractBuilder::addToCache(SecurityType::Type type, const ContractDetails& contractDetails)
+{
+    if (cacheEnabled)
+    {
+        auto& map = contractDetailsCaches[type];
+        auto pos = map.find(contractDetails.contract.symbol);
+        if (pos == map.end())
+            map[contractDetails.contract.symbol] = contractDetails;
+    }
+}
+
 Contract ContractBuilder::BuildStock(const std::string& ticker)
 {
-    Contract retval;
-    retval.symbol = to_upper(ticker);
-    retval.localSymbol = to_upper(ticker);
-    retval.secType = "STK";
-    retval.exchange = "SMART";
-    retval.currency = "USD";
-    // get contract id
-    auto det = GetDetails(retval);
-    if (det.size() > 0)
-        retval.conId = det[0].contract.conId;
-    return retval;
+    ContractDetails det = checkCache(SecurityType::Type::STK, ticker);
+    if (det.contract.conId == 0)
+    {
+        Contract contract;
+        contract.symbol = to_upper(ticker);
+        contract.localSymbol = to_upper(ticker);
+        contract.secType = "STK";
+        contract.exchange = "SMART";
+        contract.currency = "USD";
+        // get contract id
+        auto dets = GetDetails(contract);
+        if (dets.size() > 0)
+        {
+            det = dets[0];
+            addToCache(SecurityType::Type::STK, det);
+        }
+    }
+    return det.contract;
 }
 
 struct OptionDetails
