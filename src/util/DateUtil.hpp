@@ -30,6 +30,13 @@ time_t to_4pm_ny(time_t in);
 time_t to_midnight_ny(time_t in);
 
 /***
+ * @brief remove seconds
+ * @param in the time
+ * @return the time rounded down to the minute
+ */
+time_t to_minute_floor(time_t in);
+
+/***
  * @param in a time as a string in the format "HH:MM"
  * @param now a date/time to be adjusted
  * @return now, adjusted by in

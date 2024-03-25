@@ -83,6 +83,11 @@ time_t to_4pm_ny(time_t in)
     return to_midnight_ny(in) + 57600;
 }
 
+time_t to_minute_floor(time_t in)
+{
+    return (in / 60) * 60;
+}
+
 int32_t diff_with_ny(std::time_t now)
 {
     auto utc = std::chrono::system_clock::from_time_t(now);
