@@ -96,6 +96,11 @@ int32_t diff_with_ny(std::time_t now)
     return cnt.count();
 }
 
+std::time_t to_ny_time(std::time_t now)
+{
+    return now - diff_with_ny(now);
+}
+
 uint32_t secs_since_midnight_utc(time_t in)
 {
     auto tm = *gmtime(&in);
@@ -147,14 +152,24 @@ std::pair<uint16_t, uint16_t> split_time(const std::string& in)
     return retval;
 }
 
+/***
+ * @brief given a string in the format HH:MM convert to time_t
+ * @param in the string in the format HH:MM, assuming NY timezone
+ * @param now the current system time
+ * @return a time_t that represents the date of (now) with the time of (in)
+ */
 std::time_t to_time_t(const std::string& in, std::time_t now)
 {
     std::pair<uint16_t, uint16_t> hhmm = split_time(in);
+    // adjust for GMT
+    int32_t diff = diff_with_ny(now);
+    hhmm.first -= diff / 3600;
+    hhmm.second -= diff % 3600;
     auto tm = *gmtime(&now);
     tm.tm_hour = hhmm.first;
     tm.tm_min = hhmm.second;
     tm.tm_sec = 0;
-    return mktime(&tm);
+    return timegm(&tm);
 }
 
 /***

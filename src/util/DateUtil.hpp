@@ -37,10 +37,11 @@ time_t to_midnight_ny(time_t in);
 time_t to_minute_floor(time_t in);
 
 /***
- * @param in a time as a string in the format "HH:MM"
- * @param now a date/time to be adjusted
- * @return now, adjusted by in
-*/
+ * @brief given a string in the format HH:MM convert to time_t
+ * @param in the string, with the hour and minute in the NY time zone
+ * @param now the current system time
+ * @return a time_t that represents the date of (now) with the time of (in)
+ */
 std::time_t to_time_t(const std::string& in, std::time_t now);
 
 /**
