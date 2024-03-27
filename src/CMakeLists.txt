@@ -27,5 +27,6 @@ target_include_directories( ib_helper PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/../date/include 
     ${IB_CLIENT_DIR}
     ${Boost_INCLUDE_DIR}
+    ${CURL_INCLUDE_DIRS}
 )
 set_target_properties(ib_helper PROPERTIES VERSION ${PROJECT_VERSION})
