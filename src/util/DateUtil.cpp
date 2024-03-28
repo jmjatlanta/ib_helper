@@ -7,6 +7,10 @@
 #include "date/tz.h"
 #include <chrono>
 
+#ifdef _WIN32
+#define timegm _mkgmtime
+#endif
+
 /***
  * convert today into YYYYMMDD
  * @return string of YYYYMMDD
@@ -121,11 +125,7 @@ time_t to_midnight_ny(time_t in)
     tm.tm_sec = 0;
     if (secs_since_midnight_utc(in) < (diff * -1))
         tm.tm_mday--;
-#ifdef _WIN32
-    time_t temp =  _mkgmtime(&tm);
-#else
     time_t temp =  timegm(&tm);
-#endif
     return temp - diff_with_ny(in);
 }
 
