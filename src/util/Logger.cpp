@@ -24,16 +24,29 @@ Logger::Logger() {}
 
 Logger::~Logger() { }
 
-void Logger::log_to_file(const std::string& fileNamePrefix)
+static void add_file_log(const std::string& fullFileNamePrefix)
 {
     boost::log::add_file_log(
-            boost::log::keywords::file_name = fileNamePrefix + "_%N.log",
+            boost::log::keywords::file_name = fullFileNamePrefix + "_%N.log",
             boost::log::keywords::rotation_size = 10 * 1024 * 1024,
             boost::log::keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0,0,0),
             boost::log::keywords::format = "[%TimeStamp%]: %Message%",
             boost::log::keywords::auto_flush = true, // write immediately
-            boost::log::keywords::open_mode = std::ios_base::app
+            boost::log::keywords::open_mode = std::ios_base::app,
+            boost::log::keywords::max_files = 3 // no more than fullFileNamePrefix_2.log
             );
+}
+
+void Logger::log_to_file(const std::string& fileNamePrefix)
+{
+    add_file_log(fileNamePrefix);
+}
+
+void Logger::log_to_file(const std::filesystem::path& dir, const std::string& fileNamePrefix)
+{
+    std::filesystem::path fullFilename = dir;
+    fullFilename /= fileNamePrefix;
+    add_file_log(fullFilename.string());
 }
 
 void Logger::trace(const std::string& msg) { BOOST_LOG_TRIVIAL(trace) << msg; }

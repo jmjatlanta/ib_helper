@@ -1,12 +1,11 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include <filesystem>
 
 /***
  * Handle logging
  */
-
-//#include <boost/log/trivial.hpp>
 
 class Logger
 {
@@ -14,7 +13,17 @@ class Logger
     Logger();
     ~Logger();
     static Logger* getInstance();
+    /***
+     * @brief send log message to a file
+     * @param filenamePrefix the first part of the filename
+    */
     void log_to_file(const std::string& filenamePrefix);
+    /***
+     * @brief send log message to a file
+     * @param dir the directory where the log file will be placed
+     * @param filenamePrefix the first part of the filename
+    */
+    void log_to_file(const std::filesystem::path& dir, const std::string& filenamePrefix);
     void trace(const std::string& msg);
     void trace(const std::string& category, const std::string& msg); 
     void debug(const std::string& msg);
