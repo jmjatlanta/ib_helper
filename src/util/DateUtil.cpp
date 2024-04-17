@@ -142,12 +142,20 @@ time_t current_time()
 std::pair<uint16_t, uint16_t> split_time(const std::string& in)
 {
     std::pair<uint16_t, uint16_t> retval;
+    retval.first = 0;
+    retval.second = 0;
     // find the colon
     auto pos = in.find(":");
     if (pos != std::string::npos && pos >= 1)
     {
         retval.first = strtol(in.substr(0, pos).c_str(), nullptr, 10);
         retval.second = strtol(in.substr(pos+1).c_str(), nullptr, 10);
+    }
+    else
+    {
+        // no colon
+        if (!in.empty())
+            retval.first = strtol(in.c_str(), nullptr, 10);
     }
     return retval;
 }
