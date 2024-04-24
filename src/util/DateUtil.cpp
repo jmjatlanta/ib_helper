@@ -2,7 +2,7 @@
 #include "bar.h"
 #include <iomanip>
 #include <sstream>
-//#include <iostream>
+#include <utility>
 #include <cstring>
 #include "date/tz.h"
 #include <chrono>
@@ -158,6 +158,64 @@ std::pair<uint16_t, uint16_t> split_time(const std::string& in)
             retval.first = strtol(in.c_str(), nullptr, 10);
     }
     return retval;
+}
+
+template<class T>
+std::string leadZeros(T num, uint16_t numPlaces)
+{
+    std::string result = std::to_string(num);
+    while (numPlaces > result.size())
+        result = "0" + result;
+    return result;
+}
+
+/****
+ * @brief clean up time
+ * @note valid values are [0-23]:[0-59]
+ * @param in the time in the format HH:MM
+ * @param pm TRUE if we believe this is PM
+ * @return the time in 24 hour format. if in.empty(), returns empty string
+ */
+std::string cleanTime(const std::string& in, bool pm)
+{
+    if (in.empty())
+        return in;
+    auto timePair = ::split_time(in);
+    if (timePair.first == 12)
+    {
+        // AM/PM has to rely on passed in parameter
+        if (!pm)
+            timePair.first = 0;
+    }
+    else
+    {
+        if (timePair.first < 12)
+        {
+            if (pm)
+                timePair.first += 12;
+            if (timePair.first == 24)
+                timePair.first = 0; 
+        }
+    }
+    return std::to_string(timePair.first) + ":" + leadZeros(timePair.second, 2);
+}
+
+/****
+ * @brief convert time string in format HH:MM to 12 hour format
+ * @param in the input
+ * @returns the time and a boolean that is TRUE if the time is PM
+ */
+std::pair<std::string, bool> to_12hr_format(const std::string& in)
+{
+    std::string cleaned = in;
+    auto pair = split_time(cleaned);
+    bool pm = (pair.first >= 12);
+    if (pm && pair.first > 12)
+        pair.first -= 12;
+    if (pair.first == 0)
+        pair.first = 12;
+    cleaned = std::to_string(pair.first) + ":" + leadZeros(pair.second, 2);
+    return std::make_pair(cleaned, pm );
 }
 
 /***

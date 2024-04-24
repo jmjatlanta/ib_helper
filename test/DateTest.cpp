@@ -63,3 +63,36 @@ TEST(dateutil, bars)
     minute.time = "1711512000";
     EXPECT_EQ( to_time_t(minute), 1711512000); // 2024-03-27 midnight NY
 }
+
+TEST(dateutil, cleanTime)
+{
+    EXPECT_TRUE(cleanTime(std::string{}, true).empty());
+    EXPECT_TRUE( cleanTime(std::string{}, false).empty() );
+    EXPECT_EQ( cleanTime("0:0", false), "0:00");
+    EXPECT_EQ( cleanTime("0:00", false), "0:00");
+    EXPECT_EQ( to_12hr_format("0:00").first, "12:00");
+    EXPECT_EQ( to_12hr_format("0:00").second, false);
+    EXPECT_EQ( cleanTime("0:00", true), "12:00");
+    EXPECT_EQ( cleanTime("0:01", false), "0:01");
+    EXPECT_EQ( cleanTime("0:01", true), "12:01");
+    EXPECT_EQ( to_12hr_format("0:01").first, "12:01");
+    EXPECT_EQ( to_12hr_format("0:01").second, false);
+    EXPECT_EQ( cleanTime("1:01", false), "1:01");
+    EXPECT_EQ( to_12hr_format("1:01").first, "1:01");
+    EXPECT_EQ( to_12hr_format("1:01").second, false);
+    EXPECT_EQ( cleanTime("1:01", true), "13:01");
+    EXPECT_EQ( to_12hr_format("13:01").first, "1:01");
+    EXPECT_EQ( to_12hr_format("13:01").second, true);
+    EXPECT_EQ( cleanTime("12:00", false), "0:00");
+    EXPECT_EQ( to_12hr_format("12:00").first, "12:00");
+    EXPECT_EQ( to_12hr_format("12:00").second, true);
+    EXPECT_EQ( cleanTime("12:01", false), "0:01");
+    EXPECT_EQ( to_12hr_format("12:01").first, "12:01");
+    EXPECT_EQ( to_12hr_format("12:01").second, true);
+    EXPECT_EQ( cleanTime("12:00", true), "12:00");
+    EXPECT_EQ( cleanTime("12:01", true), "12:01");
+    EXPECT_EQ( cleanTime("13:00", true), "13:00");
+    EXPECT_EQ( cleanTime("13:00", false), "13:00");
+    EXPECT_EQ( to_12hr_format("13:01").first, "1:01");
+    EXPECT_EQ( to_12hr_format("13:01").second, true);
+}

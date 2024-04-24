@@ -464,6 +464,7 @@ void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionI
     }
     if (ibClient != nullptr)
         ibClient->cancelHistoricalData(historicalSubscriptionId);
+    //logger->debug("IBConnector", "UnsubscribeFromHistoricalData: " + std::to_string(historicalSubscriptionId));
 }
 
 uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
@@ -479,7 +480,13 @@ uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, Histor
         std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
         historicalDataHandlers[id] = handler;
     }
-    ibClient->reqHistoricalData(id, contract, endDateTime, timePeriod, barSize, whatToShow, rth, 2, endDateTime.empty(), nullptr);
+    //logger->debug("IBConnector", "SubscribeToHistoricalData: subscribing with id " + std::to_string(id)
+    //        + " for " + contract.symbol
+    //        + " endDateTime: " + endDateTime
+    //        + " timePeriod: " + timePeriod
+    //        + " barSize: " + barSize
+    //        + " rth: " + (rth ? "true" : "false"));
+    ibClient->reqHistoricalData(id, contract, endDateTime, timePeriod, barSize, whatToShow, rth, 2, endDateTime.empty(), TagValueListSPtr());
     return id;
 }
 
@@ -831,6 +838,7 @@ void IBConnector::managedAccounts( const std::string& accountsList)
 void IBConnector::receiveFA(faDataType pFaDataType, const std::string& cxml){}
 void IBConnector::historicalData(TickerId reqId, const Bar& bar)
 {
+    //logger->debug("IBConnector", "historicalData called for id " + std::to_string(reqId));
     std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
     auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
@@ -838,6 +846,7 @@ void IBConnector::historicalData(TickerId reqId, const Bar& bar)
 }
 void IBConnector::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr)
 {
+    //logger->debug("IBConnector", "historicalDataEnd called for id " + std::to_string(reqId));
     std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
     auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
