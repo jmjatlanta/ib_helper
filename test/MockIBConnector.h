@@ -42,9 +42,26 @@ class MockIBConnector : public ib_helper::IBConnector
     // bars
     /***
      * Send a historical bar as if it came from IB
+     * @note this is sent on the same thread, which may hide threading issues
+     * @param subId the subscription id
+     * @param in the bar
+     * @bar inPast if TRUE will send historicalData, FALSE will send historicalDataUpdate
      */
     void SendBar(int subId, const Bar& in, bool inPast = false);
+    /****
+     * @brief send bar and tick data via handlers
+     * @param barSubId the bar subscription id
+     * @param tickSubId the tick subscription id
+     * @param bidAskSubId the Bid/Ask subscription id
+     * @param bar the bar to use for data
+     * @param inPast if TRUE will send via hitoricalData(), FALSE will send via historicalDataUpdate
+     */
     void SendBarWithTick(int barSubId, int tickSubId, int bidAskSubId, const Bar& bar, bool inPast = false);
+    /***
+     * Send historicalDataEnd to handlers
+     * @param subId the subscription id
+     */
+    void SendHistoricalDataEnd(int subId);
     void SendTick(int subId, double lastPrice);
     void SendBidAsk(uint32_t subscriptionId, double bid, double ask);
     // orders
