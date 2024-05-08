@@ -145,6 +145,13 @@ void MockIBConnector::SendBarWithTick(int barSubId, int tickSubId, int bidAskSub
     }
 }
 
+void MockIBConnector::SendHistoricalDataEnd(int subId)
+{
+    auto itr = historicalDataHandlers.find(subId);
+    if (itr != historicalDataHandlers.end())
+        (*itr).second->OnHistoricalDataEnd(subId, "", "");
+}
+
 void MockIBConnector::SendBar(int subId, const Bar& in, bool inPast)
 {
     try
@@ -154,7 +161,7 @@ void MockIBConnector::SendBar(int subId, const Bar& in, bool inPast)
             handler->OnHistoricalData(subId, in);
         else
             handler->OnHistoricalDataUpdate(subId, in);
-    } catch (const std::out_of_range& oor)
+    } catch (const std::out_of_range& oor) // subId not found
     {
     }
 }
