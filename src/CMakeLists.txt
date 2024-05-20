@@ -18,7 +18,11 @@ file(GLOB date_src "../date/src/*.cpp" )
 file(GLOB ib_src ${IB_CLIENT_DIR}/*.cpp)
 
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
-find_package(CURL REQUIRED)
+
+if(MSVC)
+else(MSVC)
+    find_package(CURL REQUIRED)
+endif(MSVC)
 
 add_library( ib_api ${ib_src} )
 
