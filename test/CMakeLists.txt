@@ -15,7 +15,6 @@ file(GLOB ib_helper "../src/ib_helper/*.cpp" )
 file(GLOB util_src "../src/util/*.cpp" )
 file(GLOB test_src "./*.cpp" )
 file(GLOB date_src "../date/src/*.cpp" )
-file(GLOB ib_src "${IB_CLIENT_DIR}/*.cpp")
 
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 include(FetchContent)
@@ -25,16 +24,23 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-add_executable( ib_helper_tests ${test_src} ${ib_src} ${util_src} ${ib_helper} ${date_src} )
+add_executable( ib_helper_tests 
+    ${test_src} 
+    ${util_src} 
+    ${ib_helper} 
+    ${date_src} 
+)
+
 target_include_directories(ib_helper_tests PRIVATE 
-    ${CMAKE_CURRENT_LIST_DIR}/../date/include
-    ${CMAKE_SOURCE_DIR}/date/include
-    ${CMAKE_SOURCE_DIR}/../src/ib_helper
+    ${CMAKE_CURRENT_SOURCE_DIR}/../date/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper
     ${IB_CLIENT_DIR}
 )
 
 target_link_libraries(ib_helper_tests 
+    ib_helper
     dfp
+    ib_api
     GTest::gtest
     GTest::gtest_main
     Boost::log
@@ -44,3 +50,4 @@ target_link_libraries(ib_helper_tests
 if(MSVC)
     target_compile_definitions(ib_helper_tests PRIVATE NOMINMAX)
 endif(MSVC)
+
