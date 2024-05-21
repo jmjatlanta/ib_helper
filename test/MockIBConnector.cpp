@@ -154,15 +154,14 @@ void MockIBConnector::SendHistoricalDataEnd(int subId)
 
 void MockIBConnector::SendBar(int subId, const Bar& in, bool inPast)
 {
-    try
+    auto itr = historicalDataHandlers.find(subId);
+    if (itr != historicalDataHandlers.end())
     {
-        ib_helper::HistoricalDataHandler* handler = historicalDataHandlers.at(subId);
+        ib_helper::HistoricalDataHandler* handler = (*itr).second;
         if (inPast)
             handler->OnHistoricalData(subId, in);
         else
             handler->OnHistoricalDataUpdate(subId, in);
-    } catch (const std::out_of_range& oor) // subId not found
-    {
     }
 }
 
@@ -216,12 +215,11 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
         }
     }
     // send tick to listeners
-    try
+    auto itr = tickHandlers.find(subId);
+    if (itr != tickHandlers.end())
     {
-        ib_helper::TickHandler* handler = tickHandlers.at(subId);
+        ib_helper::TickHandler* handler = (*itr).second;
         handler->OnTickByTickAllLast(subId, tickType, time, lastPrice, size, tickAttribLast, exchange, specialConditions);
-    } catch(const std::out_of_range& oor)
-    {
     }
 }
 
@@ -231,16 +229,15 @@ void MockIBConnector::RequestAccountUpdates(bool subscribe, const std::string& a
 
 void MockIBConnector::SendBidAsk(uint32_t subscriptionId, double bid, double ask)
 {
-    try
+    auto itr = tickHandlers.find(subscriptionId);
+    if (itr != tickHandlers.end())
     {
-        ib_helper::TickHandler* handler = tickHandlers.at(subscriptionId);
+        ib_helper::TickHandler* handler = (*itr).second;
         time_t time = 1;
         TickAttribBidAsk tickAttribBidAsk;
         Decimal bidSize = doubleToDecimal(100.0);
         Decimal askSize = doubleToDecimal(100.0);
         handler->OnTickByTickBidAsk(subscriptionId, time, bid, ask, bidSize, askSize, tickAttribBidAsk);
-    } catch (const std::out_of_range& oor)
-    {
     }
 }
 

@@ -99,6 +99,8 @@ Contract ContractBuilder::BuildStock(const std::string& ticker)
             det = dets[0];
             addToCache(SecurityType::Type::STK, det);
         }
+        else
+            det.contract = contract;
     }
     return det.contract;
 }
