@@ -63,7 +63,11 @@ class OptionDetails
         ss << "20" << expiry.substr(0,2) << "-" << expiry.substr(2,2) << "-" << expiry.substr(4, 2) << " 21:00:00";
         tm t;
         ss >> std::get_time(&t, "%Y-%m-%d %H:%M:%S");
+#ifdef _WIN32
+        return to_4pm_ny(_mkgmtime(&t));
+#else
         return to_4pm_ny(timegm(&t));
+#endif
     }
 
     std::string to_string() 
