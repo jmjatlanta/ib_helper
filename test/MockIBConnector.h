@@ -92,8 +92,8 @@ class MockIBConnector : public ib_helper::IBConnector
 	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice) override;
     private:
     bool validateOrder(int orderId, const Contract& contract, const ::Order& order);
-    void processOrder(MockOrder& order, double price);
-    void submitOrder(MockOrder& order);
+    bool processOrder(MockOrder& order, double price);
+    bool submitOrder(MockOrder& order);
     MockOrder& findOrderById(uint32_t orderId);
     std::atomic<uint32_t> nextRequestId;
     std::atomic<uint32_t> nextOrderId;
@@ -101,6 +101,7 @@ class MockIBConnector : public ib_helper::IBConnector
     // orders
     bool processOrdersImmediately = true;
     uint32_t orderRejectCode = 0;
+    std::mutex ordersMutex;
     std::vector<MockOrder> orders;
     const std::string clazz = "MockIBConnector";
     util::SysLogger* logger = nullptr;

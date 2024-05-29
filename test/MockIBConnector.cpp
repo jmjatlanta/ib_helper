@@ -182,37 +182,67 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
     std::string exchange;
     std::string specialConditions;
     // process any pending orders
-    for(auto& ord : orders)
+    std::vector<MockOrder> processedOrders; // delayed status updates
+    std::vector<MockOrder> submittedOrders; // delayed status updates
     {
-        if (ord.totalQuantity != ord.filledQuantity)
+        std::lock_guard lock(ordersMutex);
+        for(auto& ord : orders)
         {
-            bool processed = false;
-            if (ord.orderType == "MKT")
+            if (ord.totalQuantity != ord.filledQuantity)
             {
-                processOrder(ord, lastPrice);
-                processed = true;
-            }
-            if (ord.orderType == "LMT")
-            {
-                if ( (ord.action == "BUY" && ord.lmtPrice >= lastPrice)
-                        || (ord.action == "SELL" && ord.lmtPrice <= lastPrice))
+                bool processed = false;
+                if (ord.orderType == "MKT")
                 {
-                    processOrder(ord, lastPrice);
-                    processed = true;
+                    if (processOrder(ord, lastPrice))
+                    {
+                        processed = true;
+                        processedOrders.push_back(ord);
+                    }
+                }
+                if (ord.orderType == "LMT")
+                {
+                    if ( (ord.action == "BUY" && ord.lmtPrice >= lastPrice)
+                            || (ord.action == "SELL" && ord.lmtPrice <= lastPrice))
+                    {
+                        if(processOrder(ord, lastPrice))
+                        {
+                            processed = true;
+                            processedOrders.push_back(ord);
+                        }
+                    }
+                }
+                if (ord.orderType == "STP")
+                {
+                    if( (ord.action == "BUY" && ord.auxPrice <= lastPrice)
+                            || (ord.action == "SELL" && ord.auxPrice >= lastPrice))
+                    {
+                        if (processOrder(ord, lastPrice))
+                        {
+                            processed = true;
+                            processedOrders.push_back(ord);
+                        }
+                    }
+                }
+                if (!processed && !ord.submitted)
+                {
+                    if (submitOrder(ord))
+                        submittedOrders.push_back(ord);
                 }
             }
-            if (ord.orderType == "STP")
-            {
-                if( (ord.action == "BUY" && ord.auxPrice <= lastPrice)
-                        || (ord.action == "SELL" && ord.auxPrice >= lastPrice))
-                {
-                    processOrder(ord, lastPrice);
-                    processed = true;
-                }
-            }
-            if (!processed && !ord.submitted)
-                submitOrder(ord);
         }
+    }
+    // update statuses (without lock)
+    for(auto order : processedOrders)
+    {
+        orderStatus(order.orderId, order.status, order.filledQuantity,
+                sub(order.totalQuantity, order.filledQuantity), lastPrice,
+                order.orderId, 0, lastPrice, 123, "", 0.0);
+    }
+    for(auto order : submittedOrders)
+    {
+        orderStatus(order.orderId, order.status, order.filledQuantity,
+                sub(order.totalQuantity, order.filledQuantity), 0.0,
+                order.orderId, 0, 0.0, 123, "", 0.0);
     }
     // send tick to listeners
     auto itr = tickHandlers.find(subId);
@@ -243,12 +273,11 @@ void MockIBConnector::SendBidAsk(uint32_t subscriptionId, double bid, double ask
 
 MockOrder& MockIBConnector::findOrderById(uint32_t orderId)
 {
-    for(auto& ord : orders)
-    {
-        if (ord.orderId == orderId)
-            return ord;
-    }
-    throw std::out_of_range(std::string("Order Id ") + std::to_string(orderId) + " not found.");
+    // NOTE: non-locking
+    auto itr = std::find_if(orders.begin(), orders.end(), [orderId](const MockOrder& curr){ return curr.orderId == orderId; });
+    if (itr == orders.end())
+        throw std::out_of_range(std::string("Order Id ") + std::to_string(orderId) + " not found.");
+    return (*itr);
 }
 
 bool MockIBConnector::validateOrder(int orderId, const Contract& contract, const ::Order& order)
@@ -287,38 +316,48 @@ void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::
         // are we adding or modifying?
         try
         {
-            MockOrder& mOrder = findOrderById(orderId);
-            mOrder.update(order);
+            MockOrder copyOfOrder;
+            {
+                std::lock_guard lock(ordersMutex);
+                MockOrder& mOrder = findOrderById(orderId);
+                mOrder.update(order);
+                copyOfOrder = mOrder;
+            }
             double price = 0.0;
-            if (mOrder.orderType == "LMT")
-                price = mOrder.lmtPrice;
-            if (mOrder.orderType == "STP")
-                price = mOrder.auxPrice;
+            if (copyOfOrder.orderType == "LMT")
+                price = copyOfOrder.lmtPrice;
+            if (copyOfOrder.orderType == "STP")
+                price = copyOfOrder.auxPrice;
             logger->debug(clazz, "Order " + std::to_string(orderId) 
-                    + " placed with type of " + mOrder.orderType
+                    + " placed with type of " + copyOfOrder.orderType
                     + " and price of " + std::to_string(price)
-                    + " and size of " + std::to_string(decimalToDouble(mOrder.totalQuantity)));
+                    + " and size of " + std::to_string(decimalToDouble(copyOfOrder.totalQuantity)));
             // NOTE: Valid statuses: PreSubmitted, Submitted, Filled, Cancelled
-            orderStatus(orderId, mOrder.status, order.filledQuantity, order.totalQuantity, 
+            orderStatus(orderId, copyOfOrder.status, order.filledQuantity, order.totalQuantity, 
                     0.0, orderId, 0, 0.0, 123, "", 0.0);
         } catch( const std::out_of_range& oor)
         {
-            orders.push_back(order);
-            MockOrder& mOrder = orders[orders.size()-1];
-            mOrder.contract = contract;
-            mOrder.status = "PreSubmitted";
-            mOrder.orderId = orderId;
+            MockOrder copyOfOrder;
+            {
+                std::lock_guard lock(ordersMutex);
+                orders.push_back(order);
+                MockOrder& mOrder = orders[orders.size()-1];
+                mOrder.contract = contract;
+                mOrder.status = "PreSubmitted";
+                mOrder.orderId = orderId;
+                copyOfOrder = mOrder;
+            }
             double price = 0.0;
-            if (mOrder.orderType == "LMT")
-                price = mOrder.lmtPrice;
-            if (mOrder.orderType == "STP")
-                price = mOrder.auxPrice;
+            if (copyOfOrder.orderType == "LMT")
+                price = copyOfOrder.lmtPrice;
+            if (copyOfOrder.orderType == "STP")
+                price = copyOfOrder.auxPrice;
             logger->debug(clazz, "Order " + std::to_string(orderId) 
-                    + " placed with type of " + mOrder.orderType
+                    + " placed with type of " + copyOfOrder.orderType
                     + " and price of " + std::to_string(price)
-                    + " and size of " + std::to_string(decimalToDouble(mOrder.totalQuantity)));
+                    + " and size of " + std::to_string(decimalToDouble(copyOfOrder.totalQuantity)));
             // NOTE: Valid statuses: PreSubmitted, Submitted, Filled, Cancelled
-            orderStatus(orderId, mOrder.status, order.filledQuantity, order.totalQuantity, 
+            orderStatus(orderId, copyOfOrder.status, order.filledQuantity, order.totalQuantity, 
                     0.0, orderId, 0, 0.0, 123, "", 0.0);
         }
     }
@@ -328,48 +367,57 @@ void MockIBConnector::PlaceOrder(int orderId, const Contract& contract, const ::
     }
 }
 
-void MockIBConnector::processOrder(MockOrder& order, double price)
+bool MockIBConnector::processOrder(MockOrder& order, double price)
 {
+    if (order.status == "PreSubmitted")
+        return false;
+
     double fillQty = std::min( decimalToDouble(order.totalQuantity), maxOrderFillSize );
     order.filledQuantity = doubleToDecimal(fillQty);
     order.status = "Filled";
-    orderStatus(order.orderId, order.status, order.filledQuantity, 
-            sub(order.totalQuantity, order.filledQuantity), price, 
-            order.orderId, 0, price, 123, "", 0.0);
+    return true;
 }
 
-void MockIBConnector::submitOrder(MockOrder& order)
+bool MockIBConnector::submitOrder(MockOrder& order)
 {
     if (order.status == "PreSubmitted")
     {
         order.submitted = true;
-        orderStatus(order.orderId, order.status, order.filledQuantity,
-                sub(order.totalQuantity, order.filledQuantity), 0.0,
-                order.orderId, 0, 0.0, 123, "", 0.0);
+        order.status = "Submitted";
+        return true;
     }
+    return false;
 }
 
 void MockIBConnector::CancelOrder(int orderId, const std::string& time)
 {
     // find order
-    for(auto ord : orders)
+    std::vector<MockOrder> matches;
     {
-        if (ord.orderId == orderId)
+        std::lock_guard lock(ordersMutex);
+        for(auto ord : orders)
         {
-            //TODO: These are probably wrong codes. Find out what IB sends in these situations
-            if (ord.status == "Cancelled")
+            if (ord.orderId == orderId)
             {
-                error(orderId, 161, "Cannot cancel, already cancelled", "");
+                matches.push_back(ord);
             }
-            if (ord.totalQuantity == ord.filledQuantity)
-            {
-                error(orderId, 161, "Cannot cancel, already cancelled", "");
-            }
-            orderStatus(orderId, "Cancelled", ord.filledQuantity, 
-                sub(ord.totalQuantity, ord.filledQuantity),
-                ord.auxPrice, ord.orderId, 0, ord.auxPrice, 123, "", 0.0);
-            return;
         }
+    }
+    for(auto ord : matches)
+    {
+        //TODO: These are probably wrong codes. Find out what IB sends in these situations
+        if (ord.status == "Cancelled")
+        {
+            error(orderId, 161, "Cannot cancel, already cancelled", "");
+        }
+        else if (ord.totalQuantity == ord.filledQuantity)
+        {
+            error(orderId, 161, "Cannot cancel, already cancelled", "");
+        }
+        orderStatus(orderId, "Cancelled", ord.filledQuantity, 
+            sub(ord.totalQuantity, ord.filledQuantity),
+            ord.auxPrice, ord.orderId, 0, ord.auxPrice, 123, "", 0.0);
+        return;
     }
 }
 void MockIBConnector::SendOpenOrder(int orderId, const Contract& contract, const Order& order,
@@ -393,7 +441,8 @@ void MockIBConnector::orderStatus( OrderId orderId, const std::string& status, D
     {
         if (handler != nullptr)
         {
-            std::thread t([handler, orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice]() {
+            std::thread t([handler, orderId, status, filled, remaining, avgFillPrice, permId, parentId, 
+                    lastFillPrice, clientId, whyHeld, mktCapPrice]() {
                     handler->OnOrderStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, 
                         lastFillPrice, clientId, whyHeld, mktCapPrice);
             });
