@@ -48,6 +48,8 @@ std::string to_string(ib_helper::BarSize in)
             return "1 week";
         case BarSize::ONE_MONTH:
             return "1 month";
+        default:
+            break;
     }
     return "UNKNOWN";
 }
@@ -98,6 +100,8 @@ std::string to_ib_string(ib_helper::BarSize in)
             return "1W";
         case BarSize::ONE_MONTH:
             return "1M";
+        default:
+            break;
     }
     return "UNKNOWN";
 };

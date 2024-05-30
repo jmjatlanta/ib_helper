@@ -40,6 +40,8 @@ std::string to_string(IBConnector::ConnectionStatus in)
             return "ATTEMPTING_SHUTDOWN";
         case IBConnector::ConnectionStatus::SHUTDOWN:
             return "SHUTDOWN";
+        default:
+            break;
     }
     return "UNKNOWN";
 }
