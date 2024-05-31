@@ -1,9 +1,9 @@
+#include <gtest/gtest.h>
 #include "../src/ib_helper/IBConnector.hpp"
 #include "../src/ib_helper/ContractBuilder.hpp"
 #include "../src/util/SysLogger.h"
 #include "test_helpers.h"
 
-#include "gtest/gtest.h"
 #include "MockIBConnector.h"
 
 #include <thread>
@@ -11,8 +11,29 @@
 
 TEST(IBConnectorTest, Connect)
 {
+    class MyConnectionMonitor : public ib_helper::IBConnectionMonitor
+    {
+        public:
+        void OnConnect(ib_helper::IBConnector* in) override
+        {
+            std::cout << "OnConnect called" << std::endl;
+        }
+        void OnFullConnect(ib_helper::IBConnector* conn) override
+        {
+            std::cout << "OnFullConnect called" << std::endl;
+        }
+        void OnDisconnect(ib_helper::IBConnector* conn) override
+        {
+            std::cout << "OnDisconnect called" << std::endl;
+        }
+        void OnError(ib_helper::IBConnector* conn, const std::string& msg) override
+        {
+            std::cout << "OnError called" << std::endl;
+        }
+    };
     ib_options ops;
-    ib_helper::IBConnector connector{ops.host, ops.port, ops.connId};
+    MyConnectionMonitor connMon;
+    ib_helper::IBConnector connector{ops.host, ops.port, ops.connId, &connMon};
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -190,7 +211,7 @@ TEST(IBConnectorTest, FutureContractBuilderES)
     try
     {
         auto es = contractBuilder.BuildFuture("ES");
-        auto vec = contractBuilder.GetDetails(es);
+        auto vec = contractBuilder.GetDetails(es.contract);
         ASSERT_GT(vec.size(), 0);
         auto details = vec[0];
         EXPECT_EQ(details.contract.symbol, "ES");
@@ -209,7 +230,7 @@ TEST(IBConnectorTest, FutureContractBuilderNG)
     try
     {
         auto ng = contractBuilder.BuildFuture("NG");
-        auto vec = contractBuilder.GetDetails(ng);
+        auto vec = contractBuilder.GetDetails(ng.contract);
         ASSERT_GT(vec.size(), 0);
         auto details = vec[0];
         EXPECT_EQ(details.contract.symbol, "NG");
@@ -228,7 +249,7 @@ TEST(IBConnectorTest, FutureContractBuilderYM)
     try
     {
         auto ym = contractBuilder.BuildFuture("YM");
-        auto vec = contractBuilder.GetDetails(ym);
+        auto vec = contractBuilder.GetDetails(ym.contract);
         ASSERT_GT(vec.size(), 1);
         auto details = vec[0];
         EXPECT_EQ(details.contract.symbol, "YM");

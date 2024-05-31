@@ -34,7 +34,7 @@ Contract ContractBuilder::Build(const std::string& secType, const std::string& t
 Contract ContractBuilder::Build(SecurityType::Type secType, const std::string& ticker)
 {
     if (secType == SecurityType::Type::FUT)
-        return BuildFuture(ticker);
+        return BuildFuture(ticker).contract;
     if (secType == SecurityType::Type::STK)
         return BuildStock(ticker);
     if (secType == SecurityType::Type::FOREX)
@@ -180,23 +180,27 @@ std::vector<std::string> parseCSV(const std::string &in)
     return values;
 }
 
-Contract ContractBuilder::BuildFuture(const std::string &ticker, time_t now)
+ContractDetails ContractBuilder::BuildFuture(const std::string &ticker, time_t now)
 {
-    Contract retval;
-    retval.symbol = to_upper(ticker);
-    retval.localSymbol = "";
-    retval.secType = "FUT";
-    retval.currency = "USD";
+    Contract contract;
+    contract.symbol = to_upper(ticker);
+    contract.localSymbol = "";
+    contract.secType = "FUT";
+    contract.currency = "USD";
     if (ticker == "ES")
     {
-        retval.exchange = "CME";
+        contract.exchange = "CME";
     }
     ContractRolloverCalendar calendar;
     if (!calendar.IsValid(ticker))
+    {
+        ContractDetails retval;
+        retval.contract = contract;
         return retval;
-    retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker);
+    }
+   contract.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker);
     // make sure it is liquid
-    auto det = GetDetails(retval);
+    auto det = GetDetails(contract);
     ContractDetails currDetails;
     if (det.size() > 0)
         currDetails = det[0];
@@ -206,16 +210,18 @@ Contract ContractBuilder::BuildFuture(const std::string &ticker, time_t now)
     {
         // perhaps the contract is expired
         temp_date += month;
-        retval.localSymbol = "";
-        retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, temp_date);
-        //logger->debug("ContractBuilder", "BuildFuture: upping the contract month for " + ticker + " to " + retval.lastTradeDateOrContractMonth);
-        det = GetDetails(retval);
+        contract.localSymbol = "";
+        contract.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, temp_date);
+        //logger->debug("ContractBuilder", "BuildFuture: upping the contract month for " + ticker + " to " + contract.lastTradeDateOrContractMonth);
+        det = GetDetails(contract);
         if (det.size() > 0)
             currDetails = det[0];
     }
     if (currDetails.contract.conId <= 0)
     {
         logger->debug("ContractBuilder", "BuildFuture: unable to get contract for " + ticker);
+        ContractDetails retval;
+        retval.contract = contract;
         return retval; // we were unsuccessful
     }
     time_t expiry = to_time_t(currDetails.contract.lastTradeDateOrContractMonth);
@@ -227,10 +233,10 @@ Contract ContractBuilder::BuildFuture(const std::string &ticker, time_t now)
         // get next contract
         time_t old_expiry = expiry;
         expiry += month * multiplier;
-        retval.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, expiry);
-        retval.localSymbol = "";
+        contract.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, expiry);
+        contract.localSymbol = "";
         currDetails = ContractDetails{};
-        det = GetDetails(retval);
+        det = GetDetails(contract);
         if (det.size() > 0)
             currDetails = det[0];
         expiry = to_time_t(currDetails.contract.lastTradeDateOrContractMonth);
@@ -239,13 +245,12 @@ Contract ContractBuilder::BuildFuture(const std::string &ticker, time_t now)
             ++multiplier;
         }
     }
-    retval.conId = currDetails.contract.conId;
+    // currDetails is now the best we have
+    // fix up some details
     auto coll = parseCSV(currDetails.validExchanges);
     if (coll.size() > 0)
-        retval.exchange = coll[0];
-    retval.localSymbol = currDetails.contract.localSymbol;
-    retval.lastTradeDateOrContractMonth = currDetails.contract.lastTradeDateOrContractMonth;
-    return retval;
+        currDetails.contract.exchange = coll[0];
+    return currDetails;
 }
 
 std::string to_string(const Contract &in)

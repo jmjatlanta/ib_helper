@@ -19,7 +19,7 @@ class ContractBuilder
 
     virtual Contract BuildStock(const std::string& ticker);
     
-    Contract BuildFuture(const std::string& ticker, time_t now = time(nullptr));
+    ContractDetails BuildFuture(const std::string& ticker, time_t now = time(nullptr));
 
     Contract BuildForex(const std::string& ticker);
 

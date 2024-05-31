@@ -68,8 +68,8 @@ class IBConnector : public EWrapper
     virtual uint32_t GetNextOrderId() { return ++nextOrderId; }
     virtual uint32_t GetNextRequestId() { return ++nextRequestId; }
     virtual void SetDefaultAccount(const std::string& in) { defaultAccount = in; }
-    virtual bool IsConnected() const { return currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED; }
-    virtual bool IsConnecting() const { return currentConnectionStatus == ConnectionStatus::ATTEMPTING_CONNECTION; }
+    virtual bool IsConnected() const;
+    virtual bool IsConnecting() const;
     virtual ConnectionStatus GetConnectionStatus() const { return currentConnectionStatus; }
     // subcriptions
     /***

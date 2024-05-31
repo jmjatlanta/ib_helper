@@ -46,13 +46,13 @@ std::string to_string(IBConnector::ConnectionStatus in)
     return "UNKNOWN";
 }
 
-IBConnector::IBConnector()
+IBConnector::IBConnector() : currentConnectionStatus(ConnectionStatus::NOT_STARTED)
 {
     logger = Logger::getInstance();
 }
 
 IBConnector::IBConnector(const std::string& hostname, int port, int clientId, IBConnectionMonitor* connMonitor) 
-        : hostname(hostname), port(port), clientId(clientId)
+        : hostname(hostname), port(port), clientId(clientId), currentConnectionStatus(ConnectionStatus::NOT_STARTED)
 {
     logger = Logger::getInstance();
     if (connMonitor != nullptr)
@@ -68,11 +68,11 @@ bool IBConnector::connect()
     {
         currentConnectionStatus = ConnectionStatus::ATTEMPTING_CONNECTION;
         //logger->debug("IBConnector", "connect: Attempting to connect to IB host " + hostname + ":" + std::to_string(port));
-	    osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
-	    ibClient = new EClientSocket(this, osSignal);
-	    if (!ibClient->eConnect(hostname.c_str(), port, clientId, false))
+        osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
+        ibClient = new EClientSocket(this, osSignal);
+        if (!ibClient->eConnect(hostname.c_str(), port, clientId, false))
         {
-            //logger->debug("IBConnector", "connect: eConnect failed for IB host " + hostname + ":" + std::to_string(port));
+            logger->debug("IBConnector", "connect: eConnect failed for IB host " + hostname + ":" + std::to_string(port));
             // clean up the mess
             try
             {
@@ -101,14 +101,14 @@ bool IBConnector::connect()
                 logger->error("IBConnector", "connect() threw an exception");
             }
             currentConnectionStatus = ConnectionStatus::NOT_STARTED;
-	    	return false;
+            return false;
         }
         if (currentConnectionStatus != ConnectionStatus::FULLY_CONNECTED)
             currentConnectionStatus = ConnectionStatus::PARTIALLY_CONNECTED;
         //logger->debug("IBConnector", "connect:: eConnect returned true, creating EReader");
-	    reader = new EReader(ibClient, osSignal);
+        reader = new EReader(ibClient, osSignal);
         reader->start();
-	    listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
+        listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
         return true;
     }
     return IsConnected();
@@ -125,7 +125,7 @@ bool IBConnector::disconnect()
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     if (listenerThread != nullptr && listenerThread->joinable())
-	    listenerThread->join();
+        listenerThread->join();
     if (reader != nullptr)
     {
         // flush any last message
@@ -150,6 +150,8 @@ bool IBConnector::disconnect()
 IBConnector::~IBConnector() {
     disconnect();
 }
+bool IBConnector::IsConnected() const { return currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED; }
+bool IBConnector::IsConnecting() const { return currentConnectionStatus == ConnectionStatus::ATTEMPTING_CONNECTION; }
 
 std::future<std::vector<SecurityDefinitionOptionParameter>> IBConnector::GetOptionParameters(const Contract& contract)
 {
@@ -346,14 +348,16 @@ void IBConnector::processMessages() {
     try
     {
         //logger->debug("IBConnector", "processMessages: Loop starting");
-	    while (!ConnectionShuttingDown(currentConnectionStatus)) 
+        while (!ConnectionShuttingDown(currentConnectionStatus)) 
         {
-	        osSignal->waitForSignal();
+            osSignal->waitForSignal();
             if (!ConnectionShuttingDown(currentConnectionStatus))
             {
-	            reader->processMsgs();
+                //logger->debug("IBConnector", "processMessages: processing");
+                reader->processMsgs();
             }
-	    }
+            //logger->debug("IBConnector", "processMessages: waiting");
+        }
     } 
     catch(const std::exception& ex)
     {
@@ -600,8 +604,8 @@ void IBConnector::orderBound(long long orderId, int apiClientId, int apiOrderId)
     }
 }
 void IBConnector::orderStatus( OrderId orderId, const std::string& status, Decimal filled,
-	        Decimal remaining, double avgFillPrice, int permId, int parentId,
-	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice)
+            Decimal remaining, double avgFillPrice, int permId, int parentId,
+            double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice)
 {
     std::lock_guard<std::mutex> lock(orderHandlersMutex);
     for(auto handler : orderHandlers)
@@ -637,9 +641,15 @@ void IBConnector::connectionClosed()
 {
     // we cannot lock this, as the connection monitors need to unsubscribe themselves
     //std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
-    currentConnectionStatus = ConnectionStatus::SHUTDOWN;
-    for(auto cm : connectionMonitors)
-        cm->OnDisconnect(this);
+    if (currentConnectionStatus != ConnectionStatus::PARTIALLY_CONNECTED)
+    {
+        logger->debug(logCategory, "connectionClosed called");
+        currentConnectionStatus = ConnectionStatus::SHUTDOWN;
+        for(auto cm : connectionMonitors)
+            cm->OnDisconnect(this);
+    }
+    else
+        logger->debug(logCategory, "connectionClosed called, but ignoring");
 }
 void IBConnector::updateAccountValue(const std::string& key, const std::string& val,
             const std::string& currency, const std::string& accountName)
@@ -798,7 +808,7 @@ void IBConnector::updateMktDepth(TickerId reqId, int position, int operation, in
     } catch (const std::out_of_range& oor) {}
 }
 void IBConnector::updateMktDepthL2(TickerId reqId, int position, const std::string& marketMaker, int operation,
-	        int side, double price, Decimal size, bool isSmartDepth)
+            int side, double price, Decimal size, bool isSmartDepth)
 {
     try 
     {
@@ -876,7 +886,7 @@ void IBConnector::scannerDataEnd(int reqId)
         handler->OnScannerDataEnd(this, reqId);
 }
 void IBConnector::realtimeBar(TickerId reqId, long time, double open, double high, double low, double close,
-	        Decimal volume, Decimal wap, int count){}
+            Decimal volume, Decimal wap, int count){}
 void IBConnector::currentTime(long time){}
 void IBConnector::fundamentalData(TickerId reqId, const std::string& data){}
 void IBConnector::deltaNeutralValidation(int reqId, const DeltaNeutralContract& deltaNeutralContract){}
@@ -917,6 +927,9 @@ void IBConnector::displayGroupList( int reqId, const std::string& groups){}
 void IBConnector::displayGroupUpdated( int reqId, const std::string& contractInfo){}
 void IBConnector::verifyAndAuthMessageAPI( const std::string& apiData, const std::string& xyzChallange){}
 void IBConnector::verifyAndAuthCompleted( bool isSuccessful, const std::string& errorText){}
+/***
+ * @brief IB has acknowledged our connect request
+ */
 void IBConnector::connectAck()
 {
     std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
