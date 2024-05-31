@@ -420,12 +420,12 @@ uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandle
 
 void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId) 
 { 
+    if (ibClient != nullptr)
+        ibClient->cancelTickByTickData(reqId); 
     {
         std::lock_guard<std::mutex> lock(tickHandlersMutex);
         tickHandlers[reqId] = nullptr;
     }
-    if (ibClient != nullptr)
-        ibClient->cancelTickByTickData(reqId); 
 }
 
 uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines)
@@ -464,12 +464,12 @@ std::future<std::vector<DepthMktDataDescription> > IBConnector::RequestMktDepthE
 
 void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionId)
 {
+    if (ibClient != nullptr)
+        ibClient->cancelHistoricalData(historicalSubscriptionId);
     {
         std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
         historicalDataHandlers[historicalSubscriptionId] = nullptr;
     }
-    if (ibClient != nullptr)
-        ibClient->cancelHistoricalData(historicalSubscriptionId);
     //logger->debug("IBConnector", "UnsubscribeFromHistoricalData: " + std::to_string(historicalSubscriptionId));
 }
 
