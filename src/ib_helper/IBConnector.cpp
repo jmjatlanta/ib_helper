@@ -178,6 +178,7 @@ std::future<std::vector<ContractDetails>> IBConnector::GetContractDetails(const 
         return p.get_future();
     }
     uint32_t promiseId = GetNextRequestId();
+    std::scoped_lock lock(contractDetailsHandlersMutex, contractDetailsDataMutex);
     auto& promise = contractDetailsHandlers[promiseId];
     auto& vec = contractDetailsData[promiseId]; // put the vector in there
     //logger->debug("IBConnector", "GetContractDetails: about to request details for " + contract.symbol + " id: " + std::to_string(promiseId) );
@@ -690,6 +691,7 @@ void IBConnector::contractDetails( int reqId, const ContractDetails& contractDet
 {
     //logger->debug("IBConnector", "contractDetails: response for id " + std::to_string(reqId) 
     //        + " and symbol " + contractDetails.contract.symbol);
+    std::scoped_lock lock(contractDetailsDataMutex);
     auto itr = contractDetailsData.find(reqId);
     if (itr != contractDetailsData.end())
     {
@@ -705,6 +707,7 @@ void IBConnector::bondContractDetails( int reqId, const ContractDetails& contrac
 void IBConnector::contractDetailsEnd( int reqId)
 {
     //logger->debug("IBConnector", "contractDetailsEnd: reqId: " + std::to_string(reqId) );
+    std::scoped_lock lock(contractDetailsHandlersMutex, contractDetailsDataMutex);
     auto itr = contractDetailsHandlers.find(reqId);
     auto dataItr = contractDetailsData.find(reqId);
     std::vector<ContractDetails> vec;

@@ -26,3 +26,13 @@ TEST(contract_builder, DISABLED_unknown_exchange)
     for(auto contractDetails : contractDetailsCollection)
         std::cout << ::to_string(contractDetails);
 }
+
+TEST(contract_builder, DISABLED_mnq)
+{
+    ib_helper::IBConnector conn("localhost", 7497, 3);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    ASSERT_TRUE( conn.IsConnected() );
+    ib_helper::ContractBuilder contractBuilder(&conn);
+    auto dets = contractBuilder.BuildFuture("MNQ");
+    EXPECT_NE(dets.contract.conId, 0);
+}

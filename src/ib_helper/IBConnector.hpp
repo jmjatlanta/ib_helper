@@ -289,7 +289,9 @@ class IBConnector : public EWrapper
     std::vector<IBConnectionMonitor*> connectionMonitors;
     std::vector<AccountHandler*> accountHandlers;
     std::vector<OrderHandler*> orderHandlers;
+    std::mutex contractDetailsHandlersMutex;
     std::unordered_map<uint32_t, std::promise<std::vector<ContractDetails>> > contractDetailsHandlers;
+    std::mutex contractDetailsDataMutex;
     std::unordered_map<uint32_t, std::vector<ContractDetails>> contractDetailsData;
     std::unordered_map<uint32_t, std::promise<std::vector<SecurityDefinitionOptionParameter>> > securityDefinitionHandlers;
     std::unordered_map<uint32_t, std::vector<SecurityDefinitionOptionParameter>> securityDefinitionData;
