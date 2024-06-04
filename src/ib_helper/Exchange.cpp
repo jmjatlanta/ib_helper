@@ -9,8 +9,17 @@ void parseYYYYMM(const std::string& in, tm& time)
     time.tm_mon = strtol(in.substr(4,6).c_str(), nullptr, 10);
 }
 
+/****
+ * @param in the time in format HHMM, hours must be 2 digits
+ * @param time a tm struct to fill
+ */
 void parseHHMM(const std::string& in, tm& time)
 {
+    if (in.size() != 4)
+        throw std::invalid_argument("Format should be HHMM. Input: " + in);
+    if (in.find(":") != std::string::npos)
+        throw std::invalid_argument("Format should be HHMM, without colon. Input: " + in);
+
     time.tm_hour = strtol(in.substr(0,2).c_str(), nullptr, 10);
     time.tm_min = strtol(in.substr(2, 4).c_str(), nullptr, 10);
 }
