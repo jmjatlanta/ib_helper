@@ -15,8 +15,8 @@ void parseYYYYMM(const std::string& in, tm& time)
  */
 void parseHHMM(const std::string& in, tm& time)
 {
-    if (in.size() != 4)
-        throw std::invalid_argument("Format should be HHMM. Input: " + in);
+    if (in.size() < 4)
+        throw std::invalid_argument("Format should be HHMM. Input: " + in); // NOTE: extra characters okay
     if (in.find(":") != std::string::npos)
         throw std::invalid_argument("Format should be HHMM, without colon. Input: " + in);
 
