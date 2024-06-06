@@ -1,6 +1,6 @@
 #include "Exchange.hpp"
 #include "date/tz.h"
-
+#include <iomanip>
 #include <iostream>
 
 void parseYYYYMM(const std::string& in, tm& time)
@@ -127,11 +127,16 @@ std::chrono::time_point<std::chrono::system_clock> Exchange::midnightAtExchange(
 
 std::string removeColon(const std::string& in)
 {
-    std::string out = in;
-    int pos = out.find(":");
-    if (pos != std::string::npos)
-        out = out.substr(0, pos) + out.substr(pos+1);
-    return out;
+    // split into digits
+    auto pos = in.find(":");
+    if (pos == std::string::npos) // no colon
+        return in;
+    uint8_t hr = strtol(in.substr(0, pos).c_str(), nullptr, 10);
+    uint8_t min = strtol(in.substr(pos + 1).c_str(), nullptr, 10);
+    std::stringstream ss;
+    ss << std::fixed << std::setw(2) << std::setfill('0') << std::right << (int)hr
+        << std::fixed << std::setw(2) << std::setfill('0') << std::right << (int)min;
+    return ss.str();
 }
 
 void Exchange::setStartTime(const std::string& in)

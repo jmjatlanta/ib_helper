@@ -1,8 +1,17 @@
 #pragma once
 #include <string>
 #include <ctime>
+#include <chrono>
 
 struct Bar; // an IB bar
+typedef std::chrono::time_point<std::chrono::system_clock> time_pnt;
+
+/***
+ * @brief convert a string into a time point
+ * @param in the string in the format YYYYMMDD HH:MM:SS time/zone
+ * @return the matching time_point<system_clock>
+ */
+time_pnt to_time_point(const std::string& in);
 
 /***
  * convert today into YYYYMMDD

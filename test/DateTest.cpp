@@ -96,3 +96,11 @@ TEST(dateutil, cleanTime)
     EXPECT_EQ( to_12hr_format("13:01").first, "1:01");
     EXPECT_EQ( to_12hr_format("13:01").second, true);
 }
+
+TEST(dateutil, stringToTimePoint)
+{
+    std::string input{"20240606 09:30:01 America/New_York"};
+    std::time_t expected = 1717680601000000000; // 20240606 1:30:01 PM GMT
+    auto pnt = to_time_point(input);
+    EXPECT_EQ(pnt.time_since_epoch().count(), expected);
+}

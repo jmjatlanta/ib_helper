@@ -12,6 +12,24 @@
 #endif
 
 /***
+ * @brief convert a string into a time point
+ * @param in the string in the format YYYYMMDD HH:MM:SS time/zone
+ * @return the matching time_point<system_clock>
+ */
+time_pnt to_time_point(const std::string& in)
+{
+    // we must get the time zone information
+    std::string tzString = in.substr( in.find_last_of(' ') + 1);
+    date::local_time<std::chrono::milliseconds> resultTime;
+    std::tm tm{};
+    std::istringstream ss(in);
+    ss >> date::parse("%Y%m%d %H:%M:%S %Z", resultTime);
+    // now we need to convert it to another
+    auto ny_time = date::zoned_time(tzString, resultTime); // converted GMT to NY, but not what we want
+    return ny_time.get_sys_time();
+}
+
+/***
  * convert today into YYYYMMDD
  * @return string of YYYYMMDD
  */
