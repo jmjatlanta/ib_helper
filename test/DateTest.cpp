@@ -103,4 +103,9 @@ TEST(dateutil, stringToTimePoint)
     std::time_t expected = 1717680601000000000; // 20240606 1:30:01 PM GMT
     auto pnt = to_time_point(input);
     EXPECT_EQ(pnt.time_since_epoch().count(), expected);
+
+    input = std::string{"1717698731"};
+    expected = 1717698731000000000;
+    pnt = to_time_point(input);
+    EXPECT_EQ(pnt.time_since_epoch().count(), expected);
 }

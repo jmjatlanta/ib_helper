@@ -13,15 +13,21 @@
 
 /***
  * @brief convert a string into a time point
- * @param in the string in the format YYYYMMDD HH:MM:SS time/zone
+ * @param in the string in the format YYYYMMDD HH:MM:SS time/zone OR in time_t format
  * @return the matching time_point<system_clock>
  */
 time_pnt to_time_point(const std::string& in)
 {
+    // which format are we in? If we have only digits, we're in time_t format
+    auto pos = in.find_last_of(' ');
+    if (pos == std::string::npos)
+    {
+        // we're in time_t format
+        return std::chrono::system_clock::from_time_t( std::strtoul( in.c_str(), nullptr, 10) );
+    }
     // we must get the time zone information
-    std::string tzString = in.substr( in.find_last_of(' ') + 1);
+    std::string tzString = in.substr( pos + 1);
     date::local_time<std::chrono::milliseconds> resultTime;
-    std::tm tm{};
     std::istringstream ss(in);
     ss >> date::parse("%Y%m%d %H:%M:%S %Z", resultTime);
     // now we need to convert it to another
