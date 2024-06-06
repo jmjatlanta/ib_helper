@@ -53,7 +53,7 @@ TEST(OrderTests, DISABLED_OnNewOrder)
 
     // place an order
     ib_helper::ContractBuilder contractBuilder(&connector);
-    Contract t = contractBuilder.BuildStock("T");
+    ContractDetails t = contractBuilder.BuildStock("T");
     ib_helper::Order o;
     o.account = connector.GetDefaultAccount();
     o.action = "BUY";
@@ -62,7 +62,7 @@ TEST(OrderTests, DISABLED_OnNewOrder)
     o.lmtPrice = 9.0;
     
     auto orderId = connector.GetNextOrderId();
-    connector.PlaceOrder(orderId, t, o);
+    connector.PlaceOrder(orderId, t.contract, o);
     
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     

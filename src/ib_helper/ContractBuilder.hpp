@@ -17,11 +17,11 @@ class ContractBuilder
     Contract Build(const std::string& secType, const std::string& ticker);
     Contract Build(SecurityType::Type secType, const std::string& ticker);
 
-    virtual Contract BuildStock(const std::string& ticker);
+    virtual ContractDetails BuildStock(const std::string& ticker);
     
     ContractDetails BuildFuture(const std::string& ticker, time_t now = time(nullptr));
 
-    Contract BuildForex(const std::string& ticker);
+    ContractDetails BuildForex(const std::string& ticker);
 
     Contract BuildOption(const std::string& ticker);
 

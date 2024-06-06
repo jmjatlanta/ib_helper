@@ -36,18 +36,18 @@ Contract ContractBuilder::Build(SecurityType::Type secType, const std::string& t
     if (secType == SecurityType::Type::FUT)
         return BuildFuture(ticker).contract;
     if (secType == SecurityType::Type::STK)
-        return BuildStock(ticker);
+        return BuildStock(ticker).contract;
     if (secType == SecurityType::Type::FOREX)
-        return BuildForex(ticker);
+        return BuildForex(ticker).contract;
     if (secType == SecurityType::Type::OPT)
         return BuildOption(ticker);
     return Contract{};
 }
 
-Contract ContractBuilder::BuildForex(const std::string& ticker)
+ContractDetails ContractBuilder::BuildForex(const std::string& ticker)
 {
     int pos = ticker.find(".");
-	Contract c;
+    Contract c;
     if (pos != std::string::npos)
     {
         c.symbol = to_upper(ticker.substr(0, pos));
@@ -55,7 +55,12 @@ Contract ContractBuilder::BuildForex(const std::string& ticker)
         c.currency = to_upper(ticker.substr(pos+1));
         c.exchange = "IDEALPRO";
     }
-	return c;	
+    auto vec = GetDetails(c);
+    if (vec.size() > 0)
+        return vec[0];
+    ContractDetails retval;
+    retval.contract = c;
+    return retval;   
 }
 
 ContractDetails ContractBuilder::checkCache(SecurityType::Type type, const std::string& ticker)
@@ -81,7 +86,7 @@ void ContractBuilder::addToCache(SecurityType::Type type, const ContractDetails&
     }
 }
 
-Contract ContractBuilder::BuildStock(const std::string& ticker)
+ContractDetails ContractBuilder::BuildStock(const std::string& ticker)
 {
     ContractDetails det = checkCache(SecurityType::Type::STK, ticker);
     if (det.contract.conId == 0)
@@ -102,7 +107,7 @@ Contract ContractBuilder::BuildStock(const std::string& ticker)
         else
             det.contract = contract;
     }
-    return det.contract;
+    return det;
 }
 
 struct OptionDetails
@@ -288,9 +293,9 @@ std::vector<SecurityDefinitionOptionParameter> ContractBuilder::GetOptionParamet
     int waitSeconds = 60;
     // we need to get the underlying
     auto underlying = BuildStock(opt.symbol);
-    if (underlying.conId <= 0)
+    if (underlying.contract.conId <= 0)
         throw std::invalid_argument("option must have conId to get security definition parameters");
-    auto fut = ib->GetOptionParameters(underlying);
+    auto fut = ib->GetOptionParameters(underlying.contract);
     auto result = fut.wait_for(std::chrono::seconds(waitSeconds));
     if (result == std::future_status::timeout)
     {

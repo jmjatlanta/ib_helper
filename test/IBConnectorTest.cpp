@@ -128,16 +128,16 @@ TEST(IBConnectorTest, DISABLED_Ticks)
     ASSERT_TRUE(isConnected(conn));
     MyTickHandler tickHandler;
     ib_helper::ContractBuilder contractBuilder{&conn};
-    Contract msft = contractBuilder.BuildStock("GOTU");
-    uint32_t tickSubscriptionId = conn.SubscribeToMarketData(msft, &tickHandler, "225,233", false, false, nullptr);
+    ContractDetails msft = contractBuilder.BuildStock("GOTU");
+    uint32_t tickSubscriptionId = conn.SubscribeToMarketData(msft.contract, &tickHandler, "225,233", false, false, nullptr);
     std::this_thread::sleep_for(std::chrono::seconds(3));
     conn.UnsubscribeFromMarketData(tickSubscriptionId);
     EXPECT_GT(tickHandler.methodsCalled, 0);
     tickHandler.methodsCalled = 0;
     // Last, AllLast, BidAsk
-    tickSubscriptionId = conn.SubscribeToTickByTick(msft, &tickHandler, "BidAsk", 0, true);
+    tickSubscriptionId = conn.SubscribeToTickByTick(msft.contract, &tickHandler, "BidAsk", 0, true);
     std::this_thread::sleep_for(std::chrono::seconds(15));
-    uint32_t lastSubscriptionId = conn.SubscribeToTickByTick(msft, &tickHandler, "AllLast", 0, true);
+    uint32_t lastSubscriptionId = conn.SubscribeToTickByTick(msft.contract, &tickHandler, "AllLast", 0, true);
     std::this_thread::sleep_for(std::chrono::seconds(30));
     conn.UnsubscribeFromTickByTick(tickSubscriptionId);
     conn.UnsubscribeFromTickByTick(lastSubscriptionId);
@@ -369,8 +369,8 @@ TEST(IBConnectorTest, DISABLED_L2Book)
     ASSERT_TRUE(isConnected(conn));
     MyMarketDataHandler handler;
     ib_helper::ContractBuilder builder(&conn);
-    Contract contract = builder.BuildStock("GOTU");
-    auto subscriptionId = conn.SubscribeToMarketDepth(contract, &handler, 1);
+    ContractDetails contractDets = builder.BuildStock("GOTU");
+    auto subscriptionId = conn.SubscribeToMarketDepth(contractDets.contract, &handler, 1);
     std::this_thread::sleep_for(std::chrono::seconds(10));
     conn.UnsubscribeFromMarketDepth(subscriptionId);
     EXPECT_GT(handler.depthCount + handler.l2Count, 0);

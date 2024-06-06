@@ -20,9 +20,9 @@ TEST(contract_builder, DISABLED_unknown_exchange)
     ib_helper::IBConnector conn("localhost", 7497, 3);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ib_helper::ContractBuilder contractBuilder(&conn);
-    auto contract = contractBuilder.BuildStock("real");
-    EXPECT_NE(contract.conId, 0);
-    auto contractDetailsCollection = contractBuilder.GetDetails(contract);
+    auto contractDets = contractBuilder.BuildStock("real");
+    EXPECT_NE(contractDets.contract.conId, 0);
+    auto contractDetailsCollection = contractBuilder.GetDetails(contractDets.contract);
     for(auto contractDetails : contractDetailsCollection)
         std::cout << ::to_string(contractDetails);
 }
