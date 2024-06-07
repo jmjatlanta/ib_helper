@@ -25,7 +25,7 @@ time_pnt to_time_point(const std::string& in)
     std::istringstream ss(in);
     ss >> date::parse("%Y%m%d %H:%M:%S %Z", resultTime);
     // now we need to convert it to another
-    auto ny_time = date::zoned_time(tzString, resultTime); // converted GMT to NY, but not what we want
+    auto ny_time = date::zoned_time<std::chrono::milliseconds>(tzString, resultTime); // converted GMT to NY, but not what we want
     return ny_time.get_sys_time();
 }
 
