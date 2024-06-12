@@ -7,9 +7,9 @@ project ( ib_helper VERSION 1.0.1 DESCRIPTION "IB API Helper" )
 # Set HAS_REMOTE_API=1 to do that. With HAS_REMOTE_API set to 0, you won't need curl
 
 if(MSVC)
-    set(CMAKE_CXX_FLAGS "/EHsc -DHAS_REMOTE_API=0")
+    add_compile_options("/EHsc -DHAS_REMOTE_API=0")
 else(MSVC)
-    set(CMAKE_CXX_FLAGS "-g -O0 -DHAS_REMOTE_API=1")
+    add_compile_options(-g -O0 -DHAS_REMOTE_API=1)
 endif(MSVC)
 
 file(GLOB ib_helper "ib_helper/*.cpp" )
