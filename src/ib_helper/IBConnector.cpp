@@ -499,13 +499,11 @@ uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, Histor
 
 void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attrib)
 {
-    try 
-    {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
-        TickHandler* handler = tickHandlers.at(tickerId);
-        if (handler != nullptr)
-            handler->OnTickPrice(tickerId, field, price, attrib);
-    } catch (const std::out_of_range& oor) {}
+    // For a list of TickTypes, see https://interactivebrokers.github.io/tws-api/tick_types.html
+    std::lock_guard<std::mutex> lock(tickHandlersMutex);
+    auto itr = tickHandlers.find(tickerId);
+    if (itr != tickHandlers.end())
+        (*itr).second->OnTickPrice(tickerId, field, price, attrib);
 }
 void IBConnector::tickSize(TickerId tickerId, TickType field, Decimal size)
 {

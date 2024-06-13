@@ -30,8 +30,6 @@ class TickHandler
 	 * @param exchange
 	 * @param specialConditions
 	 */
-    virtual void OnTickLast(int reqId, int tickType, long time, double price, Decimal size, TickAttribLast tickAttribLast,
-            const std::string& exchange, const std::string&  specialConditions) = 0;
     virtual void OnTickByTickAllLast(int reqId, int tickType, time_t time, double price, Decimal size,
             const TickAttribLast& tickAttribLast, const std::string& exchange, 
             const std::string& specialConditions) = 0;
