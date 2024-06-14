@@ -172,6 +172,14 @@ uint32_t MockIBConnector::SubscribeToTickByTick(const Contract& contract, ib_hel
     tickHandlers[reqId] = handler;
     return reqId;
 };
+uint32_t MockIBConnector::SubscribeToMarketData(const Contract& contract, ib_helper::TickHandler* tickHandler, 
+        const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
+        const TagValueListSPtr& mktDataOptions)
+{
+    uint32_t reqId = GetNextRequestId();
+    tickHandlers[reqId] = tickHandler;
+    return reqId;
+}
 
 void MockIBConnector::SendTick(int subId, double lastPrice)
 {

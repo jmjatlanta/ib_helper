@@ -37,6 +37,9 @@ class MockIBConnector : public ib_helper::IBConnector
     void UnsubscribeFromHistoricalData(uint32_t subId) override;
     uint32_t SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
         const std::string& tickType, int numberOfTicks, bool ignoreSize) override;
+    uint32_t SubscribeToMarketData(const Contract& contract, ib_helper::TickHandler* tickHandler, 
+            const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
+            const TagValueListSPtr& mktDataOptions) override;
     void UnsubscribeFromTickByTick(uint32_t subId) override;
     void RequestAccountUpdates(bool subscribe, const std::string& account) override;
     // bars
@@ -90,6 +93,10 @@ class MockIBConnector : public ib_helper::IBConnector
     virtual void orderStatus( OrderId orderId, const std::string& status, Decimal filled,
 	        Decimal remaining, double avgFillPrice, int permId, int parentId,
 	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice) override;
+
+    protected:
+    util::SysLogger* logger = nullptr;
+
     private:
     bool validateOrder(int orderId, const Contract& contract, const ::Order& order);
     bool processOrder(MockOrder& order, double price);
@@ -104,7 +111,6 @@ class MockIBConnector : public ib_helper::IBConnector
     std::mutex ordersMutex;
     std::vector<MockOrder> orders;
     const std::string clazz = "MockIBConnector";
-    util::SysLogger* logger = nullptr;
     std::vector<MockOpenOrder> openOrders;
     std::vector<MockPosition> positions;
     double maxOrderFillSize = 100000.0; // how many shares can be bought on 1 tick

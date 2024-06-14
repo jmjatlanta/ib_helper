@@ -1,6 +1,7 @@
 #include "IBConnector.hpp"
 #include "../util/Logger.h"
 #include "ScannerSubscription.h"
+#include <algorithm>
 
 std::string to_string(EClient::ConnState in)
 {
@@ -504,6 +505,15 @@ void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, co
     auto itr = tickHandlers.find(tickerId);
     if (itr != tickHandlers.end())
         (*itr).second->OnTickPrice(tickerId, field, price, attrib);
+    else
+    {
+        std::string str;
+        std::for_each(tickHandlers.begin(), tickHandlers.end(),
+                [&str](const std::pair<uint32_t, TickHandler*> curr)
+                { str += ", " + std::to_string(curr.first); });
+        logger->debug("IBConnector", "tickPrice: No subscribers for id " + std::to_string(tickerId)
+                + ". Valid subscriber ids: " + str);
+    }
 }
 void IBConnector::tickSize(TickerId tickerId, TickType field, Decimal size)
 {
@@ -856,6 +866,8 @@ void IBConnector::historicalData(TickerId reqId, const Bar& bar)
     auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
         handler->OnHistoricalData(reqId, bar);
+    else
+        logger->debug("IBConnector", "historicalData called for id " + std::to_string(reqId) + " but no subscribers");
 }
 void IBConnector::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr)
 {
@@ -864,6 +876,8 @@ void IBConnector::historicalDataEnd(int reqId, const std::string& startDateStr, 
     auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
         handler->OnHistoricalDataEnd(reqId, startDateStr, endDateStr);
+    else
+        logger->debug("IBConnector", "historicalDataEnd called for id " + std::to_string(reqId) + " but no subscribers");
 }
 
 void IBConnector::scannerParameters(const std::string& xml)
@@ -1020,6 +1034,15 @@ void IBConnector::historicalDataUpdate(TickerId reqId, const Bar& bar)
     auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
         handler->OnHistoricalDataUpdate(reqId, bar);
+    else
+    {
+        std::string str;
+        std::for_each(historicalDataHandlers.begin(), historicalDataHandlers.end(),
+                [&str]( const std::pair<uint32_t, HistoricalDataHandler*> curr)
+                { str += ", " + std::to_string(curr.first); });
+        logger->debug("IBConnector", "historicalDataUpdate called for id " + std::to_string(reqId) 
+                + " but no subscribers. Subscriber ids: " + str);
+    }
 }
 void IBConnector::rerouteMktDataReq(int reqId, int conid, const std::string& exchange){}
 void IBConnector::rerouteMktDepthReq(int reqId, int conid, const std::string& exchange){}
