@@ -1,8 +1,8 @@
 #pragma once
 #include "Contract.h"
-
 #include <string>
 #include <chrono>
+#include "Logger.h"
 
 struct hours
 {
@@ -88,6 +88,7 @@ class Exchange
     std::string liquidHours; // when the market liquidity is good (regular trading hours)
     std::string tradingHours; // trading hours, including pre and post-market
     hours exchangeHours; // the exchange hours for the current day
+    Logger* logger;
 
     private:
     /***

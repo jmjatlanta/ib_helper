@@ -36,6 +36,7 @@ add_library( ib_helper ${util_src} ${ib_helper} ${date_src} )
 
 target_include_directories( ib_helper PRIVATE 
     ${CMAKE_CURRENT_LIST_DIR}/../date/include 
+    ${CMAKE_CURRENT_LIST_DIR}/util
     ${IB_CLIENT_DIR}
     ${Boost_INCLUDE_DIR}
     ${CURL_INCLUDE_DIRS}

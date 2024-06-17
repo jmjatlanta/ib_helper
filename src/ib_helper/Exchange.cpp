@@ -104,6 +104,7 @@ hours parseHourString(const std::string& in)
 }
 
 Exchange::Exchange(const ContractDetails& contractDetails)
+    : logger(Logger::getInstance())
 {
     timeZone = contractDetails.timeZoneId;
     liquidHours = contractDetails.liquidHours;
@@ -155,6 +156,14 @@ void Exchange::setStopTime(const std::string& in)
 
 bool Exchange::isWithinRange(time_t in)
 {
+    bool retval = in > marketStart(in) && in << marketStop(in);
+    if (!retval)
+    {
+        logger->debug("Exchange", "Time out of range. Time: " + std::to_string(in)
+                + " start: " + std::to_string(marketStart(in))
+                + " stop: " + std::to_string(marketStop(in)));
+
+    }
     return in > marketStart(in) && in < marketStop(in);
 }
 
