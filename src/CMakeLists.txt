@@ -6,12 +6,6 @@ project ( ib_helper VERSION 1.0.1 DESCRIPTION "IB API Helper" )
 # NOTE: If you want the date library to get the TZ database, you'll need curl
 # Set HAS_REMOTE_API=1 to do that. With HAS_REMOTE_API set to 0, you won't need curl
 
-if(MSVC)
-    add_compile_options(/EHsc -DHAS_REMOTE_API=0)
-else(MSVC)
-    add_compile_options(-g -O0 -DHAS_REMOTE_API=1)
-endif(MSVC)
-
 file(GLOB ib_helper "ib_helper/*.cpp" )
 file(GLOB util_src "util/*.cpp" )
 file(GLOB date_src "../date/src/*.cpp" )
@@ -25,6 +19,14 @@ else(MSVC)
 endif(MSVC)
 
 add_library( ib_api ${ib_src} )
+
+if(MSVC)
+    target_compile_options(ib_api PRIVATE /EHsc)
+    target_compile_definitions(ib_api PRIVATE -DHAS_REMOTE_API=1 -DAUTO_DOWNLOAD=1)
+else(MSVC)
+    target_compile_options(ib_api PRIVATE -g -O0)
+    target_compile_definitions(ib_api PRIVATE -DHAS_REMOTE_API=1 -DAUTO_DOWNLOAD=1)
+endif(MSVC)
 
 target_include_directories( ib_api PRIVATE
     ${IB_CLIENT_DIR}
