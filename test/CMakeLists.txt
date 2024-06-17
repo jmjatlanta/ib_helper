@@ -6,9 +6,9 @@ project ( ib_helper_tests )
 
 if(MSVC)
     SET(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    set(CMAKE_CXX_FLAGS "/EHsc -DHAS_REMOTE_API=0")
+    add_compile_options(/EHsc -DHAS_REMOTE_API=0)
 else(MSVC)
-    set(CMAKE_CXX_FLAGS "-g -O0 -DHAS_REMOTE_API=0")
+    add_compile_options(-g -O0 -DHAS_REMOTE_API=0)
 endif(MSVC)
 
 file(GLOB ib_helper "../src/ib_helper/*.cpp" )
