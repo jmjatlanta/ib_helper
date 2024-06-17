@@ -4,13 +4,6 @@ set(CMAKE_CXX_STANDARD 20)
 
 project ( ib_helper_tests )
 
-if(MSVC)
-    SET(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    set(CMAKE_CXX_FLAGS "/EHsc -DHAS_REMOTE_API=0")
-else(MSVC)
-    set(CMAKE_CXX_FLAGS "-g -O0 -DHAS_REMOTE_API=0")
-endif(MSVC)
-
 file(GLOB ib_helper "../src/ib_helper/*.cpp" )
 file(GLOB util_src "../src/util/*.cpp" )
 file(GLOB test_src "./*.cpp" )
@@ -30,6 +23,15 @@ add_executable( ib_helper_tests
     ${ib_helper} 
     ${date_src} 
 )
+
+if(MSVC)
+    SET(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    target_compile_options(ib_helper_tests PRIVATE /EHsc)
+    target_compile_definitions(ib_helper_tests PRIVATE -DHAS_REMOTE_API=1)
+else(MSVC)
+    target_compile_options(ib_helper_tests PRIVATE -g -O0)
+    target_compile_definitions(ib_helper_tests PRIVATE -DHAS_REMOTE_API=1)
+endif(MSVC)
 
 target_include_directories(ib_helper_tests PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/../date/include
