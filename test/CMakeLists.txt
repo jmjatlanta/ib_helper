@@ -34,10 +34,12 @@ add_executable( ib_helper_tests
 target_include_directories(ib_helper_tests PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/../date/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/tick
     ${IB_CLIENT_DIR}
 )
 
 target_link_libraries(ib_helper_tests 
+    tick
     ib_helper
     dfp
     ib_api
