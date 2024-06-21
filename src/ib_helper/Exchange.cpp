@@ -1,5 +1,4 @@
 #include "Exchange.hpp"
-#include "date/tz.h"
 #include <iomanip>
 #include <iostream>
 
@@ -117,11 +116,11 @@ Exchange::Exchange(const ContractDetails& contractDetails)
 
 std::chrono::time_point<std::chrono::system_clock> Exchange::midnightAtExchange(time_t today)
 {
-    auto exchangeTimeZone = date::make_zoned(date::locate_zone(timeZone), std::chrono::system_clock::from_time_t(today));
+    std::chrono::zoned_time exchangeTimeZone{std::chrono::locate_zone(timeZone), std::chrono::system_clock::from_time_t(today)};
     // now get the offset
     auto offset = exchangeTimeZone.get_info().offset;
     // now get midnight UTC and add offset
-    auto midnight = date::floor<date::days>(std::chrono::system_clock::from_time_t(today));
+    auto midnight = std::chrono::floor<std::chrono::days>(std::chrono::system_clock::from_time_t(today));
     auto result = midnight - offset;
     return result;
 }

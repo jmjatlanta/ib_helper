@@ -4,7 +4,6 @@
 #include <sstream>
 #include <utility>
 #include <cstring>
-#include "date/tz.h"
 #include <chrono>
 
 #ifdef _WIN32
@@ -16,6 +15,7 @@
  * @param in the string in the format YYYYMMDD HH:MM:SS time/zone OR in time_t format
  * @return the matching time_point<system_clock>
  */
+/* commenting out until g++ 14
 time_pnt to_time_point(const std::string& in)
 {
     // which format are we in? If we have only digits, we're in time_t format
@@ -27,13 +27,15 @@ time_pnt to_time_point(const std::string& in)
     }
     // we must get the time zone information
     std::string tzString = in.substr( pos + 1);
-    date::local_time<std::chrono::milliseconds> resultTime;
+    std::chrono::local_time<std::chrono::milliseconds> resultTime;
+    std::string tz_name;
     std::istringstream ss(in);
-    ss >> date::parse("%Y%m%d %H:%M:%S %Z", resultTime);
+    ss >> std::chrono::parse("%Y%m%d %H:%M:%S %Z", resultTime, tz_name);
     // now we need to convert it to another
-    auto ny_time = date::zoned_time<std::chrono::milliseconds>(tzString, resultTime); // converted GMT to NY, but not what we want
+    auto ny_time = std::chrono::zoned_time<std::chrono::milliseconds>(tzString, resultTime); // converted GMT to NY, but not what we want
     return ny_time.get_sys_time();
 }
+*/
 
 /***
  * convert today into YYYYMMDD
@@ -119,7 +121,7 @@ time_t to_minute_floor(time_t in)
 int32_t diff_with_ny(std::time_t now)
 {
     auto utc = std::chrono::system_clock::from_time_t(now);
-    auto ny_time = date::make_zoned("America/New_York", utc);
+    std::chrono::zoned_time ny_time{"America/New_York", utc};
     auto cnt = ny_time.get_info().offset;
     return cnt.count();
 }

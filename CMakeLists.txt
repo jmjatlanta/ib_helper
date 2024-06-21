@@ -10,7 +10,6 @@ if(NOT EXISTS ${IB_CLIENT_DIR}/EWrapper.h)
     MESSAGE(SEND_ERROR "Cannot find EWrapper.h in ${IB_CLIENT_DIR}")
 endif()
 
-add_subdirectory ( date )
 add_subdirectory ( IntelDFP )
 add_subdirectory ( src )
 add_subdirectory ( test )
