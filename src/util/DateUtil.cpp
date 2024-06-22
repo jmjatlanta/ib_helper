@@ -15,7 +15,6 @@
  * @param in the string in the format YYYYMMDD HH:MM:SS time/zone OR in time_t format
  * @return the matching time_point<system_clock>
  */
-/* commenting out until g++ 14
 time_pnt to_time_point(const std::string& in)
 {
     // which format are we in? If we have only digits, we're in time_t format
@@ -35,7 +34,6 @@ time_pnt to_time_point(const std::string& in)
     auto ny_time = std::chrono::zoned_time<std::chrono::milliseconds>(tzString, resultTime); // converted GMT to NY, but not what we want
     return ny_time.get_sys_time();
 }
-*/
 
 /***
  * convert today into YYYYMMDD
