@@ -50,5 +50,7 @@ target_link_libraries(ib_helper_tests
 
 if(MSVC)
     target_compile_definitions(ib_helper_tests PRIVATE NOMINMAX)
+    target_compile_definitions(ib_helper_tests PRIVATE BOOST_ALL_NO_LIB)
+    target_compile_definitions(ib_helper_tests PRIVATE BOOST_ALL_DYN_LINK)
 endif(MSVC)
 
