@@ -20,11 +20,6 @@ file(GLOB ib_src ${IB_CLIENT_DIR}/*.cpp)
 find_package(CURL REQUIRED)
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 
-if(MSVC)
-else(MSVC)
-    find_package(CURL REQUIRED)
-endif(MSVC)
-
 add_library( ib_api ${ib_src} )
 
 target_include_directories( ib_api PRIVATE

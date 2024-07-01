@@ -38,7 +38,7 @@ target_include_directories(ib_helper_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../date/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper
     ${IB_CLIENT_DIR}
-    ${CURL_INCLUDE_DIR}
+    ${CURL_INCLUDE_DIRS}
 )
 
 target_link_libraries(ib_helper_tests 
