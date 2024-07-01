@@ -9,6 +9,7 @@ file(GLOB util_src "../src/util/*.cpp" )
 file(GLOB test_src "./*.cpp" )
 file(GLOB date_src "../date/src/*.cpp" )
 
+find_package(CURL REQUIRED)
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 include(FetchContent)
 FetchContent_Declare(
@@ -37,6 +38,7 @@ target_include_directories(ib_helper_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../date/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper
     ${IB_CLIENT_DIR}
+    ${CURL_INCLUDE_DIR}
 )
 
 target_link_libraries(ib_helper_tests 
@@ -47,6 +49,7 @@ target_link_libraries(ib_helper_tests
     GTest::gtest_main
     Boost::log
     Boost::log_setup
+    ${CURL_LIBRARIES}
 )
 
 if(MSVC)

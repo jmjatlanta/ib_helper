@@ -503,7 +503,7 @@ void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, co
     // For a list of TickTypes, see https://interactivebrokers.github.io/tws-api/tick_types.html
     std::lock_guard<std::mutex> lock(tickHandlersMutex);
     auto itr = tickHandlers.find(tickerId);
-    if (itr != tickHandlers.end())
+    if (itr != tickHandlers.end() && (*itr).second != nullptr)
         (*itr).second->OnTickPrice(tickerId, field, price, attrib);
     else
     {
