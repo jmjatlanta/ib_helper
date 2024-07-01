@@ -17,6 +17,7 @@ file(GLOB util_src "util/*.cpp" )
 file(GLOB date_src "../date/src/*.cpp" )
 file(GLOB ib_src ${IB_CLIENT_DIR}/*.cpp)
 
+find_package(CURL REQUIRED)
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 
 if(MSVC)
@@ -28,6 +29,7 @@ add_library( ib_api ${ib_src} )
 
 target_include_directories( ib_api PRIVATE
     ${IB_CLIENT_DIR}
+    ${CURL_INCLUDE_DIRS}
 )
 
 add_library( ib_helper ${util_src} ${ib_helper} ${date_src} )
@@ -38,4 +40,5 @@ target_include_directories( ib_helper PRIVATE
     ${Boost_INCLUDE_DIR}
     ${CURL_INCLUDE_DIRS}
 )
+
 set_target_properties(ib_helper PROPERTIES VERSION ${PROJECT_VERSION})
