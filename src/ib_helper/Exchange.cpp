@@ -31,10 +31,14 @@ void parseHHMM(const std::string& in, tm& time)
 hours parseHourFormatA(const std::string& in)
 {
     hours retVal;
-    int commaPos = in.find(",");
+    auto commaPos = in.find(",");
+    if (commaPos == std::string::npos)
+        commaPos = in.find(";");
     std::string toParse = in.substr(0, commaPos);
-    int colonPos = toParse.find(":");
-    std::string yyyymm = toParse.substr(0, colonPos);
+    auto colonPos = toParse.find(":");
+    std::string yyyymm = toParse;
+    if (colonPos != std::string::npos)
+        yyyymm = toParse.substr(0, colonPos);
     parseYYYYMM(yyyymm, retVal.open);
     parseYYYYMM(yyyymm, retVal.close);
     parseYYYYMM(yyyymm, retVal.start);
@@ -90,9 +94,9 @@ hours parseHourFormatB(const std::string& in)
 hours parseHourString(const std::string& in)
 {
     // format A has a dash and then 4 digits and then a non-digit
-    int dashPos = in.find("-");
-    int semiColonPos = in.find(";");
-    int commaPos = in.find(",");
+    auto dashPos = in.find("-");
+    auto semiColonPos = in.find(";");
+    auto commaPos = in.find(",");
     // are we in format A or format B?
     if (commaPos != std::string::npos
             || semiColonPos - dashPos == 5)
@@ -122,6 +126,8 @@ std::chrono::time_point<std::chrono::system_clock> Exchange::midnightAtExchange(
     // now get midnight UTC and add offset
     auto midnight = std::chrono::floor<std::chrono::days>(std::chrono::system_clock::from_time_t(today));
     auto result = midnight - offset;
+    if (result > std::chrono::system_clock::from_time_t(today))
+        result -= std::chrono::days(1);
     return result;
 }
 
@@ -166,6 +172,12 @@ bool Exchange::isWithinRange(time_t in)
     return in > marketStart(in) && in < marketStop(in);
 }
 
+/***
+ * Convert an hour (in struct tm format) into a time_t, given the date of today
+ * @param today the date
+ * @param hour the hour
+ * @return the time_t corresponding to the inputs
+*/
 time_t Exchange::calculateFromTm(time_t today, tm hour)
 {
     auto clock = midnightAtExchange(today);
