@@ -8,7 +8,7 @@ typedef std::chrono::time_point<std::chrono::system_clock> time_pnt;
 
 /***
  * @brief convert a string into a time point
- * @param in the string in the format YYYYMMDD HH:MM:SS time/zone
+ * @param in the string in the format YYYYMMDD HH:MM:SS time/zone or UNIX epoch as string
  * @return the matching time_point<system_clock>
  */
 time_pnt to_time_point(const std::string& in);
@@ -28,14 +28,42 @@ std::string getDate();
  */
 time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute);
 
+/***
+ * @param in the time
+ * @returns true if in is a monday GMT
+ */
 bool is_monday(time_t in);
+/***
+ * @param in the time
+ * @returns true if in is a friday GMT
+ */
 bool is_friday(time_t in);
 
+/***
+ * @param in the time
+ * @return the prior friday
+ */
 time_t to_previous_friday(time_t in);
+/***
+ * @param in the time
+ * @return the next friday
+ */
 time_t to_next_friday(time_t in);
 
+/***
+ * @param in the time
+ * @return 9:30am in NY on the same day
+ */
 time_t to_930am_ny(time_t in);
+/***
+ * @param in the time
+ * @return 4pm in NY on the same day
+ */
 time_t to_4pm_ny(time_t in);
+/***
+ * @param in the time
+ * @return midnight in NY on the same day
+ */
 time_t to_midnight_ny(time_t in);
 
 /***
@@ -55,6 +83,7 @@ std::time_t to_time_t(const std::string& in, std::time_t now);
 
 /**
  * @brief convert a bar time to time_t
+ * @NOTE: bars can have their time in time_t (short duration bars) or dates (daily bars)
  * 
  * @param bar the bar
  * @return the time
@@ -64,8 +93,8 @@ std::time_t to_time_t(const Bar& bar);
 /**
  * @brief split a string "HH:MM" into their 2 parts
  * 
- * @param in  the string
- * @return  the two values
+ * @param in the string
+ * @return the two values hour and minute
  */
 std::pair<uint16_t, uint16_t> split_time(const std::string& in);
 
@@ -94,6 +123,6 @@ time_t current_time();
 /***
  * @brief how UTC compares to NY
  * @param now the time you want to compare
- * @return the difference between NY and UTC on the date/time given
+ * @return the seconds difference between NY and UTC on the date/time given
 */
 int32_t diff_with_ny(std::time_t now);
