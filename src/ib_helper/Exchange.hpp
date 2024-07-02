@@ -12,6 +12,9 @@ struct hours
     tm stop;
 };
 
+/***
+ * Parses IB's format of exchange hours
+ */
 class Exchange
 {
     public:
@@ -83,13 +86,6 @@ class Exchange
      */
     void setStopTime(const std::string& in);
 
-    private:
-    std::string timeZone;
-    std::string liquidHours; // when the market liquidity is good (regular trading hours)
-    std::string tradingHours; // trading hours, including pre and post-market
-    hours exchangeHours; // the exchange hours for the current day
-
-    private:
     /***
      * Determine the time_point of midnight for the date given
      * @param today the date
@@ -104,4 +100,11 @@ class Exchange
      * @return the time_t corresponding to the inputs
     */
     time_t calculateFromTm(time_t today, tm hour);
+
+    private:
+    std::string timeZone;
+    std::string liquidHours; // when the market liquidity is good (regular trading hours)
+    std::string tradingHours; // trading hours, including pre and post-market
+    hours exchangeHours; // the exchange hours for the current day
 };
+

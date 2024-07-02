@@ -72,8 +72,24 @@ class MockExchange : public Exchange
 
     void setStartTime(const std::string& in) { Exchange::setStartTime(in); }
     void setStopTime(const std::string& in) { Exchange::setStopTime(in); }
+    std::chrono::time_point<std::chrono::system_clock> midnightAtExchange(time_t today) { return Exchange::midnightAtExchange(today); }
+
 };
 
+TEST(ExchangeTest, MidnightAtExchange)
+{
+    time_t today = 1719892494; // 2024-7-1 21:54:54 NY
+    time_t midnightNY = 1719806400; // 2024-7-1 00:00:00 NY
+    ContractDetails contractDetails;
+    contractDetails.liquidHours = "20230307:0830-20230307:1500;20230308:0830-20320308:1500"; // format B
+    contractDetails.timeZoneId = "America/New_York";
+    MockExchange exch(contractDetails);
+
+    exch.setStartTime("09:30");
+    exch.setStopTime("24:00");
+    EXPECT_EQ(exch.midnightAtExchange(today), std::chrono::system_clock::from_time_t(midnightNY));
+                               //
+}
 TEST(ExchangeTest, ManualOpenClose)
 {
     ContractDetails contractDetails;
@@ -88,6 +104,11 @@ TEST(ExchangeTest, ManualOpenClose)
     EXPECT_FALSE(exch.isWithinRange(today)); // 11:31am
     exch.setStopTime("12:00");
     EXPECT_TRUE(exch.isWithinRange(today)); // 11:31am
+
+    today = 1719892494; // 2024-7-1 21:54:54 NY
+    exch.setStartTime("09:30");
+    exch.setStopTime("24:00");
+    EXPECT_TRUE(exch.isWithinRange(today));
 }
 
 ContractDetails buildStockContractDetails(const std::string& ticker)
