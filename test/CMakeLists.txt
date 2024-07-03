@@ -9,14 +9,15 @@ file(GLOB util_src "../src/util/*.cpp" )
 file(GLOB test_src "./*.cpp" )
 file(GLOB date_src "../date/src/*.cpp" )
 
-find_package(CURL REQUIRED)
-find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 include(FetchContent)
 FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
 )
 FetchContent_MakeAvailable(googletest)
+
+find_package(CURL REQUIRED)
+find_package(Boost 1.74 COMPONENTS log log_setup REQUIRED)
 
 add_executable( ib_helper_tests 
     ${test_src} 
