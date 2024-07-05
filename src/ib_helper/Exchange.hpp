@@ -74,6 +74,7 @@ class Exchange
     protected:
     /**
      * @brief adjust the exchange's liquid market start time
+     * @NOTE: the input string should be based on the exchange's time zone
      * 
      * @param in the time in the format "HH:MM"
      */
@@ -81,6 +82,7 @@ class Exchange
 
     /**
      * @brief adjust the exchange's liquid market end time
+     * @NOTE: the input string should be based on the exchange's time zone
      * 
      * @param in the time in the format "HH:MM"
      */
