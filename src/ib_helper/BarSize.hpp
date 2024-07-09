@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <string>
 
 /****
@@ -33,8 +34,44 @@ enum class BarSize
     COUNT_
 };
 
+enum class DurationUnit
+{
+    SECOND,
+    DAY,
+    WEEK,
+    MONTH,
+    YEAR
+};
+
 } // namespace ib_helper
 
+/***
+ * @brief build string useful for UI components
+ *
+ * @returns string like "1 minute" or "4 hours"
+ */
 std::string to_string(ib_helper::BarSize in);
 
+/***
+ * @brief build string of bar length for use with IB
+ *
+ * @returns string like "1 min" or "4 hours"
+ */
 std::string to_ib_string(ib_helper::BarSize in);
+
+/***
+ * @brief build a string that corresponds to the duration unit
+ * @return a string such as "Seconds" or "Week"
+ */
+std::string to_string(ib_helper::DurationUnit in);
+
+/***
+ * @return a string for use with IB such as "S" for seconds or "M" for month
+ */
+std::string to_ib_string(ib_helper::DurationUnit in);
+
+/***
+ * @return a correctly formatted "duration string" for getting historical bars
+ */
+std::string to_ib_string(uint8_t qty, ib_helper::DurationUnit duration);
+
