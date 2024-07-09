@@ -10,7 +10,8 @@ namespace ib_helper
 
 enum class BarSize
 {
-    ONE_SECOND = 0,
+    UNKNOWN = 0,
+    ONE_SECOND,
     FIVE_SECONDS,
     TEN_SECONDS,
     FIFTEEN_SECONDS,
@@ -36,6 +37,7 @@ enum class BarSize
 
 enum class DurationUnit
 {
+    UNKNOWN = 0,
     SECOND,
     DAY,
     WEEK,
@@ -73,5 +75,5 @@ std::string to_ib_string(ib_helper::DurationUnit in);
 /***
  * @return a correctly formatted "duration string" for getting historical bars
  */
-std::string to_ib_string(uint8_t qty, ib_helper::DurationUnit duration);
+std::string to_ib_string(uint16_t qty, ib_helper::DurationUnit duration);
 

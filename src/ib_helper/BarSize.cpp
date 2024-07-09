@@ -146,7 +146,9 @@ std::string to_ib_string(ib_helper::DurationUnit in)
     return "";
 }
 
-std::string to_ib_string(uint8_t qty, ib_helper::DurationUnit duration)
+std::string to_ib_string(uint16_t qty, ib_helper::DurationUnit duration)
 {
+    if (qty <= 0 || duration == ib_helper::DurationUnit::UNKNOWN)
+        return "";
     return std::to_string(qty) + " " + to_ib_string(duration);
 }
