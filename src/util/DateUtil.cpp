@@ -281,7 +281,6 @@ std::time_t to_time_t(const Bar& bar)
         ss >> std::get_time(&t, "%Y-%m-%d %H:%M:%S");
         time_t tempTime = mktime(&t);
         l = to_midnight_ny(tempTime);
-        //std::cout << "Converted " << tempTime  << " to " << l << "\n";
     }
     return l;
 }

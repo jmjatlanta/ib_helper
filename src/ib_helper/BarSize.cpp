@@ -105,3 +105,50 @@ std::string to_ib_string(ib_helper::BarSize in)
     }
     return "UNKNOWN";
 };
+
+std::string to_string(ib_helper::DurationUnit in)
+{
+    switch(in)
+    {
+        case ib_helper::DurationUnit::SECOND:
+            return "Seconds";
+        case ib_helper::DurationUnit::DAY:
+            return "Day";
+        case ib_helper::DurationUnit::WEEK:
+            return "Week";
+        case ib_helper::DurationUnit::MONTH:
+            return "Month";
+        case ib_helper::DurationUnit::YEAR:
+            return "Year";
+        default:
+            return "Unknown";
+    }
+    return "Unknown";
+}
+
+std::string to_ib_string(ib_helper::DurationUnit in)
+{
+    switch(in)
+    {
+        case ib_helper::DurationUnit::SECOND:
+            return "S";
+        case ib_helper::DurationUnit::DAY:
+            return "D";
+        case ib_helper::DurationUnit::WEEK:
+            return "W";
+        case ib_helper::DurationUnit::MONTH:
+            return "M";
+        case ib_helper::DurationUnit::YEAR:
+            return "Y";
+        default:
+            return "";
+    }
+    return "";
+}
+
+std::string to_ib_string(uint16_t qty, ib_helper::DurationUnit duration)
+{
+    if (qty <= 0 || duration == ib_helper::DurationUnit::UNKNOWN)
+        return "";
+    return std::to_string(qty) + " " + to_ib_string(duration);
+}
