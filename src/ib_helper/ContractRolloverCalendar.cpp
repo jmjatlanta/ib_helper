@@ -74,7 +74,7 @@ ContractRolloverCalendar::ContractRolloverCalendar()
 {
     InsertInHashes("HMUZ", RolloverRule::DAY_OF, {"STXE", "FDX", "FSMI", "FFI", "IFS", "IFX"} );
     InsertInHashes("FGHJKMNQUVXZ", RolloverRule::DAY_OF, {"FCE", "MFXI", "OMXS30", "AEX"} );
-    InsertInHashes("HMUZ", RolloverRule::FIVE_DAYS_PRIOR, {"ES", "NQ", "YM", "DM", "TFS", "RMF", "MES", "MNQ", "RTY" } );
+    InsertInHashes("HMUZ", RolloverRule::FIVE_DAYS_PRIOR, {"ES", "NQ", "YM", "DM", "TFS", "RMF", "MES", "MNQ", "RTY", "M2K" } );
     InsertInHashes("FGHJKMNQUVXZ", RolloverRule::ONE_DAY_PRIOR, {"CL", "NG"});
     InsertInHashes("FGHJKMNQUVXZ", RolloverRule::EIGHT_DAYS_PRIOR, {"HO", "RB"});
     InsertInHashes("GJMQZ", RolloverRule::THIRD_TO_LAST_DAY_OF_PRIOR_MONTH, {"GC"});
