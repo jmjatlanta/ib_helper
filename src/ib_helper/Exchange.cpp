@@ -1,7 +1,10 @@
 #include "Exchange.hpp"
 #include <iomanip>
 #include <iostream>
-
+#ifdef __APPLE__
+#define HH_DATELIB
+#include "date/tz.h"
+#endif
 void parseYYYYMM(const std::string& in, tm& time)
 {
     time.tm_year = strtol(in.substr(0,4).c_str(), nullptr, 10);
@@ -120,7 +123,11 @@ Exchange::Exchange(const ContractDetails& contractDetails)
 
 std::chrono::time_point<std::chrono::system_clock> Exchange::midnightAtExchange(time_t today)
 {
+#ifdef HH_DATELIB
+    date::zoned_time exchangeTimeZone{date::locate_zone(timeZone), std::chrono::system_clock::from_time_t(today)};
+#else
     std::chrono::zoned_time exchangeTimeZone{std::chrono::locate_zone(timeZone), std::chrono::system_clock::from_time_t(today)};
+#endif
     // now get the offset
     auto offset = exchangeTimeZone.get_info().offset;
     // now get midnight UTC and add offset
