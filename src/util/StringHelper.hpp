@@ -26,3 +26,4 @@ inline std::string trim(const std::string& in)
 }
 
 } // namespace stringhelper
+

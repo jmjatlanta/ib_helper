@@ -145,6 +145,10 @@ bool IBConnector::disconnect()
         osSignal = nullptr;
     }
     currentConnectionStatus = ConnectionStatus::SHUTDOWN;
+    // lock the mutex
+    std::scoped_lock lock(connectionMonitorsMutex);
+    std::for_each(connectionMonitors.begin(), connectionMonitors.end(), [this](IBConnectionMonitor* curr)
+                  { curr->OnDisconnect(this); });
     return true;
 }
 
