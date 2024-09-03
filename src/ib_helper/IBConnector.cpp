@@ -327,10 +327,10 @@ void IBConnector::RemoveConnectionMonitor(IBConnectionMonitor* in)
 
 void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
 {
-    {
-        std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+    std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+    auto itr = std::find(connectionMonitors.begin(), connectionMonitors.end(), in);
+    if (itr == connectionMonitors.end())
         connectionMonitors.push_back(in);
-    }
 }
 
 void IBConnector::CancelOrder(int orderId, const std::string& time)
@@ -773,6 +773,15 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
             std::for_each(connectionMonitors.begin(), connectionMonitors.end(), 
                           [this, id, errorCode, errorString, advancedOrderRejectJson](IBConnectionMonitor* curr)
                           { curr->OnError(this, id, errorCode, errorString, advancedOrderRejectJson); });
+        }
+        else
+        {
+            if (errorString.find("Confirm that \"Enable ActiveX") != std::string::npos)
+            {
+                std::for_each(connectionMonitors.begin(), connectionMonitors.end(), 
+                          [this, id, errorCode, errorString, advancedOrderRejectJson](IBConnectionMonitor* curr)
+                          { curr->OnError(this, id, errorCode, errorString, advancedOrderRejectJson); });
+            }
         }
     }
     if (errorCode == 1100 // Connection lost between TWS and IB

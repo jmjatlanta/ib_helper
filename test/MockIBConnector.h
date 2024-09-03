@@ -22,7 +22,7 @@ struct MockOpenOrder
 class MockIBConnector : public ib_helper::IBConnector
 {
     public:
-    MockIBConnector(const std::string& hostname, int port, int clientId);
+    MockIBConnector(const std::string& hostname, int port, int clientId, ib_helper::IBConnectionMonitor* monitor = nullptr);
     ~MockIBConnector();
     uint32_t GetNextRequestId() override;
     std::future<std::vector<ContractDetails>> GetContractDetails(const Contract& contract) override;

@@ -4,14 +4,22 @@
 #include <exception>
 #include <algorithm>
 
-MockIBConnector::MockIBConnector(const std::string& hostname, int port, int clientId) 
+MockIBConnector::MockIBConnector(const std::string& hostname, int port, int clientId, ib_helper::IBConnectionMonitor* monitor) 
     : nextRequestId(1), nextOrderId(1)
 {
     logger = util::SysLogger::getInstance();
     this->SetDefaultAccount("ABC123");
+    if (monitor != nullptr)
+    {
+        monitor->OnConnect(this);
+        monitor->OnFullConnect(this);
+    }
 }
 
-MockIBConnector::~MockIBConnector() {}
+MockIBConnector::~MockIBConnector() 
+{
+    logger->debug("MockIBConnector", "dtor called");
+}
 
 uint32_t MockIBConnector::GetNextRequestId()
 {
