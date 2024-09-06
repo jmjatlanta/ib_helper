@@ -53,11 +53,11 @@ IBConnector::IBConnector() : currentConnectionStatus(ConnectionStatus::NOT_START
 }
 
 IBConnector::IBConnector(const std::string& hostname, int port, int clientId, IBConnectionMonitor* connMonitor) 
-        : hostname(hostname), port(port), clientId(clientId), currentConnectionStatus(ConnectionStatus::NOT_STARTED)
+        : hostname(hostname), port(port), clientId(clientId), 
+        currentConnectionStatus(ConnectionStatus::NOT_STARTED)
 {
     logger = Logger::getInstance();
-    if (connMonitor != nullptr)
-        AddConnectionMonitor(connMonitor);
+    AddConnectionMonitor(connMonitor);
     connect();
 }
 
@@ -81,13 +81,7 @@ bool IBConnector::connect()
                 currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
                 if (ibClient != nullptr)
                 {
-                    //ibClient->eDisconnect();
-                    //reader->processMsgs();
-                    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-                    //listenerThread->join();
-                    //listenerThread = nullptr;
-                    //delete reader;
-                    //reader = nullptr;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                     delete ibClient;
                     ibClient = nullptr;
                 }
@@ -106,7 +100,6 @@ bool IBConnector::connect()
         }
         if (currentConnectionStatus != ConnectionStatus::FULLY_CONNECTED)
             currentConnectionStatus = ConnectionStatus::PARTIALLY_CONNECTED;
-        //logger->debug("IBConnector", "connect:: eConnect returned true, creating EReader");
         reader = new EReader(ibClient, osSignal);
         reader->start();
         listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
@@ -323,10 +316,10 @@ void IBConnector::RemoveConnectionMonitor(IBConnectionMonitor* in)
 
 void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
 {
-    {
-        std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
-        connectionMonitors.push_back(in);
-    }
+    if (in == nullptr)
+        return;
+    std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+    connectionMonitors.push_back(in);
 }
 
 void IBConnector::CancelOrder(int orderId, const std::string& time)
@@ -765,11 +758,9 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
             // they're legit
             currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
             disconnect();
-            for(auto* monitor : connectionMonitors)
-            {
-                monitor->OnError(this, msg);
-            }
         }
+        for(auto* monitor : connectionMonitors)
+            monitor->OnError(this, msg);
     }
     if (errorCode == 504) // not connected
     {

@@ -43,7 +43,7 @@ target_link_libraries(ib_helper_tests
     dfp
     ib_api
     GTest::gtest
-    GTest::gtest_main
+    GTest::gmock_main
     Boost::log
     Boost::log_setup
 )

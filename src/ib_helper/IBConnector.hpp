@@ -298,6 +298,7 @@ class IBConnector : public EWrapper
     std::mutex scannerHandlerMutex;
     std::vector<ScannerHandler*> scannerHandlers;
     std::vector<ExecutionHandler*> executionHandlers;
+    std::atomic<ConnectionStatus> currentConnectionStatus;
     private:
     std::string defaultAccount;
     std::mutex mktDepthExchangesPromisesMutex;
@@ -310,7 +311,6 @@ class IBConnector : public EWrapper
     std::mutex orderHandlersMutex;
     std::mutex executionHandlersMutex;
     std::mutex connectionStatusMutex;
-    std::atomic<ConnectionStatus> currentConnectionStatus;
 }; 
 
 std::string to_string(IBConnector::ConnectionStatus in);
