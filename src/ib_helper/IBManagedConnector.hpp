@@ -23,7 +23,10 @@ public:
      *  continually try to connect until success, or no connection listeners
      *  should be run on a separate thread
     */
-    void async_connect();
+    void async_reconnect();
+
+protected:
+    void cleanUpPartialConnection() override;
 
 protected:
     std::thread reconnectThread;

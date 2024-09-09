@@ -154,6 +154,10 @@ class IBConnector : public EWrapper
      */
     void processMessages();
     /***
+     * Handle an error on a partial connection (thread issue)
+     */
+    virtual void cleanUpPartialConnection() {}
+    /***
      * EWrapper virtual functions
      */
 

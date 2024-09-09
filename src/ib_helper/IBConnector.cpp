@@ -100,8 +100,6 @@ bool IBConnector::connect()
         }
         if (currentConnectionStatus != ConnectionStatus::FULLY_CONNECTED)
             currentConnectionStatus = ConnectionStatus::PARTIALLY_CONNECTED;
-        reader = new EReader(ibClient, osSignal);
-        reader->start();
         if (listenerThread != nullptr && listenerThread->joinable())
             listenerThread->join();
         listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
@@ -114,19 +112,14 @@ bool IBConnector::disconnect()
 {
     logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
     currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
-    if (reader != nullptr)
-    {
-        delete reader;
-        reader = nullptr;
-    }
-    // there should be no more EReader messages
+    // there should be no more EReader messages after the thread shuts down (EReader is destroyed
     if (listenerThread != nullptr && listenerThread->joinable())
         listenerThread->join();
     if (ibClient != nullptr)
     {
-        ibClient->eDisconnect();
+        //ibClient->eDisconnect(); <-- called from ereader in dtor
         // give some time to inform other threads
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(500));
         delete ibClient;
         ibClient = nullptr;
     }
@@ -345,7 +338,8 @@ static bool ConnectionShuttingDown(IBConnector::ConnectionStatus in)
 void IBConnector::processMessages() {
     try
     {
-        //logger->debug("IBConnector", "processMessages: Loop starting");
+        reader = new EReader(ibClient, osSignal);
+        reader->start();
         while (!ConnectionShuttingDown(currentConnectionStatus)) 
         {
             osSignal->waitForSignal();
@@ -356,6 +350,7 @@ void IBConnector::processMessages() {
             }
             //logger->debug("IBConnector", "processMessages: waiting");
         }
+        logger->debug("IBConnector", "processMessages: shutting down reader");
     } 
     catch(const std::exception& ex)
     {
@@ -365,7 +360,10 @@ void IBConnector::processMessages() {
     {
         logger->error("IBConnector", "processMessages: Exception thrown");
     }
-    //logger->debug("IBConnector", "processMessages loop complete");
+    if (reader != nullptr)
+        delete reader;
+    reader = nullptr;
+    logger->debug("IBConnector", "processMessages loop complete");
 }
 
 /***
@@ -757,7 +755,7 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         || errorCode == 509  // error reading socket
         )
     {
-        if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED || currentConnectionStatus == ConnectionStatus::PARTIALLY_CONNECTED)
+        if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED)
         {
             // they're legit
             currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
@@ -766,8 +764,13 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
             disconnect();
         }
         else
+        {
+            // we can't call disconnect as we may be on the same thread
             for(auto* monitor : connectionMonitors)
                 monitor->OnError(this, id, errorCode, errorString, advancedOrderRejectJson);
+            if (currentConnectionStatus == ConnectionStatus::PARTIALLY_CONNECTED)
+                cleanUpPartialConnection();
+        }
     }
     if (errorCode == 1100 // Connection lost between TWS and IB
         || errorCode == 1102 // Connection restored

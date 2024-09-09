@@ -19,7 +19,14 @@ IBManagedConnector::~IBManagedConnector()
     logger->debug("IBManagedConnector", "dtor complete");
 }
 
-void IBManagedConnector::async_connect()
+void IBManagedConnector::cleanUpPartialConnection()
+{
+    logger->debug("IBManagedConnector", "cleanUpPartialConnection called");
+    IBConnector::cleanUpPartialConnection();
+    connectionClosed();
+    logger->debug("IBManagedConnector", "cleanUpPartialConnection completed");
+}
+void IBManagedConnector::async_reconnect()
 {
     logger->debug("IBManagedConnector", "async_connect called");
     if (reconnectThread.joinable())
@@ -33,6 +40,8 @@ void IBManagedConnector::async_connect()
                 {
                     try
                     {
+                        // clean up existing connection
+                        IBConnector::disconnect(); // this can be called because it is in a separate thread
                         while (shouldAttemptConnect && !connect())
                             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                     } 
@@ -55,7 +64,7 @@ void IBManagedConnector::connectionClosed()
     logger->debug("IBManagedConnector", "connectionClosed called");
     IBConnector::connectionClosed();
     if (shouldAttemptConnect && !currentlyAttempting)
-        async_connect();
+        async_reconnect();
     logger->debug("IBManagedConnector", "connectionClosed completed");
 }
 
