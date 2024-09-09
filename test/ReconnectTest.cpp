@@ -1,6 +1,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "IBConnector.hpp"
+#include "IBManagedConnector.hpp"
 
 class MockEClient : public EClientSocket
 {
@@ -272,3 +272,48 @@ TEST(ReconnectTest, forcedReconnect)
     EXPECT_TRUE(conn->IsConnected());
     EXPECT_LT(retries, 3);
 }
+
+/****
+ * This test requires manually shutting down TWS
+*/
+TEST(ReconnectTest, DISABLED_managedConnection)
+{
+    class MyStrategy : public ib_helper::IBConnectionMonitor
+    {
+        public:
+        void OnConnect(ib_helper::IBConnector* conn) override { onConnectCount++; }
+        void OnFullConnect(ib_helper::IBConnector* conn) override { onFullConnectCount++; }
+        void OnDisconnect(ib_helper::IBConnector* conn) override { onDisconnectCount++; }
+        void OnError(ib_helper::IBConnector* conn, const std::string& msg) override { onErrorCount++; }
+
+        int onConnectCount = 0;
+        int onFullConnectCount = 0;
+        int onDisconnectCount = 0;
+        int onErrorCount = 0;
+    };
+
+    MyStrategy myStrategy;
+    std::shared_ptr<ib_helper::IBManagedConnector> conn = std::make_shared<ib_helper::IBManagedConnector>("10.8.0.1", 4002, 8, &myStrategy);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for connection
+    ASSERT_TRUE(conn->IsConnected());
+    ASSERT_EQ( myStrategy.onConnectCount, 1);
+    ASSERT_EQ( myStrategy.onFullConnectCount, 1);
+    ASSERT_EQ( myStrategy.onDisconnectCount, 0);
+    ASSERT_EQ( myStrategy.onErrorCount, 0);
+
+    // eventually a 502 error happens
+    std::cout << "Waiting to be disconnected\n";
+    while (myStrategy.onDisconnectCount == 0)
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::cout << "Disconnect happened, waiting for reconnect\n";
+    // OK, the disconnect happens, now wait for the full reconnect
+    int lastConnectCount = myStrategy.onConnectCount;
+    // wait 5 minutes to attempt to get connected again
+    auto endTime = std::chrono::system_clock::now() + std::chrono::minutes(5);
+    while (endTime > std::chrono::system_clock::now() && lastConnectCount == myStrategy.onConnectCount)
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::cout << "Reconnected\n";
+    // connection should be reestablished
+    // everything is back to normal
+}
+

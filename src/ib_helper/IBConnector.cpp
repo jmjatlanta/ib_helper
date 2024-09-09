@@ -102,6 +102,8 @@ bool IBConnector::connect()
             currentConnectionStatus = ConnectionStatus::PARTIALLY_CONNECTED;
         reader = new EReader(ibClient, osSignal);
         reader->start();
+        if (listenerThread != nullptr && listenerThread->joinable())
+            listenerThread->join();
         listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
         return true;
     }
@@ -110,7 +112,7 @@ bool IBConnector::connect()
 
 bool IBConnector::disconnect()
 {
-    //logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
+    logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
     currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
     if (ibClient != nullptr)
     {
@@ -746,7 +748,9 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
     std::string msg = "Error id: " + std::to_string(id) 
         + " Code: " + std::to_string(errorCode) 
         + ": " + errorString 
-        + ". JSON: " + advancedOrderRejectJson;
+        + ". JSON: " + advancedOrderRejectJson
+        + " current status: " + to_string(currentConnectionStatus);
+    logger->error(logCategory, msg);
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 // couldn't connect to TWS
         || errorCode == 509 ) // error reading socket
@@ -754,13 +758,15 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         // these could be messages stuck in the buffer( partially connected) or legit messages
         if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED)
         {
-            logger->error("IBConnector", "Received 502 while being fully connected. Attempting disconnect");
             // they're legit
             currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
+            for(auto* monitor : connectionMonitors)
+                monitor->OnError(this, msg);
             disconnect();
         }
-        for(auto* monitor : connectionMonitors)
-            monitor->OnError(this, msg);
+        else
+            for(auto* monitor : connectionMonitors)
+                monitor->OnError(this, msg);
     }
     if (errorCode == 504) // not connected
     {
@@ -797,7 +803,6 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
                 handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);
         }
     }
-    logger->error(logCategory, msg);
 }
 void IBConnector::updateMktDepth(TickerId reqId, int position, int operation, int side, double price, Decimal size)
 {
