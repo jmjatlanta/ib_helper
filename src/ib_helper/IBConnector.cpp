@@ -761,12 +761,12 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
             // they're legit
             currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
             for(auto* monitor : connectionMonitors)
-                monitor->OnError(this, msg);
+                monitor->OnError(this, id, errorCode, errorString, advancedOrderRejectJson);
             disconnect();
         }
         else
             for(auto* monitor : connectionMonitors)
-                monitor->OnError(this, msg);
+                monitor->OnError(this, id, errorCode, errorString, advancedOrderRejectJson);
     }
     if (errorCode == 504) // not connected
     {

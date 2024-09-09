@@ -151,7 +151,7 @@ TEST(ReconnectTest, error502)
         void OnConnect(ib_helper::IBConnector* conn) override { onConnectCount++; }
         void OnFullConnect(ib_helper::IBConnector* conn) override { onFullConnectCount++; }
         void OnDisconnect(ib_helper::IBConnector* conn) override { onDisconnectCount++; }
-        void OnError(ib_helper::IBConnector* conn, const std::string& msg) override { onErrorCount++; }
+        void OnError(ib_helper::IBConnector* conn, int id, int errorCode, const std::string& msg, const std::string& json) override { onErrorCount++; }
 
         int onConnectCount = 0;
         int onFullConnectCount = 0;
