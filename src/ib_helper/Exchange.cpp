@@ -130,8 +130,13 @@ std::chrono::time_point<std::chrono::system_clock> Exchange::midnightAtExchange(
 #endif
     // now get the offset
     auto offset = exchangeTimeZone.get_info().offset;
+#ifdef HH_DATELIB
+    // now get midnight UTC and add offset (be careful of the day rollover)
+    auto midnight = date::floor<date::days>(std::chrono::system_clock::from_time_t(today));
+#else
     // now get midnight UTC and add offset
     auto midnight = std::chrono::floor<std::chrono::days>(std::chrono::system_clock::from_time_t(today));
+#endif
     auto result = midnight - offset;
     if (result > std::chrono::system_clock::from_time_t(today))
         result -= std::chrono::days(1);

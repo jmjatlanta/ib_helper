@@ -6,9 +6,9 @@ project ( ib_helper_tests )
 
 if(MSVC)
     SET(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    add_compile_options(/EHsc -DHAS_REMOTE_API=0)
+    add_compile_options(/EHsc)
 else(MSVC)
-    add_compile_options(-g -O0 -DHAS_REMOTE_API=0)
+    add_compile_options(-g -O0)
 endif(MSVC)
 
 file(GLOB ib_helper "../src/ib_helper/*.cpp" )
@@ -16,13 +16,15 @@ file(GLOB util_src "../src/util/*.cpp" )
 file(GLOB test_src "./*.cpp" )
 file(GLOB date_src "../date/src/*.cpp" )
 
-find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 include(FetchContent)
 FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
 )
 FetchContent_MakeAvailable(googletest)
+
+find_package(CURL REQUIRED)
+find_package(Boost 1.74 COMPONENTS log log_setup REQUIRED)
 
 add_executable( ib_helper_tests 
     ${test_src} 
@@ -31,11 +33,21 @@ add_executable( ib_helper_tests
     ${date_src} 
 )
 
+if(MSVC)
+    SET(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    target_compile_options(ib_helper_tests PRIVATE /EHsc)
+    target_compile_definitions(ib_helper_tests PRIVATE -DHAS_REMOTE_API=1)
+else(MSVC)
+    target_compile_options(ib_helper_tests PRIVATE -g -O0)
+    target_compile_definitions(ib_helper_tests PRIVATE -DHAS_REMOTE_API=1)
+endif(MSVC)
+
 target_include_directories(ib_helper_tests PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/../date/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/util
     ${IB_CLIENT_DIR}
+    ${CURL_INCLUDE_DIRS}
 )
 
 target_link_libraries(ib_helper_tests 
@@ -46,6 +58,7 @@ target_link_libraries(ib_helper_tests
     GTest::gmock_main
     Boost::log
     Boost::log_setup
+    ${CURL_LIBRARIES}
 )
 
 if(MSVC)

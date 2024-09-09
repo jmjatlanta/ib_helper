@@ -114,23 +114,19 @@ bool IBConnector::disconnect()
 {
     logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
     currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
+    if (reader != nullptr)
+    {
+        delete reader;
+        reader = nullptr;
+    }
+    // there should be no more EReader messages
+    if (listenerThread != nullptr && listenerThread->joinable())
+        listenerThread->join();
     if (ibClient != nullptr)
     {
         ibClient->eDisconnect();
         // give some time to inform other threads
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
-    if (listenerThread != nullptr && listenerThread->joinable())
-        listenerThread->join();
-    if (reader != nullptr)
-    {
-        // flush any last message
-        //reader->processMsgs();
-        delete reader;
-        reader = nullptr;
-    }
-    if (ibClient != nullptr)
-    {
         delete ibClient;
         ibClient = nullptr;
     }
@@ -140,6 +136,11 @@ bool IBConnector::disconnect()
         osSignal = nullptr;
     }
     currentConnectionStatus = ConnectionStatus::SHUTDOWN;
+    // lock the mutex
+    std::scoped_lock lock(connectionMonitorsMutex);
+    std::for_each(connectionMonitors.begin(), connectionMonitors.end(), [this](IBConnectionMonitor* curr)
+                  { curr->OnDisconnect(this); });
+    logger->debug("IBConnector", "disconnect completed");
     return true;
 }
 
@@ -318,10 +319,10 @@ void IBConnector::RemoveConnectionMonitor(IBConnectionMonitor* in)
 
 void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
 {
-    if (in == nullptr)
-        return;
     std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
-    connectionMonitors.push_back(in);
+    auto itr = std::find(connectionMonitors.begin(), connectionMonitors.end(), in);
+    if (itr == connectionMonitors.end())
+        connectionMonitors.push_back(in);
 }
 
 void IBConnector::CancelOrder(int orderId, const std::string& time)
@@ -753,10 +754,10 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
     logger->error(logCategory, msg);
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 // couldn't connect to TWS
-        || errorCode == 509 ) // error reading socket
+        || errorCode == 509  // error reading socket
+        )
     {
-        // these could be messages stuck in the buffer( partially connected) or legit messages
-        if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED)
+        if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED || currentConnectionStatus == ConnectionStatus::PARTIALLY_CONNECTED)
         {
             // they're legit
             currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
@@ -767,6 +768,14 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         else
             for(auto* monitor : connectionMonitors)
                 monitor->OnError(this, id, errorCode, errorString, advancedOrderRejectJson);
+    }
+    if (errorCode == 1100 // Connection lost between TWS and IB
+        || errorCode == 1102 // Connection restored
+        )
+    {
+        std::for_each(connectionMonitors.begin(), connectionMonitors.end(), 
+                      [this, id, errorCode, errorString, advancedOrderRejectJson](IBConnectionMonitor* curr)
+                      { curr->OnError(this, id, errorCode, errorString, advancedOrderRejectJson); });
     }
     if (errorCode == 504) // not connected
     {
@@ -789,6 +798,10 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         for(auto& h : scannerHandlers)
             h->OnScannerSubscriptionEnd(this, id); 
         return;
+    }
+    if (errorCode == 165 )
+    {
+        // connection restored for a subscription (1100 was called previously, 1102 probably on its way)
     }
     if (errorCode == 2109)
     {

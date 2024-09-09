@@ -3,6 +3,41 @@
 #include "../src/ib_helper/ContractBuilder.hpp"
 #include "../src/ib_helper/Order.hpp"
 #include "test_helpers.h"
+#include "../src/util/DecimalHelper.hpp"
+
+TEST(OrderTests, decimals)
+{
+    Decimal initialized; 
+    double initializedDouble = 0.0;
+    // nan
+    {
+        Decimal nan = 0x7800000000000000ull | 0x7c00000000000000ull;
+        double dNan = std::numeric_limits<double>::quiet_NaN();
+        EXPECT_FALSE( isNaN(initialized) );
+        EXPECT_FALSE( isNaN(doubleToDecimal(initializedDouble)) );
+        EXPECT_TRUE( isNaN(nan));
+        EXPECT_NE(decimalToDouble(nan), 0.0);
+        EXPECT_EQ(decimalToDouble(checkNaN(nan)), 0.0);
+        EXPECT_TRUE( isNaN( doubleToDecimal(dNan) ) );
+    }
+    // inf
+    {
+        Decimal inf = 0x7800000000000000ull;
+        double dInf = std::numeric_limits<double>::infinity();
+        EXPECT_TRUE( isInf(inf));
+        EXPECT_FALSE( isNaN(inf) );
+        EXPECT_NE(decimalToDouble(inf), 0.0);
+        EXPECT_EQ(decimalToDouble(checkInf(inf)), 0.0);
+        EXPECT_TRUE( isInf( doubleToDecimal(dInf) ) );
+    }
+    // adding
+    {
+        Decimal a = doubleToDecimal(2.01);
+        Decimal b = doubleToDecimal(1.03);
+        Decimal c = add(a, b); // a + b does not work must use a function
+        EXPECT_EQ(decimalToDouble(c), 3.04);
+    }
+}
 
 TEST(OrderTests, DISABLED_OnNewOrder)
 {

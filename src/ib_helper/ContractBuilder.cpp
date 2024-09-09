@@ -192,7 +192,7 @@ ContractDetails ContractBuilder::BuildFuture(const std::string &ticker, time_t n
     contract.localSymbol = "";
     contract.secType = "FUT";
     contract.currency = "USD";
-    if (ticker == "ES")
+    if (ticker == "ES"  || ticker == "RTY")
     {
         contract.exchange = "CME";
     }
