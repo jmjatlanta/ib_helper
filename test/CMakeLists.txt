@@ -4,17 +4,13 @@ set(CMAKE_CXX_STANDARD 20)
 
 project ( ib_helper_tests )
 
-if(MSVC)
-    SET(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    add_compile_options(/EHsc)
-else(MSVC)
-    add_compile_options(-g -O0)
-endif(MSVC)
-
 file(GLOB ib_helper "../src/ib_helper/*.cpp" )
 file(GLOB util_src "../src/util/*.cpp" )
 file(GLOB test_src "./*.cpp" )
-file(GLOB date_src "../date/src/*.cpp" )
+if(HH_DATELIB)
+    file(GLOB date_src "../date/src/*.cpp" )
+    find_package(CURL REQUIRED)
+endif(HH_DATELIB)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -23,7 +19,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-find_package(CURL REQUIRED)
 find_package(Boost 1.74 COMPONENTS log log_setup REQUIRED)
 
 add_executable( ib_helper_tests 
@@ -33,25 +28,33 @@ add_executable( ib_helper_tests
     ${date_src} 
 )
 
+target_compile_definitions(ib_helper_tests PRIVATE BOOST_ALL_DYN_LINK)
+
 if(MSVC)
     SET(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     target_compile_options(ib_helper_tests PRIVATE /EHsc)
-    target_compile_definitions(ib_helper_tests PRIVATE -DHAS_REMOTE_API=1)
+    target_compile_definitions(ib_helper_tests PRIVATE NOMINMAX)
 else(MSVC)
     target_compile_options(ib_helper_tests PRIVATE -g -O0)
-    target_compile_definitions(ib_helper_tests PRIVATE -DHAS_REMOTE_API=1)
 endif(MSVC)
-if(HH_DATELIB)
-    target_compile_definitions(ib_helper_tests PRIVATE HH_DATELIB=1)
-endif(HH_DATELIB)
 
 target_include_directories(ib_helper_tests PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../date/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/util
     ${IB_CLIENT_DIR}
-    ${CURL_INCLUDE_DIRS}
 )
+
+if(HH_DATELIB)
+    target_compile_definitions(ib_helper_tests PRIVATE -DHAS_REMOTE_API=1)
+    target_compile_definitions(ib_helper_tests PRIVATE -DHH_DATELIB=1)
+    target_include_directories(ib_helper_tests PRIVATE
+        ${CURL_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../date/include
+    )
+    target_link_libraries(ib_helper_tests 
+        ${CURL_LIBRARIES}
+    )
+endif(HH_DATELIB)
 
 target_link_libraries(ib_helper_tests 
     ib_helper
@@ -61,12 +64,5 @@ target_link_libraries(ib_helper_tests
     GTest::gmock_main
     Boost::log
     Boost::log_setup
-    ${CURL_LIBRARIES}
 )
-
-if(MSVC)
-    target_compile_definitions(ib_helper_tests PRIVATE NOMINMAX)
-endif(MSVC)
-
-target_compile_definitions(ib_helper_tests PRIVATE BOOST_ALL_DYN_LINK)
 

@@ -14,10 +14,12 @@ endif(MSVC)
 
 file(GLOB ib_helper "ib_helper/*.cpp" )
 file(GLOB util_src "util/*.cpp" )
-file(GLOB date_src "../date/src/*.cpp" )
+if(HH_DATELIB)
+    file(GLOB date_src "../date/src/*.cpp" )
+    find_package(CURL REQUIRED)
+endif(HH_DATELIB)
 file(GLOB ib_src ${IB_CLIENT_DIR}/*.cpp)
 
-find_package(CURL REQUIRED)
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
 
 add_library( ib_api ${ib_src} )
@@ -28,12 +30,10 @@ else(MSVC)
     target_compile_options(ib_api PRIVATE -g -O0)
 endif(MSVC)
 
-target_compile_definitions(ib_api PRIVATE -DHAS_REMOTE_API=1 -DAUTO_DOWNLOAD=1)
 target_compile_definitions(ib_api PRIVATE BOOST_ALL_DYN_LINK)
 
 target_include_directories( ib_api PRIVATE
     ${IB_CLIENT_DIR}
-    ${CURL_INCLUDE_DIRS}
 )
 
 add_library( ib_helper ${util_src} ${ib_helper} ${date_src} )
@@ -44,18 +44,19 @@ else(MSVC)
     target_compile_options(ib_helper PRIVATE -g -O0)
 endif(MSVC)
 
-target_compile_definitions(ib_helper PRIVATE -DHAS_REMOTE_API=1 -DAUTO_DOWNLOAD=1)
 target_compile_definitions(ib_helper PRIVATE BOOST_ALL_DYN_LINK)
 if(HH_DATELIB)
-    target_compile_definitions(ib_helper PRIVATE HH_DATELIB=1)
+    target_compile_definitions(ib_helper PRIVATE -DHH_DATELIB=1 -DHAS_REMOTE_API=1 -DAUTO_DOWNLOAD=1)
+    target_include_directories( ib_helper PRIVATE 
+        ${CMAKE_CURRENT_LIST_DIR}/../date/include 
+        ${CURL_INCLUDE_DIRS}
+    )
 endif(HH_DATELIB)
 
 target_include_directories( ib_helper PRIVATE 
-    ${CMAKE_CURRENT_LIST_DIR}/../date/include 
     ${CMAKE_CURRENT_LIST_DIR}/util
     ${IB_CLIENT_DIR}
     ${Boost_INCLUDE_DIR}
-    ${CURL_INCLUDE_DIRS}
 )
 
 set_target_properties(ib_helper PROPERTIES VERSION ${PROJECT_VERSION})
