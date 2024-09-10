@@ -9,8 +9,7 @@
 #ifdef _WIN32
 #define timegm _mkgmtime
 #endif
-#ifdef __APPLE__
-#define HH_DATELIB
+#ifdef HH_DATELIB
 #include "date/tz.h"
 #endif
 /***

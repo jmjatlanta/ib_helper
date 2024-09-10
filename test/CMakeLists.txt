@@ -41,6 +41,9 @@ else(MSVC)
     target_compile_options(ib_helper_tests PRIVATE -g -O0)
     target_compile_definitions(ib_helper_tests PRIVATE -DHAS_REMOTE_API=1)
 endif(MSVC)
+if(HH_DATELIB)
+    target_compile_definitions(ib_helper_tests PRIVATE HH_DATELIB=1)
+endif(HH_DATELIB)
 
 target_include_directories(ib_helper_tests PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/../date/include

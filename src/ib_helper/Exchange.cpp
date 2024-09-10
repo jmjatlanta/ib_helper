@@ -1,8 +1,7 @@
 #include "Exchange.hpp"
 #include <iomanip>
 #include <iostream>
-#ifdef __APPLE__
-#define HH_DATELIB
+#ifdef HH_DATELIB
 #include "date/tz.h"
 #endif
 void parseYYYYMM(const std::string& in, tm& time)

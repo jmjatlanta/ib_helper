@@ -46,6 +46,9 @@ endif(MSVC)
 
 target_compile_definitions(ib_helper PRIVATE -DHAS_REMOTE_API=1 -DAUTO_DOWNLOAD=1)
 target_compile_definitions(ib_helper PRIVATE BOOST_ALL_DYN_LINK)
+if(HH_DATELIB)
+    target_compile_definitions(ib_helper PRIVATE HH_DATELIB=1)
+endif(HH_DATELIB)
 
 target_include_directories( ib_helper PRIVATE 
     ${CMAKE_CURRENT_LIST_DIR}/../date/include 
