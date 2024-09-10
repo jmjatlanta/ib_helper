@@ -129,7 +129,7 @@ int32_t diff_with_ny(std::time_t now)
 {
     auto utc = std::chrono::system_clock::from_time_t(now);
 #ifdef HH_DATELIB
-    date::zoned_time ny_time{"America/New_York", utc};
+    date::zoned_time ny_time = date::make_zoned("America/New_York", utc);
 #else
     std::chrono::zoned_time ny_time{"America/New_York", utc};
 #endif
