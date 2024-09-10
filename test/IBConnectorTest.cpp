@@ -26,7 +26,7 @@ TEST(IBConnectorTest, Connect)
         {
             std::cout << "OnDisconnect called" << std::endl;
         }
-        void OnError(ib_helper::IBConnector* conn, const std::string& msg) override
+        void OnError(ib_helper::IBConnector* conn, int id, int code, const std::string& msg, const std::string& json) override
         {
             std::cout << "OnError called" << std::endl;
         }

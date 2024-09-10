@@ -1,3 +1,6 @@
 [submodule "IntelDFP"]
 	path = IntelDFP
 	url = git@github.com:/jmjatlanta/IntelDFP
+[submodule "date"]
+	path = date
+	url = https://github.com/HowardHinnant/date

@@ -53,11 +53,11 @@ IBConnector::IBConnector() : currentConnectionStatus(ConnectionStatus::NOT_START
 }
 
 IBConnector::IBConnector(const std::string& hostname, int port, int clientId, IBConnectionMonitor* connMonitor) 
-        : hostname(hostname), port(port), clientId(clientId), currentConnectionStatus(ConnectionStatus::NOT_STARTED)
+        : hostname(hostname), port(port), clientId(clientId), 
+        currentConnectionStatus(ConnectionStatus::NOT_STARTED)
 {
     logger = Logger::getInstance();
-    if (connMonitor != nullptr)
-        AddConnectionMonitor(connMonitor);
+    AddConnectionMonitor(connMonitor);
     connect();
 }
 
@@ -81,13 +81,7 @@ bool IBConnector::connect()
                 currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
                 if (ibClient != nullptr)
                 {
-                    //ibClient->eDisconnect();
-                    //reader->processMsgs();
-                    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-                    //listenerThread->join();
-                    //listenerThread = nullptr;
-                    //delete reader;
-                    //reader = nullptr;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                     delete ibClient;
                     ibClient = nullptr;
                 }
@@ -106,9 +100,8 @@ bool IBConnector::connect()
         }
         if (currentConnectionStatus != ConnectionStatus::FULLY_CONNECTED)
             currentConnectionStatus = ConnectionStatus::PARTIALLY_CONNECTED;
-        //logger->debug("IBConnector", "connect:: eConnect returned true, creating EReader");
-        reader = new EReader(ibClient, osSignal);
-        reader->start();
+        if (listenerThread != nullptr && listenerThread->joinable())
+            listenerThread->join();
         listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
         return true;
     }
@@ -117,25 +110,16 @@ bool IBConnector::connect()
 
 bool IBConnector::disconnect()
 {
-    //logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
+    logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
     currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
-    if (ibClient != nullptr)
-    {
-        ibClient->eDisconnect();
-        // give some time to inform other threads
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
+    // there should be no more EReader messages after the thread shuts down (EReader is destroyed
     if (listenerThread != nullptr && listenerThread->joinable())
         listenerThread->join();
-    if (reader != nullptr)
-    {
-        // flush any last message
-        //reader->processMsgs();
-        delete reader;
-        reader = nullptr;
-    }
     if (ibClient != nullptr)
     {
+        //ibClient->eDisconnect(); <-- called from ereader in dtor
+        // give some time to inform other threads
+        //std::this_thread::sleep_for(std::chrono::milliseconds(500));
         delete ibClient;
         ibClient = nullptr;
     }
@@ -145,6 +129,11 @@ bool IBConnector::disconnect()
         osSignal = nullptr;
     }
     currentConnectionStatus = ConnectionStatus::SHUTDOWN;
+    // lock the mutex
+    std::scoped_lock lock(connectionMonitorsMutex);
+    std::for_each(connectionMonitors.begin(), connectionMonitors.end(), [this](IBConnectionMonitor* curr)
+                  { curr->OnDisconnect(this); });
+    logger->debug("IBConnector", "disconnect completed");
     return true;
 }
 
@@ -323,10 +312,10 @@ void IBConnector::RemoveConnectionMonitor(IBConnectionMonitor* in)
 
 void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
 {
-    {
-        std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+    std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+    auto itr = std::find(connectionMonitors.begin(), connectionMonitors.end(), in);
+    if (itr == connectionMonitors.end())
         connectionMonitors.push_back(in);
-    }
 }
 
 void IBConnector::CancelOrder(int orderId, const std::string& time)
@@ -349,7 +338,8 @@ static bool ConnectionShuttingDown(IBConnector::ConnectionStatus in)
 void IBConnector::processMessages() {
     try
     {
-        //logger->debug("IBConnector", "processMessages: Loop starting");
+        reader = new EReader(ibClient, osSignal);
+        reader->start();
         while (!ConnectionShuttingDown(currentConnectionStatus)) 
         {
             osSignal->waitForSignal();
@@ -360,6 +350,7 @@ void IBConnector::processMessages() {
             }
             //logger->debug("IBConnector", "processMessages: waiting");
         }
+        logger->debug("IBConnector", "processMessages: shutting down reader");
     } 
     catch(const std::exception& ex)
     {
@@ -369,7 +360,10 @@ void IBConnector::processMessages() {
     {
         logger->error("IBConnector", "processMessages: Exception thrown");
     }
-    //logger->debug("IBConnector", "processMessages loop complete");
+    if (reader != nullptr)
+        delete reader;
+    reader = nullptr;
+    logger->debug("IBConnector", "processMessages loop complete");
 }
 
 /***
@@ -753,23 +747,38 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
     std::string msg = "Error id: " + std::to_string(id) 
         + " Code: " + std::to_string(errorCode) 
         + ": " + errorString 
-        + ". JSON: " + advancedOrderRejectJson;
+        + ". JSON: " + advancedOrderRejectJson
+        + " current status: " + to_string(currentConnectionStatus);
+    logger->error(logCategory, msg);
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 // couldn't connect to TWS
-        || errorCode == 509 ) // error reading socket
+        || errorCode == 509  // error reading socket
+        )
     {
-        // these could be messages stuck in the buffer( partially connected) or legit messages
         if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED)
         {
-            logger->error("IBConnector", "Received 502 while being fully connected. Attempting disconnect");
             // they're legit
             currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
-            disconnect();
             for(auto* monitor : connectionMonitors)
-            {
-                monitor->OnError(this, msg);
-            }
+                monitor->OnError(this, id, errorCode, errorString, advancedOrderRejectJson);
+            disconnect();
         }
+        else
+        {
+            // we can't call disconnect as we may be on the same thread
+            for(auto* monitor : connectionMonitors)
+                monitor->OnError(this, id, errorCode, errorString, advancedOrderRejectJson);
+            if (currentConnectionStatus == ConnectionStatus::PARTIALLY_CONNECTED)
+                cleanUpPartialConnection();
+        }
+    }
+    if (errorCode == 1100 // Connection lost between TWS and IB
+        || errorCode == 1102 // Connection restored
+        )
+    {
+        std::for_each(connectionMonitors.begin(), connectionMonitors.end(), 
+                      [this, id, errorCode, errorString, advancedOrderRejectJson](IBConnectionMonitor* curr)
+                      { curr->OnError(this, id, errorCode, errorString, advancedOrderRejectJson); });
     }
     if (errorCode == 504) // not connected
     {
@@ -793,6 +802,10 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
             h->OnScannerSubscriptionEnd(this, id); 
         return;
     }
+    if (errorCode == 165 )
+    {
+        // connection restored for a subscription (1100 was called previously, 1102 probably on its way)
+    }
     if (errorCode == 2109)
     {
         // Outside Regular Trading Hours warning
@@ -806,7 +819,6 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
                 handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);
         }
     }
-    logger->error(logCategory, msg);
 }
 void IBConnector::updateMktDepth(TickerId reqId, int position, int operation, int side, double price, Decimal size)
 {

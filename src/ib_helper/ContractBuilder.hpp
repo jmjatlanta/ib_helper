@@ -51,5 +51,7 @@ class ContractBuilder
     std::unordered_map<SecurityType::Type, std::unordered_map<std::string, ContractDetails>> contractDetailsCaches;
 };
 
+std::string to_string(const Contract &in);
+
 } // namespace ib_helper
 

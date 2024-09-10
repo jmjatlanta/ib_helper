@@ -9,7 +9,10 @@
 #ifdef _WIN32
 #define timegm _mkgmtime
 #endif
-
+#ifdef __APPLE__
+#define HH_DATELIB
+#include "date/tz.h"
+#endif
 /***
  * @brief convert a string into a time point
  * @param in the string in the format YYYYMMDD HH:MM:SS time/zone OR in time_t format
@@ -26,12 +29,19 @@ time_pnt to_time_point(const std::string& in)
     }
     // we must get the time zone information
     std::string tzString = in.substr( pos + 1);
-    std::chrono::local_time<std::chrono::milliseconds> resultTime;
     std::string tz_name;
     std::istringstream ss(in);
+#ifdef HH_DATELIB
+    date::local_time<std::chrono::milliseconds> resultTime;
+    ss >> date::parse("%Y%m%d %H:%M:%S %Z", resultTime);
+    // now we need to convert it to another
+    auto ny_time = date::zoned_time<std::chrono::milliseconds>(tzString, resultTime); // converted GMT to NY, but not what we want
+#else
+    std::chrono::local_time<std::chrono::milliseconds> resultTime;
     ss >> std::chrono::parse("%Y%m%d %H:%M:%S %Z", resultTime, tz_name);
     // now we need to convert it to another
     auto ny_time = std::chrono::zoned_time<std::chrono::milliseconds>(tzString, resultTime); // converted GMT to NY, but not what we want
+#endif
     return ny_time.get_sys_time();
 }
 
@@ -119,7 +129,11 @@ time_t to_minute_floor(time_t in)
 int32_t diff_with_ny(std::time_t now)
 {
     auto utc = std::chrono::system_clock::from_time_t(now);
+#ifdef HH_DATELIB
+    date::zoned_time ny_time{"America/New_York", utc};
+#else
     std::chrono::zoned_time ny_time{"America/New_York", utc};
+#endif
     auto cnt = ny_time.get_info().offset;
     return cnt.count();
 }
@@ -281,7 +295,6 @@ std::time_t to_time_t(const Bar& bar)
         ss >> std::get_time(&t, "%Y-%m-%d %H:%M:%S");
         time_t tempTime = mktime(&t);
         l = to_midnight_ny(tempTime);
-        //std::cout << "Converted " << tempTime  << " to " << l << "\n";
     }
     return l;
 }

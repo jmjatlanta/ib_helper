@@ -4,14 +4,22 @@
 #include <exception>
 #include <algorithm>
 
-MockIBConnector::MockIBConnector(const std::string& hostname, int port, int clientId) 
+MockIBConnector::MockIBConnector(const std::string& hostname, int port, int clientId, ib_helper::IBConnectionMonitor* monitor) 
     : nextRequestId(1), nextOrderId(1)
 {
     logger = util::SysLogger::getInstance();
     this->SetDefaultAccount("ABC123");
+    if (monitor != nullptr)
+    {
+        monitor->OnConnect(this);
+        monitor->OnFullConnect(this);
+    }
 }
 
-MockIBConnector::~MockIBConnector() {}
+MockIBConnector::~MockIBConnector() 
+{
+    logger->debug("MockIBConnector", "dtor called");
+}
 
 uint32_t MockIBConnector::GetNextRequestId()
 {
@@ -109,6 +117,37 @@ void MockIBConnector::UnsubscribeFromTickByTick(uint32_t subId)
     // do nothing
 }
 
+void MockIBConnector::SendBarWithTick(int barSubId, int marketDataSubId, const Bar& bar, bool inPast)
+{
+    if (inPast)
+    {
+        SendBar(barSubId, bar, inPast);
+    }
+    else
+    {
+        // open
+        Bar b(bar);
+        b.high = b.open;
+        b.low = b.open;
+        b.close = b.open;
+        SendBar(barSubId, b, inPast);
+        SendMarketData(marketDataSubId, b.close, b.close - 0.01, b.close + 0.01);
+        // low
+        b.low = bar.low;
+        b.close = b.low;
+        SendBar(barSubId, b, false);
+        SendMarketData(marketDataSubId, b.close, b.close - 0.01, b.close + 0.01);
+        // high
+        b.high = bar.high;
+        b.close = b.high;
+        SendBar(barSubId, b, false);
+        SendMarketData(marketDataSubId, b.close, b.close - 0.01, b.close + 0.01);
+        // close
+        b.close = bar.high;
+        SendBar(barSubId, b, false);
+        SendMarketData(marketDataSubId, b.close, b.close - 0.01, b.close + 0.01);
+    }
+}
 void MockIBConnector::SendBarWithTick(int barSubId, int tickSubId, int bidAskSubId, const Bar& bar, bool inPast)
 {
     if (inPast)
@@ -254,15 +293,30 @@ void MockIBConnector::SendTick(int subId, double lastPrice)
     }
     // send tick to listeners
     auto itr = tickHandlers.find(subId);
+    TickAttrib tickAttrib;
     if (itr != tickHandlers.end())
     {
         ib_helper::TickHandler* handler = (*itr).second;
         handler->OnTickByTickAllLast(subId, tickType, time, lastPrice, size, tickAttribLast, exchange, specialConditions);
+        handler->OnTickPrice(subId, LAST, lastPrice, tickAttrib);
     }
 }
 
 void MockIBConnector::RequestAccountUpdates(bool subscribe, const std::string& account)
 {
+}
+
+void MockIBConnector::SendMarketData(uint32_t subId, double last, double bid, double ask)
+{
+    auto itr = tickHandlers.find(subId);
+    if (itr != tickHandlers.end())
+    {
+        ib_helper::TickHandler* handler = (*itr).second;
+        TickAttrib tickAttrib;
+        handler->OnTickPrice(subId, BID, bid, tickAttrib);
+        handler->OnTickPrice(subId, ASK, ask, tickAttrib);
+    }
+    SendTick(subId, last);
 }
 
 void MockIBConnector::SendBidAsk(uint32_t subscriptionId, double bid, double ask)
