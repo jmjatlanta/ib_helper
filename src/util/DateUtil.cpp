@@ -299,3 +299,8 @@ std::time_t to_time_t(const Bar& bar)
     }
     return l;
 }
+
+time_pnt to_time_point(const Bar& bar)
+{
+    return std::chrono::system_clock::from_time_t(to_time_t(bar));
+}

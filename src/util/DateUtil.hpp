@@ -91,6 +91,15 @@ std::time_t to_time_t(const std::string& in, std::time_t now);
 std::time_t to_time_t(const Bar& bar);
 
 /**
+ * @brief convert a bar time to a duration
+ * @NOTE: bars can have their time in time_t (short duration bars) or dates (daily bars)
+ * 
+ * @param bar the bar
+ * @return the time
+ */
+time_pnt to_time_point(const Bar& bar);
+
+/**
  * @brief split a string "HH:MM" into their 2 parts
  * 
  * @param in the string

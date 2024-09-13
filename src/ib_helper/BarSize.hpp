@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <cstdint>
 #include <string>
 
@@ -77,3 +78,9 @@ std::string to_ib_string(ib_helper::DurationUnit in);
  */
 std::string to_ib_string(uint16_t qty, ib_helper::DurationUnit duration);
 
+/***
+ * Convert a bar size into the actual duration
+ * @param in the bar size
+ * @returns the duration of the bar
+*/
+std::chrono::seconds to_duration(ib_helper::BarSize in);
