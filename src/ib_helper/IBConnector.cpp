@@ -145,6 +145,10 @@ bool IBConnector::disconnect()
         osSignal = nullptr;
     }
     currentConnectionStatus = ConnectionStatus::SHUTDOWN;
+    // lock the mutex
+    std::scoped_lock lock(connectionMonitorsMutex);
+    std::for_each(connectionMonitors.begin(), connectionMonitors.end(), [this](IBConnectionMonitor* curr)
+                  { curr->OnDisconnect(this); });
     return true;
 }
 
@@ -756,7 +760,8 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         + ". JSON: " + advancedOrderRejectJson;
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 // couldn't connect to TWS
-        || errorCode == 509 ) // error reading socket
+        || errorCode == 509  // error reading socket
+        )
     {
         // these could be messages stuck in the buffer( partially connected) or legit messages
         if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED)
@@ -765,11 +770,18 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
             // they're legit
             currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
             disconnect();
-            for(auto* monitor : connectionMonitors)
-            {
-                monitor->OnError(this, msg);
-            }
+            std::for_each(connectionMonitors.begin(), connectionMonitors.end(), 
+                          [this, id, errorCode, errorString, advancedOrderRejectJson](IBConnectionMonitor* curr)
+                          { curr->OnError(this, id, errorCode, errorString, advancedOrderRejectJson); });
         }
+    }
+    if (errorCode == 1100 // Connection lost between TWS and IB
+        || errorCode == 1102 // Connection restored
+        )
+    {
+        std::for_each(connectionMonitors.begin(), connectionMonitors.end(), 
+                      [this, id, errorCode, errorString, advancedOrderRejectJson](IBConnectionMonitor* curr)
+                      { curr->OnError(this, id, errorCode, errorString, advancedOrderRejectJson); });
     }
     if (errorCode == 504) // not connected
     {
@@ -792,6 +804,10 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         for(auto& h : scannerHandlers)
             h->OnScannerSubscriptionEnd(this, id); 
         return;
+    }
+    if (errorCode == 165 )
+    {
+        // connection restored for a subscription (1100 was called previously, 1102 probably on its way)
     }
     if (errorCode == 2109)
     {

@@ -1,8 +1,7 @@
 #include "Exchange.hpp"
 #include <iomanip>
 #include <iostream>
-#ifdef __APPLE__
-#define HH_DATELIB
+#ifdef HH_DATELIB
 #include "date/tz.h"
 #endif
 void parseYYYYMM(const std::string& in, tm& time)
@@ -125,13 +124,13 @@ std::chrono::time_point<std::chrono::system_clock> Exchange::midnightAtExchange(
 {
 #ifdef HH_DATELIB
     date::zoned_time exchangeTimeZone{date::locate_zone(timeZone), std::chrono::system_clock::from_time_t(today)};
+    auto midnight = date::floor<date::days>(std::chrono::system_clock::from_time_t(today));
 #else
     std::chrono::zoned_time exchangeTimeZone{std::chrono::locate_zone(timeZone), std::chrono::system_clock::from_time_t(today)};
+    auto midnight = std::chrono::floor<std::chrono::days>(std::chrono::system_clock::from_time_t(today));
 #endif
     // now get the offset
     auto offset = exchangeTimeZone.get_info().offset;
-    // now get midnight UTC and add offset
-    auto midnight = std::chrono::floor<std::chrono::days>(std::chrono::system_clock::from_time_t(today));
     auto result = midnight - offset;
     if (result > std::chrono::system_clock::from_time_t(today))
         result -= std::chrono::days(1);

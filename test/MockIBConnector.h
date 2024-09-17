@@ -60,11 +60,13 @@ class MockIBConnector : public ib_helper::IBConnector
      * @param inPast if TRUE will send via hitoricalData(), FALSE will send via historicalDataUpdate
      */
     void SendBarWithTick(int barSubId, int tickSubId, int bidAskSubId, const Bar& bar, bool inPast = false);
+    void SendBarWithTick(int barSubId, int marketDataSubId, const Bar& bar, bool inPast = false);
     /***
      * Send historicalDataEnd to handlers
      * @param subId the subscription id
      */
     void SendHistoricalDataEnd(int subId);
+    void SendMarketData(uint32_t subId, double last, double bid, double ask);
     void SendTick(int subId, double lastPrice);
     void SendBidAsk(uint32_t subscriptionId, double bid, double ask);
     // orders

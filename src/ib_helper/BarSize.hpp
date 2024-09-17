@@ -84,3 +84,4 @@ std::string to_ib_string(uint16_t qty, ib_helper::DurationUnit duration);
  * @returns the duration of the bar
 */
 std::chrono::seconds to_duration(ib_helper::BarSize in);
+
