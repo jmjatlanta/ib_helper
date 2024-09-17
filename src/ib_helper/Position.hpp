@@ -31,7 +31,7 @@ class Position
     double averageCost = 0.0;    
     double unrealizedPNL = 0.0;
     double realizedPNL = 0.0;
-    Decimal expectedPos = 0;
+    Decimal expectedPos = doubleToDecimal(0.0);
 };
 
 } // namespace ib_helper
