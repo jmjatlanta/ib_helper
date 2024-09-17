@@ -7,10 +7,6 @@ project ( ib_helper_tests )
 file(GLOB ib_helper "../src/ib_helper/*.cpp" )
 file(GLOB util_src "../src/util/*.cpp" )
 file(GLOB test_src "./*.cpp" )
-if(HH_DATELIB)
-    file(GLOB date_src "../date/src/*.cpp" )
-    find_package(CURL REQUIRED)
-endif(HH_DATELIB)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -18,6 +14,11 @@ FetchContent_Declare(
     URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
 )
 FetchContent_MakeAvailable(googletest)
+
+if(HH_DATELIB)
+    file(GLOB date_src "../date/src/*.cpp" )
+    find_package(CURL REQUIRED)
+endif(HH_DATELIB)
 
 find_package(Boost 1.74 COMPONENTS log log_setup REQUIRED)
 
@@ -38,23 +39,22 @@ else(MSVC)
     target_compile_options(ib_helper_tests PRIVATE -g -O0)
 endif(MSVC)
 
-target_include_directories(ib_helper_tests PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/util
-    ${IB_CLIENT_DIR}
-)
-
 if(HH_DATELIB)
-    target_compile_definitions(ib_helper_tests PRIVATE -DHAS_REMOTE_API=1)
-    target_compile_definitions(ib_helper_tests PRIVATE -DHH_DATELIB=1)
-    target_include_directories(ib_helper_tests PRIVATE
-        ${CURL_INCLUDE_DIRS}
+    target_compile_definitions(ib_helper_tests PRIVATE -DHH_DATELIB=1 -DHAS_REMOTE_API=1)
+    target_include_directories(ib_helper_tests PRIVATE 
         ${CMAKE_CURRENT_SOURCE_DIR}/../date/include
+        ${CURL_INCLUDE_DIRS}
     )
     target_link_libraries(ib_helper_tests 
         ${CURL_LIBRARIES}
     )
 endif(HH_DATELIB)
+
+target_include_directories(ib_helper_tests PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/util
+    ${IB_CLIENT_DIR}
+)
 
 target_link_libraries(ib_helper_tests 
     ib_helper

@@ -152,3 +152,54 @@ std::string to_ib_string(uint16_t qty, ib_helper::DurationUnit duration)
         return "";
     return std::to_string(qty) + " " + to_ib_string(duration);
 }
+
+std::chrono::seconds to_duration(ib_helper::BarSize barSize)
+{
+    switch(barSize)
+    {
+        case ib_helper::BarSize::ONE_SECOND:
+            return std::chrono::seconds(1);
+        case ib_helper::BarSize::FIVE_SECONDS:
+            return std::chrono::seconds(5);
+        case ib_helper::BarSize::TEN_SECONDS:
+            return std::chrono::seconds(10);
+        case ib_helper::BarSize::FIFTEEN_SECONDS:
+            return std::chrono::seconds(15);
+        case ib_helper::BarSize::THIRTY_SECONDS:
+            return std::chrono::seconds(30);
+        case ib_helper::BarSize::ONE_MINUTE:
+            return std::chrono::minutes(1);
+        case ib_helper::BarSize::TWO_MINUTES:
+            return std::chrono::minutes(2);
+        case ib_helper::BarSize::THREE_MINUTES:
+            return std::chrono::minutes(3);
+        case ib_helper::BarSize::FIVE_MINUTES:
+            return std::chrono::minutes(5);
+        case ib_helper::BarSize::TEN_MINUTES:
+            return std::chrono::minutes(10);
+        case ib_helper::BarSize::FIFTEEN_MINUTES:
+            return std::chrono::minutes(15);
+        case ib_helper::BarSize::TWENTY_MINUTES:
+            return std::chrono::minutes(20);
+        case ib_helper::BarSize::THIRTY_MINUTES:
+            return std::chrono::minutes(30);
+        case ib_helper::BarSize::ONE_HOUR:
+            return std::chrono::hours(1);
+        case ib_helper::BarSize::TWO_HOURS:
+            return std::chrono::hours(2);
+        case ib_helper::BarSize::THREE_HOURS:
+            return std::chrono::hours(3);
+        case ib_helper::BarSize::FOUR_HOURS:
+            return std::chrono::hours(4);
+        case ib_helper::BarSize::EIGHT_HOURS:
+            return std::chrono::hours(8);
+        case ib_helper::BarSize::ONE_DAY:
+            return std::chrono::days(1);
+        case ib_helper::BarSize::ONE_WEEK:
+            return std::chrono::weeks(1);
+        case ib_helper::BarSize::ONE_MONTH:
+            return std::chrono::months(1);
+        default:
+            return std::chrono::seconds(0);
+    }
+}

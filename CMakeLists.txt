@@ -15,6 +15,7 @@ endif()
 if(HH_DATELIB)
     add_subdirectory ( date )
 endif(HH_DATELIB)
+
 add_subdirectory ( IntelDFP )
 add_subdirectory ( src )
 add_subdirectory ( test )
