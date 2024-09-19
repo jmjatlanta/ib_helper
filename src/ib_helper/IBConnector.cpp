@@ -312,10 +312,13 @@ void IBConnector::RemoveConnectionMonitor(IBConnectionMonitor* in)
 
 void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
 {
-    std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
-    auto itr = std::find(connectionMonitors.begin(), connectionMonitors.end(), in);
-    if (itr == connectionMonitors.end())
-        connectionMonitors.push_back(in);
+    if (in != nullptr)
+    {
+        std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+        auto itr = std::find(connectionMonitors.begin(), connectionMonitors.end(), in);
+        if (itr == connectionMonitors.end())
+            connectionMonitors.push_back(in);
+    }
 }
 
 void IBConnector::CancelOrder(int orderId, const std::string& time)
