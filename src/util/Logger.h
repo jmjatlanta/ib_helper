@@ -39,6 +39,5 @@ class Logger
     void fatal(const std::string& category, const std::string& msg);
     private:
     std::ostream* outputStream = nullptr;
-    std::filesystem::path fullFilePath;
 };
 
