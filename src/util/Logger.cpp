@@ -13,6 +13,8 @@
  */
 
 std::shared_ptr<Logger> logger_ = std::make_shared<Logger>();
+typedef boost::log::sinks::synchronous_sink<boost::log::sinks::text_file_backend> fileSink;
+boost::shared_ptr<fileSink> fileSinkPtr;
 
 Logger* Logger::getInstance() {
     boost::log::add_common_attributes();
@@ -24,9 +26,16 @@ Logger::Logger() {}
 
 Logger::~Logger() { }
 
-static void add_file_log(const std::string& fullFileNamePrefix)
+std::filesystem::path Logger::get_current_file_path() const
 {
-    boost::log::add_file_log(
+    if(fileSinkPtr != nullptr)
+        return fileSinkPtr->locked_backend().get()->get_current_file_name().string();
+    return "";
+}
+
+static boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_file_backend>> add_file_log(const std::string& fullFileNamePrefix)
+{
+    return boost::log::add_file_log(
             boost::log::keywords::file_name = fullFileNamePrefix + "_%N.log",
             boost::log::keywords::rotation_size = 10 * 1024 * 1024,
             boost::log::keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0,0,0),
@@ -39,14 +48,14 @@ static void add_file_log(const std::string& fullFileNamePrefix)
 
 void Logger::log_to_file(const std::string& fileNamePrefix)
 {
-    add_file_log(fileNamePrefix);
+    fileSinkPtr = add_file_log(fileNamePrefix);
 }
 
 void Logger::log_to_file(const std::filesystem::path& dir, const std::string& fileNamePrefix)
 {
-    std::filesystem::path fullFilename = dir;
-    fullFilename /= fileNamePrefix;
-    add_file_log(fullFilename.string());
+    std::filesystem::path fullFilePath = dir;
+    fullFilePath /= fileNamePrefix;
+    fileSinkPtr = add_file_log(fullFilePath.string());
 }
 
 void Logger::trace(const std::string& msg) { BOOST_LOG_TRIVIAL(trace) << msg; }
