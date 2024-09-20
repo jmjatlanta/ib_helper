@@ -24,6 +24,7 @@ class Logger
      * @param filenamePrefix the first part of the filename
     */
     void log_to_file(const std::filesystem::path& dir, const std::string& filenamePrefix);
+    std::filesystem::path get_current_file_path() const;
     void trace(const std::string& msg);
     void trace(const std::string& category, const std::string& msg); 
     void debug(const std::string& msg);
@@ -38,5 +39,6 @@ class Logger
     void fatal(const std::string& category, const std::string& msg);
     private:
     std::ostream* outputStream = nullptr;
+    std::filesystem::path fullFilePath;
 };
 
