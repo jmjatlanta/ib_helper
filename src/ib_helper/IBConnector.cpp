@@ -507,7 +507,7 @@ void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, co
         std::string str;
         std::for_each(tickHandlers.begin(), tickHandlers.end(),
                 [&str](const std::pair<uint32_t, TickHandler*> curr)
-                { str += ", " + std::to_string(curr.first); });
+                { if (curr.second != nullptr) str += ", " + std::to_string(curr.first); });
         logger->debug("IBConnector", "tickPrice: No subscribers for id " + std::to_string(tickerId)
                 + ". Valid subscriber ids: " + str);
     }
