@@ -3,6 +3,7 @@
 #include "HistoricalDataHandler.hpp"
 #include "MarketDepthHandler.hpp"
 #include "ScannerHandler.hpp"
+#include "DisplayGroupHandler.hpp"
 #include "IBConnectionMonitor.hpp"
 #include "AccountHandler.hpp"
 #include "OrderHandler.hpp"
@@ -30,6 +31,13 @@ struct SecurityDefinitionOptionParameter
     std::string multiplier;
     std::set<std::string> expirations;
     std::set<double> strikes;
+};
+
+struct DisplayGroupCombination
+{
+    DisplayGroupHandler* handler = nullptr;
+    int groupId = 0;
+    uint32_t reqId = 0;
 };
 
 class IBConnector : public EWrapper
@@ -126,6 +134,8 @@ class IBConnector : public EWrapper
     virtual void UnsubscribeFromHistoricalData(uint32_t reqId);
     virtual void RemoveConnectionMonitor(IBConnectionMonitor* in);
     virtual void AddConnectionMonitor(IBConnectionMonitor* in);
+    virtual uint32_t SubscribeToGroupEvents(DisplayGroupHandler* displayGroupHandler, int groupId);
+    virtual void UnsubscribeFromGroupEvents(uint32_t reqId);
     // end of subscriptions
     virtual std::future<std::vector<DepthMktDataDescription> > RequestMktDepthExchanges();
     virtual bool IsShuttingDown() const { return currentConnectionStatus == ConnectionStatus::ATTEMPTING_SHUTDOWN || currentConnectionStatus == ConnectionStatus::SHUTDOWN; }
@@ -302,6 +312,7 @@ class IBConnector : public EWrapper
     std::mutex scannerHandlerMutex;
     std::vector<ScannerHandler*> scannerHandlers;
     std::vector<ExecutionHandler*> executionHandlers;
+    std::vector<DisplayGroupCombination> displayGroupHandlers;
     std::atomic<ConnectionStatus> currentConnectionStatus;
     private:
     std::string defaultAccount;
@@ -314,6 +325,7 @@ class IBConnector : public EWrapper
     std::mutex accountHandlersMutex;
     std::mutex orderHandlersMutex;
     std::mutex executionHandlersMutex;
+    std::mutex displayGroupHandlersMutex;
     std::mutex connectionStatusMutex;
 }; 
 

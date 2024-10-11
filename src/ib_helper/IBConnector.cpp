@@ -472,6 +472,22 @@ void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionI
     //logger->debug("IBConnector", "UnsubscribeFromHistoricalData: " + std::to_string(historicalSubscriptionId));
 }
 
+uint32_t IBConnector::SubscribeToGroupEvents(DisplayGroupHandler* in, int groupId)
+{
+    std::scoped_lock lock(displayGroupHandlersMutex);
+    auto id = GetNextRequestId();
+    displayGroupHandlers.push_back(DisplayGroupCombination{in, groupId, id});
+    ibClient->subscribeToGroupEvents(id, groupId);
+    return id;
+}
+
+void IBConnector::UnsubscribeFromGroupEvents(uint32_t reqId)
+{
+    std::scoped_lock lock(displayGroupHandlersMutex);
+    std::erase_if(displayGroupHandlers, [reqId](const DisplayGroupCombination& curr)
+                  { return curr.reqId == reqId; });
+}
+
 uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
         const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize, bool rth)
 {
@@ -954,7 +970,13 @@ void IBConnector::accountSummaryEnd( int reqId){}
 void IBConnector::verifyMessageAPI( const std::string& apiData){}
 void IBConnector::verifyCompleted( bool isSuccessful, const std::string& errorText){}
 void IBConnector::displayGroupList( int reqId, const std::string& groups){}
-void IBConnector::displayGroupUpdated( int reqId, const std::string& contractInfo){}
+void IBConnector::displayGroupUpdated( int reqId, const std::string& contractInfo)
+{
+    std::scoped_lock lock(displayGroupHandlersMutex);
+    logger->debug("IBConnector", "displayGroupUpdated: reqId: " + std::to_string(reqId) + " Contract info: " + contractInfo);
+    std::for_each(displayGroupHandlers.begin(), displayGroupHandlers.end(), [reqId, contractInfo](const DisplayGroupCombination& curr)
+            { if (curr.reqId == reqId) curr.handler->OnDisplayGroupUpdated(reqId, contractInfo); });
+}
 void IBConnector::verifyAndAuthMessageAPI( const std::string& apiData, const std::string& xyzChallange){}
 void IBConnector::verifyAndAuthCompleted( bool isSuccessful, const std::string& errorText){}
 /***
