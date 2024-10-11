@@ -274,11 +274,18 @@ std::string to_string(const Contract &in)
 ContractDetails ContractBuilder::GetStockDetails(const std::string &ticker)
 {
     Contract retval;
-    retval.symbol = to_upper(ticker);
-    retval.localSymbol = to_upper(ticker);
-    retval.secType = "STK";
-    retval.exchange = "SMART";
-    retval.currency = "USD";
+    if (ticker.find("@SMART") != std::string::npos)
+    {
+        retval.conId = strtol(ticker.c_str(), nullptr, 10);
+    }
+    else
+    {
+        retval.symbol = to_upper(ticker);
+        retval.localSymbol = to_upper(ticker);
+        retval.secType = "STK";
+        retval.exchange = "SMART";
+        retval.currency = "USD";
+    }
     auto vec = GetDetails(retval);
     if (vec.size() > 0)
         return vec[0];
