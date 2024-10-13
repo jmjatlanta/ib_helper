@@ -297,6 +297,11 @@ AccountHandler* IBConnector::GetDefaultAccountHandler()
     return accountHandlers[0]; 
 }
 
+std::vector<std::string> IBConnector::GetAccounts() const
+{
+    return accounts;
+}
+
 void IBConnector::RemoveConnectionMonitor(IBConnectionMonitor* in)
 {
     std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
@@ -883,11 +888,11 @@ std::vector<std::string> splitCSV(const std::string& in)
 void IBConnector::managedAccounts( const std::string& accountsList)
 {
     // split by comma
-    std::vector<std::string> accts = splitCSV(accountsList);
-    if (accts.size() == 1)
-        defaultAccount = accts[0];
-    if (accts.size() > 1)
-        defaultAccount = accts[1];
+    accounts = splitCSV(accountsList);
+    if (accounts.size() == 1)
+        defaultAccount = accounts[0];
+    if (accounts.size() > 1)
+        defaultAccount = accounts[1];
 }
 void IBConnector::receiveFA(faDataType pFaDataType, const std::string& cxml){}
 void IBConnector::historicalData(TickerId reqId, const Bar& bar)

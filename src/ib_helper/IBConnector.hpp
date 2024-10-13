@@ -71,11 +71,12 @@ class IBConnector : public EWrapper
     virtual int RequestScannerSubscription( ScannerSubscription scannerSubscription, 
             TagValueListSPtr scannerSubscriptionOptions, TagValueListSPtr scannerSubscriptionFilterOptions);
     virtual void CancelScannerSubscription(int reqId);
-    virtual AccountHandler* GetDefaultAccountHandler();
-    virtual const std::string GetDefaultAccount() { return defaultAccount; }
     virtual uint32_t GetNextOrderId() { return ++nextOrderId; }
     virtual uint32_t GetNextRequestId() { return ++nextRequestId; }
+    virtual AccountHandler* GetDefaultAccountHandler();
+    virtual const std::string GetDefaultAccount() { return defaultAccount; }
     virtual void SetDefaultAccount(const std::string& in) { defaultAccount = in; }
+    virtual std::vector<std::string> GetAccounts() const;
     virtual bool IsConnected() const;
     virtual bool IsConnecting() const;
     virtual ConnectionStatus GetConnectionStatus() const { return currentConnectionStatus; }
@@ -313,6 +314,7 @@ class IBConnector : public EWrapper
     std::vector<ScannerHandler*> scannerHandlers;
     std::vector<ExecutionHandler*> executionHandlers;
     std::vector<DisplayGroupCombination> displayGroupHandlers;
+    std::vector<std::string> accounts;
     std::atomic<ConnectionStatus> currentConnectionStatus;
     private:
     std::string defaultAccount;
