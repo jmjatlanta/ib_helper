@@ -13,6 +13,8 @@ typedef std::chrono::time_point<std::chrono::system_clock> time_pnt;
  */
 time_pnt to_time_point(const std::string& in);
 
+std::string to_string(const time_pnt& in);
+
 /***
  * convert today into YYYYMMDD
  * @return string of YYYYMMDD
