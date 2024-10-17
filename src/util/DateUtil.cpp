@@ -44,6 +44,15 @@ time_pnt to_time_point(const std::string& in)
     return ny_time.get_sys_time();
 }
 
+std::string to_string(const time_pnt& in)
+{
+#ifdef HH_DATELIB
+    return date::format("%D %T %Z", floor<std::chrono::milliseconds>(in));
+#else
+    return std::format("[:%Y%m%d%H%M}", in);
+#endif
+}
+
 /***
  * convert today into YYYYMMDD
  * @return string of YYYYMMDD
