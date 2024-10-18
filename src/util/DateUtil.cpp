@@ -49,7 +49,7 @@ std::string to_string(const time_pnt& in)
 #ifdef HH_DATELIB
     return date::format("%D %T %Z", floor<std::chrono::milliseconds>(in));
 #else
-    return std::format("[:%Y%m%d%H%M}", in);
+    return std::format("{:%Y%m%d%H%M}", in);
 #endif
 }
 
