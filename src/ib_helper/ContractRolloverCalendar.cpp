@@ -82,25 +82,27 @@ ContractRolloverCalendar::ContractRolloverCalendar()
     InsertInHashes("FJNV", RolloverRule::THIRD_TO_LAST_DAY_OF_PRIOR_MONTH, {"PL"});
     InsertInHashes("HMUZ", RolloverRule::SECOND_TO_LAST_DAY_OF_PRIOR_MONTH, {"PA"});
     InsertInHashes("HMUZ", RolloverRule::ONE_DAY_PRIOR, {"FGBX", "FGBL", "FGBM", "FGBS", "NK", "JNI", "JNM", "YAP", "SXF"});
-	InsertInHashes("HMUZ", RolloverRule::SECOND_TO_LAST_DAY_OF_PRIOR_MONTH, {"ZB", "ZN", "ZF", "ZT"});
-	InsertInHashes("HMUZ", RolloverRule::DAY_AFTER, {"FSS", "FEI", "FES", "JEY", "ED", "BAX", "YBA"});
-	InsertInHashes("HMUZ", RolloverRule::THIRD_TO_LAST_DAY_OF_PRIOR_MONTH, {"FLG", "CGB"});
-	InsertInHashes("HMUZ", RolloverRule::DAY_OF, {"YTC", "YTT", "JGB"});
-	InsertInHashes("GJMQVZ", RolloverRule::DAY_OF, {"IND"});
-	InsertInHashes("HKNUZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"ZC/C"});
-	InsertInHashes("HKNUZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"ZW/W"});
-	InsertInHashes("FHKNQUZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"ZS/S"}); 
-	InsertInHashes("FHKNQUVZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"ZL/BO"});
-	InsertInHashes("FHKNQUVZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"ZM/SM"});
-	InsertInHashes("GJMQVZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"LC"});
-	InsertInHashes("FHJKQUVX", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"FC"});
-	InsertInHashes("GJKMNQVZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"LH"});
-	InsertInHashes("HKNUZ", RolloverRule::SECOND_WEEK_OF_PRIOR_MONTH, {"CC"});
-	InsertInHashes("HKNUZ", RolloverRule::THIRD_WEEK_OF_PRIOR_MONTH, {"KC"});
-	InsertInHashes("HKNVZ", RolloverRule::FIFTEENTH_DAY_OF_PRIOR_MONTH, {"CT"});
-	InsertInHashes("HKNV", RolloverRule::THIRD_WEEK_OF_PRIOR_MONTH, {"SB"});
-	InsertInHashes("FGHJKMNQUVXZ", RolloverRule::TWO_DAYS_PRIOR, {"LCO/CO"});
-	InsertInHashes("HMUZ", RolloverRule::ONE_DAY_PRIOR, {"URO", "BP", "JY", "RP", "SF", "CD", "AD", "KRW", "MP", "DX"});
+    InsertInHashes("HMUZ", RolloverRule::SECOND_TO_LAST_DAY_OF_PRIOR_MONTH, {"ZB", "ZN", "ZF", "ZT"});
+    InsertInHashes("HMUZ", RolloverRule::DAY_AFTER, {"FSS", "FEI", "FES", "JEY", "ED", "BAX", "YBA"});
+    InsertInHashes("HMUZ", RolloverRule::THIRD_TO_LAST_DAY_OF_PRIOR_MONTH, {"FLG", "CGB"});
+    InsertInHashes("HMUZ", RolloverRule::DAY_OF, {"YTC", "YTT", "JGB"});
+    InsertInHashes("GJMQVZ", RolloverRule::DAY_OF, {"IND"});
+    InsertInHashes("HKNUZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"ZC/C"});
+    InsertInHashes("HKNUZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"ZW/W"});
+    InsertInHashes("FHKNQUZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"ZS/S"}); 
+    InsertInHashes("FHKNQUVZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"ZL/BO"});
+    InsertInHashes("FHKNQUVZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"ZM/SM"});
+    InsertInHashes("GJMQVZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"LC"});
+    InsertInHashes("FHJKQUVX", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"FC"});
+    InsertInHashes("GJKMNQVZ", RolloverRule::MONDAY_OF_LAST_WEEK_OF_PRIOR_MONTH, {"LH"});
+    InsertInHashes("HKNUZ", RolloverRule::SECOND_WEEK_OF_PRIOR_MONTH, {"CC"});
+    InsertInHashes("HKNUZ", RolloverRule::THIRD_WEEK_OF_PRIOR_MONTH, {"KC"});
+    InsertInHashes("HKNVZ", RolloverRule::FIFTEENTH_DAY_OF_PRIOR_MONTH, {"CT"});
+    InsertInHashes("HKNV", RolloverRule::THIRD_WEEK_OF_PRIOR_MONTH, {"SB"});
+    InsertInHashes("FGHJKMNQUVXZ", RolloverRule::TWO_DAYS_PRIOR, {"LCO/CO"});
+    InsertInHashes("HMUZ", RolloverRule::ONE_DAY_PRIOR, {"URO", "BP", "JY", "RP", "SF", "CD", "AD", "KRW", "MP", "DX"});
+    InsertInHashes("FHKNUX", RolloverRule::SECOND_WEEK_OF_PRIOR_MONTH, {"ZS"}); // Soybeans
+    InsertInHashes("HKNZ", RolloverRule::SECOND_WEEK_OF_PRIOR_MONTH, {"ZC"}); // Corn
 }
 
 /***
