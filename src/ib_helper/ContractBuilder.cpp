@@ -255,6 +255,8 @@ ContractDetails ContractBuilder::BuildFuture(const std::string &ticker, time_t n
     auto coll = parseCSV(currDetails.validExchanges);
     if (coll.size() > 0)
         currDetails.contract.exchange = coll[0];
+    if (currDetails.contract.symbol == "ZC" || currDetails.contract.symbol == "ZS")
+        currDetails.minTick = 0.25;
     return currDetails;
 }
 

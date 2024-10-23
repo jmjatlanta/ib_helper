@@ -27,6 +27,17 @@ TEST(contract_builder, DISABLED_unknown_exchange)
         std::cout << ::to_string(contractDetails);
 }
 
+TEST(contract_builder, DISABLED_zc)
+{
+    ib_helper::IBConnector conn("localhost", 7497, 7);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    ASSERT_TRUE( conn.IsConnected() );
+    ib_helper::ContractBuilder contractBuilder(&conn);
+    auto dets = contractBuilder.BuildFuture("ZC");
+    EXPECT_NE(dets.contract.conId, 0);
+    EXPECT_EQ(dets.minTick, 0.25);
+}
+
 TEST(contract_builder, DISABLED_rty)
 {
     ib_helper::IBConnector conn("localhost", 7497, 3);
