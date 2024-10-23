@@ -1,6 +1,14 @@
 #include <gtest/gtest.h>
 #include "../src/ib_helper/ContractBuilder.hpp"
 
+struct ib_host
+{
+    std::string url = "localhost";
+    int port = 7497;
+};
+
+static ib_host ibhost;
+
 std::string to_string(const ContractDetails& in)
 {
     std::stringstream ss;
@@ -17,7 +25,7 @@ std::string to_string(const ContractDetails& in)
 TEST(contract_builder, DISABLED_unknown_exchange)
 {
     // connect to IB
-    ib_helper::IBConnector conn("localhost", 7497, 3);
+    ib_helper::IBConnector conn(ibhost.url, ibhost.port, 3);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ib_helper::ContractBuilder contractBuilder(&conn);
     auto contractDets = contractBuilder.BuildStock("real");
@@ -29,7 +37,7 @@ TEST(contract_builder, DISABLED_unknown_exchange)
 
 TEST(contract_builder, DISABLED_zc)
 {
-    ib_helper::IBConnector conn("localhost", 7497, 7);
+    ib_helper::IBConnector conn(ibhost.url, ibhost.port, 7);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ASSERT_TRUE( conn.IsConnected() );
     ib_helper::ContractBuilder contractBuilder(&conn);
@@ -38,9 +46,20 @@ TEST(contract_builder, DISABLED_zc)
     EXPECT_EQ(dets.minTick, 0.25);
 }
 
+TEST(contract_builder, DISABLED_zs)
+{
+    ib_helper::IBConnector conn(ibhost.url, ibhost.port, 7);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    ASSERT_TRUE( conn.IsConnected() );
+    ib_helper::ContractBuilder contractBuilder(&conn);
+    auto dets = contractBuilder.BuildFuture("ZS");
+    EXPECT_NE(dets.contract.conId, 0);
+    EXPECT_EQ(dets.minTick, 0.25);
+}
+
 TEST(contract_builder, DISABLED_rty)
 {
-    ib_helper::IBConnector conn("localhost", 7497, 3);
+    ib_helper::IBConnector conn(ibhost.url, ibhost.port, 3);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ASSERT_TRUE( conn.IsConnected() );
     ib_helper::ContractBuilder contractBuilder(&conn);
@@ -50,7 +69,7 @@ TEST(contract_builder, DISABLED_rty)
 
 TEST(contract_builder, DISABLED_mnq)
 {
-    ib_helper::IBConnector conn("localhost", 7497, 3);
+    ib_helper::IBConnector conn(ibhost.url, ibhost.port, 3);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ASSERT_TRUE( conn.IsConnected() );
     ib_helper::ContractBuilder contractBuilder(&conn);
