@@ -12,6 +12,12 @@ typedef std::chrono::time_point<std::chrono::system_clock> time_pnt;
  * @return the matching time_point<system_clock>
  */
 time_pnt to_time_point(const std::string& in);
+/***
+ * @brief convert a string "time" into a time point
+ * @param date the date portion
+ * @param hhmm the time in HH:MM format
+ */
+time_pnt to_time_point(const time_pnt& date, const std::string& hhmm);
 
 std::string to_string(const time_pnt& in);
 

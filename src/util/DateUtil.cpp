@@ -12,6 +12,22 @@
 #ifdef HH_DATELIB
 #include "date/tz.h"
 #endif
+
+/***
+ * @brief convert a string "time" into a time point
+ * @param date the date portion
+ * @param hhmm the time in HH:MM format
+ */
+time_pnt to_time_point(const time_pnt& date, const std::string& hhmm)
+{
+    time_t midnight = to_midnight_ny(std::chrono::system_clock::to_time_t(date));
+    auto pr = split_time(hhmm);
+    // add in the hours and minutes
+    midnight += (pr.first * 60 * 60); // add hours
+    midnight += (pr.second * 60); // add minutes
+    return std::chrono::system_clock::from_time_t(midnight);
+}
+
 /***
  * @brief convert a string into a time point
  * @param in the string in the format YYYYMMDD HH:MM:SS time/zone OR in time_t format
