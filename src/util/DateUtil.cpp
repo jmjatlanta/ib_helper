@@ -191,7 +191,7 @@ time_t to_midnight_ny(time_t in)
     return temp - diff_with_ny(in);
 }
 
-time_t mock_time;
+time_t mock_time = 0;
 void set_current_time(time_t in) { mock_time = in; }
 
 time_t current_time()
