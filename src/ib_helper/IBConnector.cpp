@@ -1083,8 +1083,10 @@ void IBConnector::historicalDataUpdate(TickerId reqId, const Bar& bar)
         std::for_each(historicalDataHandlers.begin(), historicalDataHandlers.end(),
                 [&str]( const std::pair<uint32_t, HistoricalDataHandler*> curr)
                 { if(curr.second != nullptr) str += ", " + std::to_string(curr.first); });
+        /*
         logger->debug("IBConnector", "historicalDataUpdate called for id " + std::to_string(reqId) 
                 + " but no subscribers. Subscriber ids: " + str);
+        */
     }
 }
 void IBConnector::rerouteMktDataReq(int reqId, int conid, const std::string& exchange){}
