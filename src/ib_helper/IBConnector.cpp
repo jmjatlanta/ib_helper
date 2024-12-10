@@ -773,7 +773,8 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         + ": " + errorString 
         + ". JSON: " + advancedOrderRejectJson
         + " current status: " + to_string(currentConnectionStatus);
-    logger->error(logCategory, msg);
+    if (errorCode != 162) // Historical market data canceled
+        logger->error(logCategory, msg);
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 // couldn't connect to TWS
         || errorCode == 509  // error reading socket

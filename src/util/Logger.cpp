@@ -35,6 +35,7 @@ std::filesystem::path Logger::get_current_file_path() const
 
 static boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_file_backend>> add_file_log(const std::string& fullFileNamePrefix)
 {
+    auto logFileFolder = std::filesystem::path(fullFileNamePrefix).parent_path();
     return boost::log::add_file_log(
             boost::log::keywords::file_name = fullFileNamePrefix + "_%N.log",
             boost::log::keywords::rotation_size = 10 * 1024 * 1024,
@@ -42,7 +43,8 @@ static boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::
             boost::log::keywords::format = "[%TimeStamp%]: %Message%",
             boost::log::keywords::auto_flush = true, // write immediately
             boost::log::keywords::open_mode = std::ios_base::app,
-            boost::log::keywords::max_files = 3 // no more than fullFileNamePrefix_2.log
+            boost::log::keywords::max_files = 3, // no more than fullFileNamePrefix_2.log
+            boost::log::keywords::target = logFileFolder
             );
 }
 
