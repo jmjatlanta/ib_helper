@@ -241,8 +241,10 @@ void IBConnector::RequestScannerParameters()
 int IBConnector::RequestScannerSubscription( ScannerSubscription scannerSubscription, 
             TagValueListSPtr scannerSubscriptionOptions, TagValueListSPtr scannerSubscriptionFilterOptions)
 {
+    if (ibClient == nullptr)
+        return -1;
     int nextReq = ++nextRequestId;
-    this->ibClient->reqScannerSubscription(nextReq, scannerSubscription, scannerSubscriptionOptions, scannerSubscriptionFilterOptions);
+    ibClient->reqScannerSubscription(nextReq, scannerSubscription, scannerSubscriptionOptions, scannerSubscriptionFilterOptions);
     return nextReq;
 }
 
