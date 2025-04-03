@@ -250,6 +250,7 @@ int IBConnector::RequestScannerSubscription( ScannerSubscription scannerSubscrip
 
 void IBConnector::CancelScannerSubscription(int reqId)
 {
+    //logger->debug("IBConnector", "CancelScannerSubscription called with reqId of " + std::to_string(reqId));
     ibClient->cancelScannerSubscription(reqId);
 }
 
@@ -403,6 +404,7 @@ uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandle
 
 void IBConnector::UnsubscribeFromMarketData(uint32_t reqId) 
 { 
+    //logger->debug("IBConnector", "UnsubscribFromMarketData called with reqId of " + std::to_string(reqId));
     {
         std::lock_guard<std::mutex> lock(tickHandlersMutex);
         tickHandlers[reqId] = nullptr;
@@ -426,6 +428,7 @@ uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandle
 
 void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId) 
 { 
+    //logger->debug("IBConnector", "UnsubscribFromTickByTick called with reqId of " + std::to_string(reqId));
     if (ibClient != nullptr)
         ibClient->cancelTickByTickData(reqId); 
     {
@@ -451,6 +454,7 @@ uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDep
 
 void IBConnector::UnsubscribeFromMarketDepth(uint32_t subscriptionId)
 {
+    //logger->debug("IBConnector", "UnsubscribFromMarketDepth called with subscriptionId of " + std::to_string(subscriptionId));
     {
         std::lock_guard<std::mutex> lock(marketDepthHandlersMutex);
         marketDepthHandlers[subscriptionId] = nullptr;
@@ -470,6 +474,7 @@ std::future<std::vector<DepthMktDataDescription> > IBConnector::RequestMktDepthE
 
 void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionId)
 {
+    //logger->debug("IBConnector", "UnsubscribFromHistoricalData called with subscriptionId of " + std::to_string(historicalSubscriptionId));
     if (ibClient != nullptr)
         ibClient->cancelHistoricalData(historicalSubscriptionId);
     {
@@ -490,6 +495,7 @@ uint32_t IBConnector::SubscribeToGroupEvents(DisplayGroupHandler* in, int groupI
 
 void IBConnector::UnsubscribeFromGroupEvents(uint32_t reqId)
 {
+    //logger->debug("IBConnector", "UnsubscribFromGropuEvents called with subscriptionId of " + std::to_string(reqId));
     std::scoped_lock lock(displayGroupHandlersMutex);
     std::erase_if(displayGroupHandlers, [reqId](const DisplayGroupCombination& curr)
                   { return curr.reqId == reqId; });

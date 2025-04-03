@@ -5,6 +5,7 @@
 #include <boost/log/sinks/text_file_backend.hpp>
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/utility/setup/console.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 
@@ -58,6 +59,11 @@ void Logger::log_to_file(const std::filesystem::path& dir, const std::string& fi
     std::filesystem::path fullFilePath = dir;
     fullFilePath /= fileNamePrefix;
     fileSinkPtr = add_file_log(fullFilePath.string());
+}
+
+void Logger::log_to_console()
+{
+        boost::log::add_console_log(std::cout, boost::log::keywords::format = "[%TimeStamp%]: [%Severity%] %Message%");
 }
 
 void Logger::trace(const std::string& msg) { BOOST_LOG_TRIVIAL(trace) << msg; }
