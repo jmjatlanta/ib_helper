@@ -2,12 +2,24 @@
 #include "IBConnector.hpp"
 #include "Contract.h"
 #include "../util/SysLogger.h"
-#include "ContractRolloverCalendar.hpp"
 #include "SecurityType.hpp"
-#include <iostream>
+#include "BarSize.hpp"
 
 namespace ib_helper {
 
+typedef std::chrono::system_clock::time_point time_pnt;
+
+time_pnt get_trading_open(const std::string& tradingHours);
+time_pnt get_trading_close(const std::string& tradingHours);
+std::vector<std::string> tokenize(const std::string& in, const std::string& delim);
+
+/****
+ * Get the number of candles per day
+ * @param contractDetails the contract
+ * @param barSize the bar size
+ * @returns the number of candles for this contract per day (longest day)
+*/
+uint32_t candles_per_day(const ContractDetails& contractDetails, ib_helper::BarSize barSize);
 class ContractBuilder
 {
     public:
