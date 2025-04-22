@@ -128,7 +128,10 @@ std::vector<std::string> tokenize(const std::string& in, const std::string& deli
 uint32_t candles_per_day(const ContractDetails& contractDetails, ib_helper::BarSize barSize)
 {
     // calculate the time span
-    std::vector<std::string> hours = tokenize(contractDetails.tradingHours, ";");
+    std::string tradingHours = contractDetails.tradingHours;
+    if (tradingHours.empty())
+        tradingHours = "20240101:0400-20240101:2000";
+    std::vector<std::string> hours = tokenize(tradingHours, ";");
     uint32_t maxBars = 0;
     for(int i = 0; i < hours.size(); ++i)
     {
@@ -144,6 +147,9 @@ uint32_t candles_per_day(const ContractDetails& contractDetails, ib_helper::BarS
         if (num_bars > maxBars)
              maxBars = num_bars;
     }
+    // never let it be zero
+    if (maxBars == 0)
+        maxBars = 1;
     return maxBars;
 }
 
