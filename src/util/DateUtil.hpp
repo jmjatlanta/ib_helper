@@ -36,6 +36,19 @@ std::string getDate();
  */
 time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute);
 
+enum DayOfWeek
+{
+    SUNDAY,
+    MONDAY,
+    TUESDAY,
+    WEDNESDAY,
+    THURSDAY,
+    FRIDAY,
+    SATURDAY
+};
+
+DayOfWeek to_day_of_week(time_t in);
+
 /***
  * @param in the time
  * @returns true if in is a monday GMT

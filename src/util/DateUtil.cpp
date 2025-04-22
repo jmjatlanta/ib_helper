@@ -104,17 +104,14 @@ time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute)
     return mktime(&today);
 }
 
-bool is_monday(time_t in)
+DayOfWeek to_day_of_week(time_t in)
 {
     auto tm = *gmtime(&in);
-    return tm.tm_wday == 1;
+    return static_cast<DayOfWeek>(tm.tm_wday);
 }
 
-bool is_friday(time_t in)
-{
-    auto tm = *gmtime(&in);
-    return tm.tm_wday == 5;
-}
+bool is_monday(time_t in) { return to_day_of_week(in) == DayOfWeek::MONDAY; }
+bool is_friday(time_t in) { return to_day_of_week(in) == DayOfWeek::FRIDAY; }
 
 time_t to_previous_friday(time_t in)
 {
