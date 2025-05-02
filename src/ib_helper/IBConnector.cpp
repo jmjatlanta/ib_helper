@@ -838,6 +838,20 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
     if (errorCode == 165 )
     {
         // connection restored for a subscription (1100 was called previously, 1102 probably on its way)
+        // or subcription to bars or scan returned nothing
+        // documentation says: Historical market Data Service query message
+        // There was an issue with a historical data request, such is no such data in IB's database. Note this message is not specific to the API
+        {
+            std::scoped_lock lock(scannerHandlerMutex);
+            for(auto& s : scannerHandlers)
+                s->OnScannerSubscriptionEnd(this, id);
+        }
+        {
+            std::scoped_lock lock(historicalDataHandlersMutex);
+            auto handler = historicalDataHandlers[id];
+            if (handler != nullptr)
+                handler->OnHistoricalDataEnd(id,"","");
+        }
     }
     if (errorCode == 2109)
     {
