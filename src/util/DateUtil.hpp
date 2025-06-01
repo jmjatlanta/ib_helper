@@ -86,6 +86,7 @@ time_t to_4pm_ny(time_t in);
  * @return midnight in NY on the same day
  */
 time_t to_midnight_ny(time_t in);
+time_pnt to_midnight_ny(const time_pnt& in);
 
 /***
  * @brief remove seconds

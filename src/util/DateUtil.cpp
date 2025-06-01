@@ -187,6 +187,12 @@ time_t to_midnight_ny(time_t in)
     time_t temp =  timegm(&tm);
     return temp - diff_with_ny(in);
 }
+time_pnt to_midnight_ny(const time_pnt& in)
+{
+    return std::chrono::system_clock::from_time_t(
+        to_midnight_ny(
+            in.time_since_epoch().count()));
+}
 
 time_t mock_time = 0;
 void set_current_time(time_t in) { mock_time = in; }
