@@ -5,6 +5,7 @@
 #include <utility>
 #include <cstring>
 #include <chrono>
+#include <time.h>
 
 #ifdef _WIN32
 #define timegm _mkgmtime
@@ -176,15 +177,20 @@ time_t to_midnight_ny(time_t in)
     // NOTE: If the diff_with_ny is greater than the secs since midnight UTC, the day of year rolled over
     // in UTC, so we'll need to back that out.
     // convert to midnight UTC
-    auto tm = *gmtime(&in);
+    tm my_tm;
+#ifdef _WIN32
+    gmtime_s(&my_tm, &in);
+#else
+    gmtime_s(&in, &my_tm);
+#endif
     //tm.tm_gmtoff = 0;
     //tm.tm_zone = "Etc/UTC";
-    tm.tm_hour = 0;
-    tm.tm_min = 0;
-    tm.tm_sec = 0;
+    my_tm.tm_hour = 0;
+    my_tm.tm_min = 0;
+    my_tm.tm_sec = 0;
     if (secs_since_midnight_utc(in) < (diff * -1))
-        tm.tm_mday--;
-    time_t temp =  timegm(&tm);
+        my_tm.tm_mday--;
+    time_t temp =  timegm(&my_tm);
     return temp - diff_with_ny(in);
 }
 time_pnt to_midnight_ny(const time_pnt& in)
