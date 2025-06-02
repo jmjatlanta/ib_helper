@@ -181,7 +181,7 @@ time_t to_midnight_ny(time_t in)
 #ifdef _WIN32
     gmtime_s(&my_tm, &in);
 #else
-    gmtime_s(&in, &my_tm);
+    gmtime_r(&in, &my_tm);
 #endif
     //tm.tm_gmtoff = 0;
     //tm.tm_zone = "Etc/UTC";
