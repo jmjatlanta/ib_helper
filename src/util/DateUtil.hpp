@@ -12,6 +12,14 @@ typedef std::chrono::time_point<std::chrono::system_clock> time_pnt;
  * @return the matching time_point<system_clock>
  */
 time_pnt to_time_point(const std::string& in);
+/***
+ * @brief convert a string "time" into a time point
+ * @param date the date portion
+ * @param hhmm the time in HH:MM format
+ */
+time_pnt to_time_point(const time_pnt& date, const std::string& hhmm);
+
+std::string to_string(const time_pnt& in);
 
 /***
  * convert today into YYYYMMDD
@@ -27,6 +35,19 @@ std::string getDate();
  * @returns the time_t of the epoch, adjusted to the hour/minute
  */
 time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute);
+
+enum DayOfWeek
+{
+    SUNDAY,
+    MONDAY,
+    TUESDAY,
+    WEDNESDAY,
+    THURSDAY,
+    FRIDAY,
+    SATURDAY
+};
+
+DayOfWeek to_day_of_week(time_t in);
 
 /***
  * @param in the time
@@ -65,6 +86,7 @@ time_t to_4pm_ny(time_t in);
  * @return midnight in NY on the same day
  */
 time_t to_midnight_ny(time_t in);
+time_pnt to_midnight_ny(const time_pnt& in);
 
 /***
  * @brief remove seconds

@@ -35,6 +35,10 @@ target_include_directories( ib_api PRIVATE
     ${IB_CLIENT_DIR}
 )
 
+target_link_libraries(ib_api PRIVATE
+    dfp
+)
+
 add_library( ib_helper ${util_src} ${ib_helper} ${date_src} )
 
 if(MSVC)
@@ -57,6 +61,13 @@ target_include_directories( ib_helper PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/util
     ${IB_CLIENT_DIR}
     ${Boost_INCLUDE_DIR}
+)
+
+target_link_libraries(ib_helper PRIVATE
+    ib_api
+    dfp
+    Boost::log
+    Boost::log_setup
 )
 
 set_target_properties(ib_helper PROPERTIES VERSION ${PROJECT_VERSION})

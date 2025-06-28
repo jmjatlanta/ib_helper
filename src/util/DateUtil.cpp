@@ -5,6 +5,7 @@
 #include <utility>
 #include <cstring>
 #include <chrono>
+#include <time.h>
 
 #ifdef _WIN32
 #define timegm _mkgmtime
@@ -12,6 +13,22 @@
 #ifdef HH_DATELIB
 #include "date/tz.h"
 #endif
+
+/***
+ * @brief convert a string "time" into a time point
+ * @param date the date portion
+ * @param hhmm the time in HH:MM format
+ */
+time_pnt to_time_point(const time_pnt& date, const std::string& hhmm)
+{
+    time_t midnight = to_midnight_ny(std::chrono::system_clock::to_time_t(date));
+    auto pr = split_time(hhmm);
+    // add in the hours and minutes
+    midnight += (pr.first * 60 * 60); // add hours
+    midnight += (pr.second * 60); // add minutes
+    return std::chrono::system_clock::from_time_t(midnight);
+}
+
 /***
  * @brief convert a string into a time point
  * @param in the string in the format YYYYMMDD HH:MM:SS time/zone OR in time_t format
@@ -42,6 +59,15 @@ time_pnt to_time_point(const std::string& in)
     auto ny_time = std::chrono::zoned_time<std::chrono::milliseconds>(tzString, resultTime); // converted GMT to NY, but not what we want
 #endif
     return ny_time.get_sys_time();
+}
+
+std::string to_string(const time_pnt& in)
+{
+#ifdef HH_DATELIB
+    return date::format("%D %T %Z", floor<std::chrono::milliseconds>(in));
+#else
+    return std::format("{:%Y%m%d%H%M}", in);
+#endif
 }
 
 /***
@@ -79,17 +105,14 @@ time_t timeToEpoch(time_t day, uint32_t hour, uint32_t minute)
     return mktime(&today);
 }
 
-bool is_monday(time_t in)
+DayOfWeek to_day_of_week(time_t in)
 {
     auto tm = *gmtime(&in);
-    return tm.tm_wday == 1;
+    return static_cast<DayOfWeek>(tm.tm_wday);
 }
 
-bool is_friday(time_t in)
-{
-    auto tm = *gmtime(&in);
-    return tm.tm_wday == 5;
-}
+bool is_monday(time_t in) { return to_day_of_week(in) == DayOfWeek::MONDAY; }
+bool is_friday(time_t in) { return to_day_of_week(in) == DayOfWeek::FRIDAY; }
 
 time_t to_previous_friday(time_t in)
 {
@@ -154,19 +177,29 @@ time_t to_midnight_ny(time_t in)
     // NOTE: If the diff_with_ny is greater than the secs since midnight UTC, the day of year rolled over
     // in UTC, so we'll need to back that out.
     // convert to midnight UTC
-    auto tm = *gmtime(&in);
+    tm my_tm;
+#ifdef _WIN32
+    gmtime_s(&my_tm, &in);
+#else
+    gmtime_r(&in, &my_tm);
+#endif
     //tm.tm_gmtoff = 0;
     //tm.tm_zone = "Etc/UTC";
-    tm.tm_hour = 0;
-    tm.tm_min = 0;
-    tm.tm_sec = 0;
+    my_tm.tm_hour = 0;
+    my_tm.tm_min = 0;
+    my_tm.tm_sec = 0;
     if (secs_since_midnight_utc(in) < (diff * -1))
-        tm.tm_mday--;
-    time_t temp =  timegm(&tm);
+        my_tm.tm_mday--;
+    time_t temp =  timegm(&my_tm);
     return temp - diff_with_ny(in);
 }
+time_pnt to_midnight_ny(const time_pnt& in)
+{
+    return std::chrono::system_clock::from_time_t(
+        to_midnight_ny(std::chrono::system_clock::to_time_t(in)));
+}
 
-time_t mock_time;
+time_t mock_time = 0;
 void set_current_time(time_t in) { mock_time = in; }
 
 time_t current_time()

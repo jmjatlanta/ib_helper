@@ -241,13 +241,16 @@ void IBConnector::RequestScannerParameters()
 int IBConnector::RequestScannerSubscription( ScannerSubscription scannerSubscription, 
             TagValueListSPtr scannerSubscriptionOptions, TagValueListSPtr scannerSubscriptionFilterOptions)
 {
+    if (ibClient == nullptr)
+        return -1;
     int nextReq = ++nextRequestId;
-    this->ibClient->reqScannerSubscription(nextReq, scannerSubscription, scannerSubscriptionOptions, scannerSubscriptionFilterOptions);
+    ibClient->reqScannerSubscription(nextReq, scannerSubscription, scannerSubscriptionOptions, scannerSubscriptionFilterOptions);
     return nextReq;
 }
 
 void IBConnector::CancelScannerSubscription(int reqId)
 {
+    //logger->debug("IBConnector", "CancelScannerSubscription called with reqId of " + std::to_string(reqId));
     ibClient->cancelScannerSubscription(reqId);
 }
 
@@ -401,6 +404,7 @@ uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandle
 
 void IBConnector::UnsubscribeFromMarketData(uint32_t reqId) 
 { 
+    //logger->debug("IBConnector", "UnsubscribFromMarketData called with reqId of " + std::to_string(reqId));
     {
         std::lock_guard<std::mutex> lock(tickHandlersMutex);
         tickHandlers[reqId] = nullptr;
@@ -424,6 +428,7 @@ uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandle
 
 void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId) 
 { 
+    //logger->debug("IBConnector", "UnsubscribFromTickByTick called with reqId of " + std::to_string(reqId));
     if (ibClient != nullptr)
         ibClient->cancelTickByTickData(reqId); 
     {
@@ -449,6 +454,7 @@ uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDep
 
 void IBConnector::UnsubscribeFromMarketDepth(uint32_t subscriptionId)
 {
+    //logger->debug("IBConnector", "UnsubscribFromMarketDepth called with subscriptionId of " + std::to_string(subscriptionId));
     {
         std::lock_guard<std::mutex> lock(marketDepthHandlersMutex);
         marketDepthHandlers[subscriptionId] = nullptr;
@@ -468,6 +474,7 @@ std::future<std::vector<DepthMktDataDescription> > IBConnector::RequestMktDepthE
 
 void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionId)
 {
+    //logger->debug("IBConnector", "UnsubscribFromHistoricalData called with subscriptionId of " + std::to_string(historicalSubscriptionId));
     if (ibClient != nullptr)
         ibClient->cancelHistoricalData(historicalSubscriptionId);
     {
@@ -488,6 +495,7 @@ uint32_t IBConnector::SubscribeToGroupEvents(DisplayGroupHandler* in, int groupI
 
 void IBConnector::UnsubscribeFromGroupEvents(uint32_t reqId)
 {
+    //logger->debug("IBConnector", "UnsubscribFromGropuEvents called with subscriptionId of " + std::to_string(reqId));
     std::scoped_lock lock(displayGroupHandlersMutex);
     std::erase_if(displayGroupHandlers, [reqId](const DisplayGroupCombination& curr)
                   { return curr.reqId == reqId; });
@@ -773,7 +781,8 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         + ": " + errorString 
         + ". JSON: " + advancedOrderRejectJson
         + " current status: " + to_string(currentConnectionStatus);
-    logger->error(logCategory, msg);
+    if (errorCode != 162) // Historical market data canceled
+        logger->error(logCategory, msg);
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 // couldn't connect to TWS
         || errorCode == 509  // error reading socket
@@ -829,6 +838,20 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
     if (errorCode == 165 )
     {
         // connection restored for a subscription (1100 was called previously, 1102 probably on its way)
+        // or subcription to bars or scan returned nothing
+        // documentation says: Historical market Data Service query message
+        // There was an issue with a historical data request, such is no such data in IB's database. Note this message is not specific to the API
+        {
+            std::scoped_lock lock(scannerHandlerMutex);
+            for(auto& s : scannerHandlers)
+                s->OnScannerSubscriptionEnd(this, id);
+        }
+        {
+            std::scoped_lock lock(historicalDataHandlersMutex);
+            auto handler = historicalDataHandlers[id];
+            if (handler != nullptr)
+                handler->OnHistoricalDataEnd(id,"","");
+        }
     }
     if (errorCode == 2109)
     {
@@ -1082,8 +1105,10 @@ void IBConnector::historicalDataUpdate(TickerId reqId, const Bar& bar)
         std::for_each(historicalDataHandlers.begin(), historicalDataHandlers.end(),
                 [&str]( const std::pair<uint32_t, HistoricalDataHandler*> curr)
                 { if(curr.second != nullptr) str += ", " + std::to_string(curr.first); });
+        /*
         logger->debug("IBConnector", "historicalDataUpdate called for id " + std::to_string(reqId) 
                 + " but no subscribers. Subscriber ids: " + str);
+        */
     }
 }
 void IBConnector::rerouteMktDataReq(int reqId, int conid, const std::string& exchange){}

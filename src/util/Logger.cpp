@@ -5,6 +5,7 @@
 #include <boost/log/sinks/text_file_backend.hpp>
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/utility/setup/console.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 
@@ -35,6 +36,7 @@ std::filesystem::path Logger::get_current_file_path() const
 
 static boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_file_backend>> add_file_log(const std::string& fullFileNamePrefix)
 {
+    auto logFileFolder = std::filesystem::path(fullFileNamePrefix).parent_path();
     return boost::log::add_file_log(
             boost::log::keywords::file_name = fullFileNamePrefix + "_%N.log",
             boost::log::keywords::rotation_size = 10 * 1024 * 1024,
@@ -42,7 +44,8 @@ static boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::
             boost::log::keywords::format = "[%TimeStamp%]: %Message%",
             boost::log::keywords::auto_flush = true, // write immediately
             boost::log::keywords::open_mode = std::ios_base::app,
-            boost::log::keywords::max_files = 3 // no more than fullFileNamePrefix_2.log
+            boost::log::keywords::max_files = 3, // no more than fullFileNamePrefix_2.log
+            boost::log::keywords::target = logFileFolder
             );
 }
 
@@ -56,6 +59,11 @@ void Logger::log_to_file(const std::filesystem::path& dir, const std::string& fi
     std::filesystem::path fullFilePath = dir;
     fullFilePath /= fileNamePrefix;
     fileSinkPtr = add_file_log(fullFilePath.string());
+}
+
+void Logger::log_to_console()
+{
+        boost::log::add_console_log(std::cout, boost::log::keywords::format = "[%TimeStamp%]: [%Severity%] %Message%");
 }
 
 void Logger::trace(const std::string& msg) { BOOST_LOG_TRIVIAL(trace) << msg; }
