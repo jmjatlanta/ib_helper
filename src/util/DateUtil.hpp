@@ -72,6 +72,13 @@ time_t to_previous_friday(time_t in);
 time_t to_next_friday(time_t in);
 
 /***
+ * Determine if the input is today (in the same timezone)
+ * @param in the time to examine
+ * @return true if in is the same day as now()
+ */
+bool isToday(time_t in);
+
+/***
  * @param in the time
  * @return 9:30am in NY on the same day
  */

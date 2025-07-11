@@ -131,6 +131,11 @@ time_t to_next_friday(time_t in)
     return mktime(&tm);
 }
 
+bool isToday(time_t in)
+{
+    return to_930am_ny(in) == to_930am_ny(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+}
+
 time_t to_930am_ny(time_t in)
 {
     // add 9 1/2 hours
