@@ -1001,7 +1001,7 @@ void IBConnector::displayGroupList( int reqId, const std::string& groups){}
 void IBConnector::displayGroupUpdated( int reqId, const std::string& contractInfo)
 {
     std::scoped_lock lock(displayGroupHandlersMutex);
-    logger->debug("IBConnector", "displayGroupUpdated: reqId: " + std::to_string(reqId) + " Contract info: " + contractInfo);
+    //logger->debug("IBConnector", "displayGroupUpdated: reqId: " + std::to_string(reqId) + " Contract info: " + contractInfo);
     std::for_each(displayGroupHandlers.begin(), displayGroupHandlers.end(), [reqId, contractInfo](const DisplayGroupCombination& curr)
             { if (curr.reqId == reqId) curr.handler->OnDisplayGroupUpdated(reqId, contractInfo); });
 }
