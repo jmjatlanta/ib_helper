@@ -44,37 +44,8 @@ class SysLogger
     void info(const std::string& category, const std::string& msg) { log(LogLevel::INFO, category, msg); }
     void warn(const std::string& msg) { warn("unknown", msg); }
     void warn(const std::string& category, const std::string& msg) { log(LogLevel::WARN, category, msg); }
-    void log(LogLevel level, const std::string& category, const std::string& msg)
-    {
-        if (static_cast<uint32_t>(level) >= static_cast<uint32_t>(logLevel))
-        {
-            if (threadSafe)
-            {
-                std::lock_guard<std::mutex> lock(logMutex);
-                *stream << current_time_formatted() << " "
-                        << to_string(level) << " [" << category << "] " << msg << "\n";
-            }
-            else
-            {
-                *stream << current_time_formatted() << " "
-                        << to_string(level) << " [" << category << "] " << msg << "\n";
-            }
-        }
-    }
-    static std::string to_string(LogLevel in) {
-        switch (in) {
-            case LogLevel::DEBUG:
-                return "DEBUG";
-            case LogLevel::INFO:
-                return "INFO";
-            case LogLevel::WARN:
-                return "WARN";
-            case LogLevel::ERROR:
-                return "ERROR";
-            default:
-                return "";
-        }
-    }
+    void log(LogLevel level, const std::string& category, const std::string& msg);
+
     protected:
     SysLogger() {}
 
@@ -104,3 +75,8 @@ class SysLogger
 };
 
 } // namespace util
+
+std::string to_string(util::SysLogger::LogLevel in);
+
+util::SysLogger::LogLevel to_log_level(const std::string& in);
+

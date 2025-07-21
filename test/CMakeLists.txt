@@ -4,8 +4,6 @@ set(CMAKE_CXX_STANDARD 20)
 
 project ( ib_helper_tests )
 
-file(GLOB ib_helper "../src/ib_helper/*.cpp" )
-file(GLOB util_src "../src/util/*.cpp" )
 file(GLOB test_src "./*.cpp" )
 
 include(FetchContent)
@@ -24,8 +22,6 @@ find_package(Boost 1.74 COMPONENTS log log_setup REQUIRED)
 
 add_executable( ib_helper_tests 
     ${test_src} 
-    ${util_src} 
-    ${ib_helper} 
     ${date_src} 
 )
 
