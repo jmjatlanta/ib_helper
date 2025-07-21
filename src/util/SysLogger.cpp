@@ -48,5 +48,5 @@ util::SysLogger::LogLevel to_log_level(const std::string& in)
         return util::SysLogger::LogLevel::WARN;
     if (in == "ERROR")
         return util::SysLogger::LogLevel::ERROR;
-    return util::SysLogger::LogLevel::ERROR;
+    return util::SysLogger::LogLevel::DEBUG;
 }
