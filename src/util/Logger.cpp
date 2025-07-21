@@ -41,7 +41,7 @@ static boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::
             boost::log::keywords::file_name = fullFileNamePrefix + "_%N.log",
             boost::log::keywords::rotation_size = 10 * 1024 * 1024,
             boost::log::keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0,0,0),
-            boost::log::keywords::format = "[%TimeStamp%]: %Message%",
+            boost::log::keywords::format = "[%TimeStamp%][%Severity%]: %Message%",
             boost::log::keywords::auto_flush = true, // write immediately
             boost::log::keywords::open_mode = std::ios_base::app,
             boost::log::keywords::max_files = 3, // no more than fullFileNamePrefix_2.log
