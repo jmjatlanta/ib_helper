@@ -49,6 +49,27 @@ static boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::
             );
 }
 
+static boost::log::trivial::severity_level to_level(util::SysLogger::LogLevel in)
+{
+    switch(in)
+    {
+        case util::SysLogger::LogLevel::ERROR:
+            return boost::log::trivial::error;
+        case util::SysLogger::LogLevel::WARN:
+            return boost::log::trivial::warning;
+        case util::SysLogger::LogLevel::INFO:
+            return boost::log::trivial::info;
+        case util::SysLogger::LogLevel::DEBUG:
+            return boost::log::trivial::debug;
+    }
+    return boost::log::trivial::debug;
+}
+
+void Logger::set_log_level(util::SysLogger::LogLevel in)
+{
+    boost::log::core::get()->set_filter( boost::log::trivial::severity >= to_level(in) );
+}
+
 void Logger::log_to_file(const std::string& fileNamePrefix)
 {
     fileSinkPtr = add_file_log(fileNamePrefix);

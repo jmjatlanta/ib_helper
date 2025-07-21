@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <filesystem>
+#include "SysLogger.h"
 
 /***
  * Handle logging
@@ -13,6 +14,8 @@ class Logger
     Logger();
     ~Logger();
     static Logger* getInstance();
+
+    void set_log_level(util::SysLogger::LogLevel in);
     /***
      * @brief send log message to a file
      * @param filenamePrefix the first part of the filename
