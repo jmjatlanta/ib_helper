@@ -53,6 +53,9 @@ if(HH_DATELIB)
         ${CMAKE_CURRENT_LIST_DIR}/../date/include 
         ${CURL_INCLUDE_DIRS}
     )
+    target_link_libraries(ib_helper PRIVATE
+        CURL::libcurl
+    )
 endif(HH_DATELIB)
 
 target_compile_definitions(ib_helper PRIVATE BOOST_ALL_DYN_LINK)
