@@ -211,25 +211,25 @@ void IBConnector::RequestAllOpenOrders()
 
 void IBConnector::AddAccountHandler(AccountHandler* in)
 {
-    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    std::scoped_lock lock(accountHandlersMutex);
     accountHandlers.push_back(in);
 }
 
 void IBConnector::RemoveAccountHandler(AccountHandler* in)
 {
-    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    std::scoped_lock lock(accountHandlersMutex);
     std::erase(accountHandlers, in);
 }
 
 void IBConnector::AddScannerHandler(ScannerHandler* in)
 {
-    std::lock_guard<std::mutex> lock(scannerHandlerMutex);
+    std::scoped_lock lock(scannerHandlerMutex);
     scannerHandlers.push_back(in);
 }
 
 void IBConnector::RemoveScannerHandler(ScannerHandler* in)
 {
-    std::lock_guard<std::mutex> lock(scannerHandlerMutex);
+    std::scoped_lock lock(scannerHandlerMutex);
     std::erase(scannerHandlers, in);
 }
 
@@ -256,7 +256,7 @@ void IBConnector::CancelScannerSubscription(int reqId)
 
 void IBConnector::AddOrderHandler(OrderHandler* in)
 {
-    std::lock_guard<std::mutex> lock(orderHandlersMutex);
+    std::scoped_lock lock(orderHandlersMutex);
     for(auto* handler : orderHandlers)
         if (handler == in)
             return;
@@ -265,13 +265,13 @@ void IBConnector::AddOrderHandler(OrderHandler* in)
 
 void IBConnector::RemoveOrderHandler(OrderHandler* in)
 {
-    std::lock_guard<std::mutex> lock(orderHandlersMutex);
+    std::scoped_lock lock(orderHandlersMutex);
     std::erase(orderHandlers, in);
 }
 
 void IBConnector::AddExecutionHandler(ExecutionHandler* in)
 {
-    std::lock_guard lock(executionHandlersMutex);
+    std::scoped_lock lock(executionHandlersMutex);
     for(auto* handler : executionHandlers)
         if (handler == in)
             return;
@@ -411,7 +411,7 @@ uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandle
 {
     uint32_t reqId = GetNextRequestId();
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         tickHandlers[reqId] = handler;
     }
     if (ibClient != nullptr)
@@ -425,7 +425,7 @@ void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId)
     if (ibClient != nullptr)
         ibClient->cancelTickByTickData(reqId); 
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         tickHandlers[reqId] = nullptr;
     }
 }
@@ -434,7 +434,7 @@ uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDep
 {
     uint32_t reqId = GetNextRequestId();
     {
-        std::lock_guard<std::mutex> lock(marketDepthHandlersMutex);
+        std::scoped_lock lock(marketDepthHandlersMutex);
         marketDepthHandlers[reqId] = depthHandler;
     }
     if (ibClient != nullptr)
@@ -449,7 +449,7 @@ void IBConnector::UnsubscribeFromMarketDepth(uint32_t subscriptionId)
 {
     //logger->debug("IBConnector", "UnsubscribFromMarketDepth called with subscriptionId of " + std::to_string(subscriptionId));
     {
-        std::lock_guard<std::mutex> lock(marketDepthHandlersMutex);
+        std::scoped_lock lock(marketDepthHandlersMutex);
         marketDepthHandlers[subscriptionId] = nullptr;
     }
     if (ibClient != nullptr)
@@ -458,7 +458,7 @@ void IBConnector::UnsubscribeFromMarketDepth(uint32_t subscriptionId)
 
 std::future<std::vector<DepthMktDataDescription> > IBConnector::RequestMktDepthExchanges()
 {
-    std::lock_guard<std::mutex> lock(mktDepthExchangesPromisesMutex);
+    std::scoped_lock lock(mktDepthExchangesPromisesMutex);
     auto& promise = mktDepthExchangesPromises.emplace_back( );
     if (ibClient != nullptr)
         ibClient->reqMktDepthExchanges();
@@ -471,7 +471,7 @@ void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionI
     if (ibClient != nullptr)
         ibClient->cancelHistoricalData(historicalSubscriptionId);
     {
-        std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
+        std::scoped_lock lock(historicalDataHandlersMutex);
         historicalDataHandlers[historicalSubscriptionId] = nullptr;
     }
     //logger->debug("IBConnector", "UnsubscribeFromHistoricalData: " + std::to_string(historicalSubscriptionId));
@@ -504,7 +504,7 @@ uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, Histor
         whatToShow = "MIDPOINT";
     int id = GetNextRequestId();
     {
-        std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
+        std::scoped_lock lock(historicalDataHandlersMutex);
         historicalDataHandlers[id] = handler;
     }
     //logger->debug("IBConnector", "SubscribeToHistoricalData: subscribing with id " + std::to_string(id)
@@ -520,7 +520,7 @@ uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, Histor
 void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, const TickAttrib& attrib)
 {
     // For a list of TickTypes, see https://interactivebrokers.github.io/tws-api/tick_types.html
-    std::lock_guard<std::mutex> lock(tickHandlersMutex);
+    std::scoped_lock lock(tickHandlersMutex);
     auto itr = tickHandlers.find(tickerId);
     if (itr != tickHandlers.end() && (*itr).second != nullptr)
         (*itr).second->OnTickPrice(tickerId, field, price, attrib);
@@ -538,7 +538,7 @@ void IBConnector::tickSize(TickerId tickerId, TickType field, Decimal size)
 {
     try 
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         TickHandler* handler = tickHandlers.at(tickerId);
         if (handler != nullptr)
             handler->OnTickSize(tickerId, field, size);
@@ -549,7 +549,7 @@ void IBConnector::tickOptionComputation( TickerId tickerId, TickType tickType, i
 {
     try 
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         TickHandler* handler = tickHandlers.at(tickerId);
         if (handler != nullptr)
             handler->OnTickOptionComputation(tickerId, tickType, tickAttrib, impliedVol, delta, optPrice, pvDividend,
@@ -560,7 +560,7 @@ void IBConnector::tickGeneric(TickerId tickerId, TickType tickType, double value
 {
     try 
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         TickHandler* handler = tickHandlers.at(tickerId);
         if (handler != nullptr)
             handler->OnTickGeneric(tickerId, tickType, value);
@@ -570,7 +570,7 @@ void IBConnector::tickString(TickerId tickerId, TickType tickType, const std::st
 {
     try 
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         TickHandler* handler = tickHandlers.at(tickerId);
         if (handler != nullptr)
             handler->OnTickString(tickerId, tickType, value);
@@ -582,7 +582,7 @@ void IBConnector::tickEFP(TickerId tickerId, TickType tickType, double basisPoin
 {
     try 
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         TickHandler* handler = tickHandlers.at(tickerId);
         if (handler != nullptr)
             handler->OnTickEFP(tickerId, tickType, basisPoints, formattedBasisPoints, totalDividends, holdDays, 
@@ -595,7 +595,7 @@ void IBConnector::tickByTickAllLast(int reqId, int tickType, time_t time, double
 {
     try 
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         TickHandler* handler = tickHandlers.at(reqId);
         if(handler != nullptr)
             handler->OnTickByTickAllLast(reqId, tickType, time, price, size, tickAttribLast, exchange, specialConditions);
@@ -606,7 +606,7 @@ void IBConnector::tickByTickBidAsk(int reqId, time_t time, double bidPrice, doub
 {
     try 
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         TickHandler* handler = tickHandlers.at(reqId);
         if (handler != nullptr)
             handler->OnTickByTickBidAsk(reqId, time, bidPrice, askPrice, bidSize, askSize, tickAttribBidAsk);
@@ -616,7 +616,7 @@ void IBConnector::tickByTickMidPoint(int reqId, time_t time, double midPoint)
 {
     try 
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         TickHandler* handler = tickHandlers.at(reqId);
         if (handler != nullptr)
             handler->OnTickByTickMidPoint(reqId, time, midPoint);
@@ -624,7 +624,7 @@ void IBConnector::tickByTickMidPoint(int reqId, time_t time, double midPoint)
 }
 void IBConnector::orderBound(long long orderId, int apiClientId, int apiOrderId)
 {
-    std::lock_guard<std::mutex> lock(orderHandlersMutex);
+    std::scoped_lock lock(orderHandlersMutex);
     for(auto handler : orderHandlers)
     {
         if (handler != nullptr)
@@ -635,7 +635,7 @@ void IBConnector::orderStatus( OrderId orderId, const std::string& status, Decim
             Decimal remaining, double avgFillPrice, int permId, int parentId,
             double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice)
 {
-    std::lock_guard<std::mutex> lock(orderHandlersMutex);
+    std::scoped_lock lock(orderHandlersMutex);
     for(auto handler : orderHandlers)
     {
         if (handler != nullptr)
@@ -645,7 +645,7 @@ void IBConnector::orderStatus( OrderId orderId, const std::string& status, Decim
 }
 void IBConnector::openOrder( OrderId orderId, const Contract& contract, const ::Order& order, const OrderState& orderState)
 {
-    std::lock_guard<std::mutex> lock(orderHandlersMutex);
+    std::scoped_lock lock(orderHandlersMutex);
     for(auto handler : orderHandlers)
     {
         if (handler != nullptr)
@@ -654,7 +654,7 @@ void IBConnector::openOrder( OrderId orderId, const Contract& contract, const ::
 }
 void IBConnector::openOrderEnd()
 {
-    std::lock_guard<std::mutex> lock(orderHandlersMutex);
+    std::scoped_lock lock(orderHandlersMutex);
     for(auto handler : orderHandlers)
     {
         if (handler != nullptr)
@@ -668,7 +668,7 @@ void IBConnector::winError( const std::string& str, int lastError)
 void IBConnector::connectionClosed()
 {
     // we cannot lock this, as the connection monitors need to unsubscribe themselves
-    //std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+    //std::scoped_lock lock(connectionMonitorsMutex);
     if (currentConnectionStatus != ConnectionStatus::PARTIALLY_CONNECTED)
     {
         logger->debug(logCategory, "connectionClosed called");
@@ -682,26 +682,26 @@ void IBConnector::connectionClosed()
 void IBConnector::updateAccountValue(const std::string& key, const std::string& val,
             const std::string& currency, const std::string& accountName)
 {
-    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    std::scoped_lock lock(accountHandlersMutex);
     for(auto h : accountHandlers)
         h->OnAccountValueUpdate(key, val, currency, accountName);
 }
 void IBConnector::updatePortfolio( const Contract& contract, Decimal position, double marketPrice, double marketValue,
             double averageCost, double unrealizedPNL, double realizedPNL, const std::string& accountName)
 {
-    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    std::scoped_lock lock(accountHandlersMutex);
     for(auto h : accountHandlers)
         h->OnPortfolioUpdate(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, realizedPNL, accountName);
 }
 void IBConnector::updateAccountTime(const std::string& timeStamp)
 {
-    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    std::scoped_lock lock(accountHandlersMutex);
     for(auto h : accountHandlers)
         h->OnUpdateAccountTime(timeStamp);
 }
 void IBConnector::accountDownloadEnd(const std::string& accountName)
 {
-    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    std::scoped_lock lock(accountHandlersMutex);
     for(auto h : accountHandlers)
         h->OnAccountDownloadEnd(accountName);
 }
@@ -755,13 +755,13 @@ void IBConnector::contractDetailsEnd( int reqId)
 }
 void IBConnector::execDetails( int reqId, const Contract& contract, const Execution& execution)
 {
-    std::lock_guard lock(executionHandlersMutex);
+    std::scoped_lock lock(executionHandlersMutex);
     for(auto h : executionHandlers)
         h->OnExecDetails(reqId, contract, execution);
 }
 void IBConnector::execDetailsEnd( int reqId)
 {
-    std::lock_guard lock(executionHandlersMutex);
+    std::scoped_lock lock(executionHandlersMutex);
     for(auto h : executionHandlers)
         h->OnExecDetailsEnd(reqId);
 }
@@ -852,7 +852,7 @@ void IBConnector::error(int id, int errorCode, const std::string& errorString,
         return;
     }
     {
-        std::lock_guard<std::mutex> lock(accountHandlersMutex);
+        std::scoped_lock lock(accountHandlersMutex);
         for(auto handler : accountHandlers)
         {
             if (handler != nullptr)
@@ -864,7 +864,7 @@ void IBConnector::updateMktDepth(TickerId reqId, int position, int operation, in
 {
     try 
     {
-        std::lock_guard<std::mutex> lock(marketDepthHandlersMutex);
+        std::scoped_lock lock(marketDepthHandlersMutex);
         MarketDepthHandler* handler = marketDepthHandlers.at(reqId);
         if (handler != nullptr)
             handler->OnUpdateMktDepth(reqId, position, operation, side, price, size);
@@ -875,7 +875,7 @@ void IBConnector::updateMktDepthL2(TickerId reqId, int position, const std::stri
 {
     try 
     {
-        std::lock_guard<std::mutex> lock(marketDepthHandlersMutex);
+        std::scoped_lock lock(marketDepthHandlersMutex);
         MarketDepthHandler* handler = marketDepthHandlers.at(reqId);
         if (handler != nullptr)
             handler->OnUpdateMktDepthL2(reqId, position, marketMaker, operation, side, price, size, isSmartDepth);
@@ -914,7 +914,7 @@ void IBConnector::receiveFA(faDataType pFaDataType, const std::string& cxml){}
 void IBConnector::historicalData(TickerId reqId, const Bar& bar)
 {
     //logger->debug("IBConnector", "historicalData called for id " + std::to_string(reqId));
-    std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
+    std::scoped_lock lock(historicalDataHandlersMutex);
     auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
         handler->OnHistoricalData(reqId, bar);
@@ -924,7 +924,7 @@ void IBConnector::historicalData(TickerId reqId, const Bar& bar)
 void IBConnector::historicalDataEnd(int reqId, const std::string& startDateStr, const std::string& endDateStr)
 {
     //logger->debug("IBConnector", "historicalDataEnd called for id " + std::to_string(reqId));
-    std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
+    std::scoped_lock lock(historicalDataHandlersMutex);
     auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
         handler->OnHistoricalDataEnd(reqId, startDateStr, endDateStr);
@@ -934,7 +934,7 @@ void IBConnector::historicalDataEnd(int reqId, const std::string& startDateStr, 
 
 void IBConnector::scannerParameters(const std::string& xml)
 {
-    std::lock_guard<std::mutex> lock(scannerHandlerMutex);
+    std::scoped_lock lock(scannerHandlerMutex);
     for(auto handler : scannerHandlers)
         handler->OnScannerParameters(this, xml);
 }
@@ -942,13 +942,13 @@ void IBConnector::scannerParameters(const std::string& xml)
 void IBConnector::scannerData(int reqId, int rank, const ContractDetails& contractDetails, const std::string& distance,
             const std::string& benchmark, const std::string& projection, const std::string& legsStr)
 {
-    std::lock_guard<std::mutex> lock(scannerHandlerMutex);
+    std::scoped_lock lock(scannerHandlerMutex);
     for(auto handler : scannerHandlers)
         handler->OnScannerData(this, reqId, rank, contractDetails, distance, benchmark, projection, legsStr);
 }
 void IBConnector::scannerDataEnd(int reqId)
 {
-    std::lock_guard<std::mutex> lock(scannerHandlerMutex);
+    std::scoped_lock lock(scannerHandlerMutex);
     for(auto handler : scannerHandlers)
         handler->OnScannerDataEnd(this, reqId);
 }
@@ -961,7 +961,7 @@ void IBConnector::tickSnapshotEnd( int reqId){}
 void IBConnector::marketDataType( TickerId reqId, int marketDataType){}
 void IBConnector::commissionReport( const CommissionReport& commissionReport)
 {
-    std::lock_guard lock(executionHandlersMutex);
+    std::scoped_lock lock(executionHandlersMutex);
     for(auto h : executionHandlers)
     {
         h->OnCommissionReport(commissionReport);
@@ -970,7 +970,7 @@ void IBConnector::commissionReport( const CommissionReport& commissionReport)
 void IBConnector::position( const std::string& account, const Contract& contract, Decimal position, 
             double avgCost)
 {
-    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    std::scoped_lock lock(accountHandlersMutex);
     for(auto handler : accountHandlers)
     {
         if (handler != nullptr)
@@ -979,7 +979,7 @@ void IBConnector::position( const std::string& account, const Contract& contract
 }
 void IBConnector::positionEnd()
 {
-    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    std::scoped_lock lock(accountHandlersMutex);
     for(auto handler : accountHandlers)
     {
         handler->OnPositionEnd();
@@ -1005,7 +1005,7 @@ void IBConnector::verifyAndAuthCompleted( bool isSuccessful, const std::string& 
  */
 void IBConnector::connectAck()
 {
-    std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+    std::scoped_lock lock(connectionMonitorsMutex);
     for(auto cm : connectionMonitors)
         cm->OnConnect(this);
 }
@@ -1066,7 +1066,7 @@ void IBConnector::familyCodes(const std::vector<FamilyCode> &familyCodes){}
 void IBConnector::symbolSamples(int reqId, const std::vector<ContractDescription> &contractDescriptions){}
 void IBConnector::mktDepthExchanges(const std::vector<DepthMktDataDescription> &depthMktDataDescriptions)
 {
-    std::lock_guard<std::mutex> lock(mktDepthExchangesPromisesMutex);
+    std::scoped_lock lock(mktDepthExchangesPromisesMutex);
     // find the first promise
     if (mktDepthExchangesPromises.size() == 0)
         return;
@@ -1088,7 +1088,7 @@ void IBConnector::headTimestamp(int reqId, const std::string& headTimestamp){}
 void IBConnector::histogramData(int reqId, const HistogramDataVector& data){}
 void IBConnector::historicalDataUpdate(TickerId reqId, const Bar& bar)
 {
-    std::lock_guard<std::mutex> lock(historicalDataHandlersMutex);
+    std::scoped_lock lock(historicalDataHandlersMutex);
     auto handler = historicalDataHandlers[reqId];
     if (handler != nullptr)
         handler->OnHistoricalDataUpdate(reqId, bar);
