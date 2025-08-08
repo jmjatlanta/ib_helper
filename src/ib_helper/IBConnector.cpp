@@ -281,20 +281,13 @@ void IBConnector::AddExecutionHandler(ExecutionHandler* in)
 void IBConnector::RemoveExecutionHandler(ExecutionHandler* in)
 {
     uint32_t toErase = 0;
-    std::lock_guard lock(executionHandlersMutex);
-    for(auto itr = executionHandlers.begin(); itr != executionHandlers.end(); ++itr)
-    {
-        if ((*itr) == in)
-        {
-            executionHandlers.erase(itr);
-            break;
-        }
-    }
+    std::scoped_lock lock(executionHandlersMutex);
+    executionHandlers.erase(std::remove(executionHandlers.begin(), executionHandlers.end(), in), executionHandlers.end());
 }
 
 AccountHandler* IBConnector::GetDefaultAccountHandler() 
 { 
-    std::lock_guard<std::mutex> lock(accountHandlersMutex);
+    std::scoped_lock lock(accountHandlersMutex);
     if (accountHandlers.size() == 0) 
         return nullptr; 
     return accountHandlers[0]; 
@@ -307,7 +300,7 @@ std::vector<std::string> IBConnector::GetAccounts() const
 
 void IBConnector::RemoveConnectionMonitor(IBConnectionMonitor* in)
 {
-    std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+    std::scoped_lock lock(connectionMonitorsMutex);
     for(auto itr = connectionMonitors.begin(); itr != connectionMonitors.end(); ++itr)
     {
         if ( (*itr) == in)
@@ -322,7 +315,7 @@ void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
 {
     if (in != nullptr)
     {
-        std::lock_guard<std::mutex> lock(connectionMonitorsMutex);
+        std::scoped_lock lock(connectionMonitorsMutex);
         auto itr = std::find(connectionMonitors.begin(), connectionMonitors.end(), in);
         if (itr == connectionMonitors.end())
             connectionMonitors.push_back(in);
@@ -395,7 +388,7 @@ uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandle
 
     uint32_t reqId = GetNextRequestId();
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         tickHandlers[reqId] = tickHandler;
     }
     ibClient->reqMktData(reqId, contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions);
@@ -406,7 +399,7 @@ void IBConnector::UnsubscribeFromMarketData(uint32_t reqId)
 { 
     //logger->debug("IBConnector", "UnsubscribFromMarketData called with reqId of " + std::to_string(reqId));
     {
-        std::lock_guard<std::mutex> lock(tickHandlersMutex);
+        std::scoped_lock lock(tickHandlersMutex);
         tickHandlers[reqId] = nullptr;
     }
     if (ibClient != nullptr)
