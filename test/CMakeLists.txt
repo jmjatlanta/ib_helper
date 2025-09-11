@@ -13,16 +13,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-if(HH_DATELIB)
-    file(GLOB date_src "../date/src/*.cpp" )
-    find_package(CURL REQUIRED)
-endif(HH_DATELIB)
-
 find_package(Boost 1.74 COMPONENTS log log_setup REQUIRED)
 
 add_executable( ib_helper_tests 
     ${test_src} 
-    ${date_src} 
 )
 
 target_compile_definitions(ib_helper_tests PRIVATE BOOST_ALL_DYN_LINK)
@@ -34,17 +28,6 @@ if(MSVC)
 else(MSVC)
     target_compile_options(ib_helper_tests PRIVATE -g -O0)
 endif(MSVC)
-
-if(HH_DATELIB)
-    target_compile_definitions(ib_helper_tests PRIVATE -DHH_DATELIB=1 -DHAS_REMOTE_API=1)
-    target_include_directories(ib_helper_tests PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/../date/include
-        ${CURL_INCLUDE_DIRS}
-    )
-    target_link_libraries(ib_helper_tests 
-        ${CURL_LIBRARIES}
-    )
-endif(HH_DATELIB)
 
 target_include_directories(ib_helper_tests PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper

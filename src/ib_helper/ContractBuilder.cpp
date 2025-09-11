@@ -1,5 +1,4 @@
 #include "ContractBuilder.hpp"
-#include "ContractRolloverCalendar.hpp"
 #include "../util/StringHelper.hpp"
 #include "BarSize.hpp"
 #include <iomanip>
@@ -317,6 +316,11 @@ std::vector<std::string> parseCSV(const std::string &in)
 
 ContractDetails ContractBuilder::BuildFuture(const std::string &ticker, time_t now)
 {
+    /*
+     * NOTE: this used to calculate the best future based on the rollover calendar.
+     * This has been moved to a ContractCalendar library. Now this method only computes
+     * a valid future, regardless of if it has rolled over
+     */
     Contract contract;
     contract.symbol = to_upper(ticker);
     contract.localSymbol = "";
@@ -326,68 +330,11 @@ ContractDetails ContractBuilder::BuildFuture(const std::string &ticker, time_t n
     {
         contract.exchange = "CME";
     }
-    ContractRolloverCalendar calendar;
-    if (!calendar.IsValid(ticker))
-    {
-        ContractDetails retval;
-        retval.contract = contract;
-        return retval;
-    }
-   contract.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker);
     // make sure it is liquid
-    auto det = GetDetails(contract);
-    ContractDetails currDetails;
-    if (det.size() > 0)
-        currDetails = det[0];
-    int month = 60 * 60 * 24 * 28;
-    time_t temp_date = now;
-    while (currDetails.contract.conId <= 0 && temp_date < now + ( month * 4) )
-    {
-        // perhaps the contract is expired
-        temp_date += month;
-        contract.localSymbol = "";
-        contract.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, temp_date);
-        //logger->debug("ContractBuilder", "BuildFuture: upping the contract month for " + ticker + " to " + contract.lastTradeDateOrContractMonth);
-        det = GetDetails(contract);
-        if (det.size() > 0)
-            currDetails = det[0];
-    }
-    if (currDetails.contract.conId <= 0)
-    {
-        logger->debug("ContractBuilder", "BuildFuture: unable to get contract for " + ticker);
-        ContractDetails retval;
-        retval.contract = contract;
-        return retval; // we were unsuccessful
-    }
-    time_t expiry = to_time_t(currDetails.contract.lastTradeDateOrContractMonth);
-    bool firstTry = true;
-    int16_t multiplier = 1;
-    while (!calendar.IsLiquid(ticker, expiry, now))
-    {
-        firstTry = false;
-        // get next contract
-        time_t old_expiry = expiry;
-        expiry += month * multiplier;
-        contract.lastTradeDateOrContractMonth = calendar.CurrentMonthYYYYMM(ticker, expiry);
-        contract.localSymbol = "";
-        currDetails = ContractDetails{};
-        det = GetDetails(contract);
-        if (det.size() > 0)
-            currDetails = det[0];
-        expiry = to_time_t(currDetails.contract.lastTradeDateOrContractMonth);
-        if (expiry == old_expiry)
-        {
-            ++multiplier;
-        }
-    }
-    // currDetails is now the best we have
-    // fix up some details
-    auto coll = parseCSV(currDetails.validExchanges);
-    if (coll.size() > 0)
-        currDetails.contract.exchange = coll[0];
-    if (currDetails.contract.symbol == "ZC" || currDetails.contract.symbol == "ZS")
-        currDetails.minTick = 0.25;
-    return currDetails;
+    auto vec = GetDetails(contract);
+    if (vec.size() > 0)
+        return vec[0];
+    return ContractDetails{};
 }
 
 std::string to_string(const Contract &in)
