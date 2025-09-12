@@ -31,8 +31,6 @@ else(MSVC)
 endif(MSVC)
 
 target_include_directories(ib_helper_tests PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/util
     ${IB_CLIENT_DIR}
 )
 

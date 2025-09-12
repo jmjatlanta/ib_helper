@@ -25,7 +25,11 @@ add_library( ib_api
     ${PROTO_HDRS}
 )
 
-target_include_directories(ib_api INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(ib_api INTERFACE 
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/ib_helper
+    ${CMAKE_CURRENT_SOURCE_DIR}/util
+)
 
 if(MSVC)
     target_compile_options(ib_api PRIVATE /EHsc)
