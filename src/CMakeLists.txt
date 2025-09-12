@@ -13,7 +13,7 @@ if(HH_DATELIB)
 endif(HH_DATELIB)
 
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
-find_package(Protobuf REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
 
 file(GLOB PROTO_FILES ${IB_CLIENT_SOURCE_DIR}/proto/*.proto)
 
