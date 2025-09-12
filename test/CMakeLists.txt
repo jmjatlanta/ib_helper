@@ -31,7 +31,7 @@ else(MSVC)
 endif(MSVC)
 
 target_include_directories(ib_helper_tests PRIVATE 
-    ${IB_CLIENT_DIR}
+    ${IB_CLIENT_SOURCE_DIR}/CppClient/client
 )
 
 target_link_libraries(ib_helper_tests 

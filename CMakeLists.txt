@@ -5,11 +5,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project ( ib_helper )
 
-set(IB_CLIENT_DIR "" CACHE FILEPATH "Path of IB/client directory")
+set(IB_CLIENT_SOURCE_DIR "" CACHE FILEPATH "Path of IB/source directory")
 set(HH_DATELIB OFF CACHE BOOL "Use Howard Hinnant Date Library")
 
-if(NOT EXISTS ${IB_CLIENT_DIR}/EWrapper.h)
-    MESSAGE(SEND_ERROR "Cannot find EWrapper.h in ${IB_CLIENT_DIR}")
+if(NOT EXISTS ${IB_CLIENT_SOURCE_DIR}/CppClient/client/EWrapper.h)
+    MESSAGE(SEND_ERROR "Cannot find EWrapper.h in ${IB_CLIENT_SOURCE_DIR}")
 endif()
 
 if(HH_DATELIB)
