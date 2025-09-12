@@ -14,11 +14,11 @@ TEST(OrderTests, decimals)
         Decimal nan = 0x7800000000000000ull | 0x7c00000000000000ull;
         double dNan = std::numeric_limits<double>::quiet_NaN();
         EXPECT_FALSE( isNaN(initialized) );
-        EXPECT_FALSE( isNaN(doubleToDecimal(initializedDouble)) );
+        EXPECT_FALSE( isNaN(DecimalFunctions::doubleToDecimal(initializedDouble)) );
         EXPECT_TRUE( isNaN(nan));
-        EXPECT_NE(decimalToDouble(nan), 0.0);
-        EXPECT_EQ(decimalToDouble(checkNaN(nan)), 0.0);
-        EXPECT_TRUE( isNaN( doubleToDecimal(dNan) ) );
+        EXPECT_NE(DecimalFunctions::decimalToDouble(nan), 0.0);
+        EXPECT_EQ(DecimalFunctions::decimalToDouble(checkNaN(nan)), 0.0);
+        EXPECT_TRUE( isNaN( DecimalFunctions::doubleToDecimal(dNan) ) );
     }
     // inf
     {
@@ -26,16 +26,16 @@ TEST(OrderTests, decimals)
         double dInf = std::numeric_limits<double>::infinity();
         EXPECT_TRUE( isInf(inf));
         EXPECT_FALSE( isNaN(inf) );
-        EXPECT_NE(decimalToDouble(inf), 0.0);
-        EXPECT_EQ(decimalToDouble(checkInf(inf)), 0.0);
-        EXPECT_TRUE( isInf( doubleToDecimal(dInf) ) );
+        EXPECT_NE(DecimalFunctions::decimalToDouble(inf), 0.0);
+        EXPECT_EQ(DecimalFunctions::decimalToDouble(checkInf(inf)), 0.0);
+        EXPECT_TRUE( isInf( DecimalFunctions::doubleToDecimal(dInf) ) );
     }
     // adding
     {
-        Decimal a = doubleToDecimal(2.01);
-        Decimal b = doubleToDecimal(1.03);
-        Decimal c = add(a, b); // a + b does not work must use a function
-        EXPECT_EQ(decimalToDouble(c), 3.04);
+        Decimal a = DecimalFunctions::doubleToDecimal(2.01);
+        Decimal b = DecimalFunctions::doubleToDecimal(1.03);
+        Decimal c = DecimalFunctions::add(a, b); // a + b does not work must use a function
+        EXPECT_EQ(DecimalFunctions::decimalToDouble(c), 3.04);
     }
 }
 
@@ -92,7 +92,7 @@ TEST(OrderTests, DISABLED_OnNewOrder)
     ib_helper::Order o;
     o.account = connector.GetDefaultAccount();
     o.action = "BUY";
-    o.totalQuantity = doubleToDecimal(100);
+    o.totalQuantity = DecimalFunctions::doubleToDecimal(100);
     o.orderType = "LMT";
     o.lmtPrice = 9.0;
     
@@ -105,6 +105,6 @@ TEST(OrderTests, DISABLED_OnNewOrder)
     EXPECT_EQ(myOrderHandler.lastOrderState.status, "Pending");
 
     // cancel the order
-    connector.CancelOrder(orderId, "");
+    connector.CancelOrder(orderId, OrderCancel{});
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }

@@ -14,6 +14,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 find_package(Boost 1.74 COMPONENTS log log_setup REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
 
 add_executable( ib_helper_tests 
     ${test_src} 
@@ -39,6 +40,7 @@ target_link_libraries(ib_helper_tests
     ib_helper
     dfp
     ib_api
+    protobuf::libprotobuf
     GTest::gtest
     GTest::gmock_main
     Boost::log

@@ -91,7 +91,7 @@ TEST(IBConnectorTest, DISABLED_Ticks)
             std::string msg = "OnTickByTickAllLast type: " + std::to_string(tickType)
                 + " time: " + std::to_string(time)
                 + " price: " + std::to_string(price)
-                + " size: " + decimalStringToDisplay(size)
+                + " size: " + DecimalFunctions::decimalStringToDisplay(size)
                 + " cond: " + specialConditions;
             logger->debug(clazz, msg);
             ++methodsCalled;
@@ -102,8 +102,8 @@ TEST(IBConnectorTest, DISABLED_Ticks)
             std::string msg = "OnTickByTickBidAsk at time " + std::to_string(time)
                 + " Bid: " + std::to_string(bidPrice)
                 + " Ask: " + std::to_string(askPrice)
-                + " Bid Size: " + decimalStringToDisplay(bidSize)
-                + " Ask Size: " + decimalStringToDisplay(askSize);
+                + " Bid Size: " + DecimalFunctions::decimalStringToDisplay(bidSize)
+                + " Ask Size: " + DecimalFunctions::decimalStringToDisplay(askSize);
             logger->debug(clazz, msg);
             ++methodsCalled;
         }
@@ -350,7 +350,7 @@ TEST(IBConnectorTest, DISABLED_L2Book)
                     + "," + std::to_string(operation)
                     + "," + std::to_string(side)
                     + "," + std::to_string(price)
-                    + "," + decimalStringToDisplay(size)
+                    + "," + DecimalFunctions::decimalStringToDisplay(size)
                     + "," + (isSmartDepth?"true":"false");
             logger->debug(clazz, message);
             ++l2Count;

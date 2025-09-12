@@ -20,8 +20,8 @@ class MockOrderHandler : public ib_helper::OrderHandler
             double avgFillPrice, int permId, int parentId, double lastFillPrice, int clientId,
             const std::string& whyHeld, double mktCapPrice) override 
     {
-        std::cout << "Status: " << status << " Filled: " << decimalToDouble(filled) << std::endl;
-        totalFilled += decimalToDouble(filled);
+        std::cout << "Status: " << status << " Filled: " << DecimalFunctions::decimalToDouble(filled) << std::endl;
+        totalFilled += DecimalFunctions::decimalToDouble(filled);
     }
     virtual void OnOpenOrderEnd() override {}
     virtual void OnOrderBound(long orderId, int apiClientId, int apiOrderId) override {}
@@ -32,8 +32,8 @@ TEST(MockIBConnectorTest, Basics)
 {
     {
         HistoricalBarFileWriter writer("temp.csv");
-        writer.Write("1", 11.0, 9.0, 10.0, 9.5, doubleToDecimal(0.0), doubleToDecimal(100), 1);
-        writer.Write("2", 11.1, 9.1, 9.5, 10.1, doubleToDecimal(0.0), doubleToDecimal(200), 2);
+        writer.Write("1", 11.0, 9.0, 10.0, 9.5, DecimalFunctions::doubleToDecimal(0.0), DecimalFunctions::doubleToDecimal(100), 1);
+        writer.Write("2", 11.1, 9.1, 9.5, 10.1, DecimalFunctions::doubleToDecimal(0.0), DecimalFunctions::doubleToDecimal(200), 2);
     }
     MockIBConnector conn("localhost", 123, 45);
     MockHistoricalDataHandler handler;
@@ -52,8 +52,8 @@ TEST(MockIBConnectorTest, PartialFill)
 {
     {
         HistoricalBarFileWriter writer("temp.csv");
-        writer.Write("1", 11.0, 9.0, 10.0, 9.5, doubleToDecimal(0.0), doubleToDecimal(100), 1);
-        writer.Write("2", 11.1, 9.1, 9.5, 10.1, doubleToDecimal(0.0), doubleToDecimal(200), 2);
+        writer.Write("1", 11.0, 9.0, 10.0, 9.5, DecimalFunctions::doubleToDecimal(0.0), DecimalFunctions::doubleToDecimal(100), 1);
+        writer.Write("2", 11.1, 9.1, 9.5, 10.1, DecimalFunctions::doubleToDecimal(0.0), DecimalFunctions::doubleToDecimal(200), 2);
     }
     HistoricalBarFileReader reader("temp.csv");
     MockOrderHandler orderHandler;
@@ -69,8 +69,8 @@ TEST(MockIBConnectorTest, PartialFill)
     // place order
     Order order;
     order.orderId = conn.GetNextOrderId();
-    order.filledQuantity = doubleToDecimal(0.0);
-    order.totalQuantity = doubleToDecimal(100.0);
+    order.filledQuantity = DecimalFunctions::doubleToDecimal(0.0);
+    order.totalQuantity = DecimalFunctions::doubleToDecimal(100.0);
     order.action = "BUY";
     order.orderType = "LMT";
     order.lmtPrice = 9.0;

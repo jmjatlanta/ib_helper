@@ -83,8 +83,8 @@ class Order : public ::Order
                 << " Type: " << in.orderType
                 << " Limit: " << in.lmtPrice
                 << " Aux: " << in.auxPrice
-                << " Qty: " << decimalToDouble(in.totalQuantity)
-                << " Filled: " << decimalToDouble(in.filledQuantity)
+                << " Qty: " << DecimalFunctions::decimalToDouble(in.totalQuantity)
+                << " Filled: " << DecimalFunctions::decimalToDouble(in.filledQuantity)
                 << " Status: " << to_string(in.status)
                 << " Action: " << in.action;
         return ss.str();
@@ -110,7 +110,7 @@ class Order : public ::Order
         if (oldStatus != this->status)
             somethingChanged = true;
         Decimal oldValue = filledQuantity;
-        filledQuantity = sub(totalQuantity, remaining);
+        filledQuantity = DecimalFunctions::sub(totalQuantity, remaining);
         if (filledQuantity != oldValue)
             somethingChanged = true;
         log();
@@ -130,7 +130,7 @@ class Order : public ::Order
 
     private:
     util::SysLogger* logger = nullptr;
-    Decimal decimalZero = doubleToDecimal(0.0);
+    Decimal decimalZero = DecimalFunctions::doubleToDecimal(0.0);
     Decimal decimalInvalid = ULLONG_MAX;
 
     void log()
@@ -147,8 +147,8 @@ class Order : public ::Order
                 + "," + ( action == "BUY" ? "LONG" : "SHORT")
                 + "," + std::to_string(lmt)
                 + "," + std::to_string(aux)
-                + "," + decimalStringToDisplay(totalQuantity)
-                + "," + decimalStringToDisplay(filledQuantity));
+                + "," + DecimalFunctions::decimalStringToDisplay(totalQuantity)
+                + "," + DecimalFunctions::decimalStringToDisplay(filledQuantity));
     }
 };
 

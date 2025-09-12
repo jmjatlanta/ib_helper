@@ -138,7 +138,7 @@ public:
 private:
     void throwError_(int code, const std::string msg)
     {
-        error(1, code, msg, "");
+        error(1, time(nullptr), code, msg, "");
     }
     std::thread messageLoopThread;
 };

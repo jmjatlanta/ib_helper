@@ -13,8 +13,19 @@ if(HH_DATELIB)
 endif(HH_DATELIB)
 
 find_package(Boost 1.69 COMPONENTS log log_setup REQUIRED)
+find_package(Protobuf REQUIRED)
 
-add_library( ib_api ${ib_src} )
+file(GLOB PROTO_FILES ${IB_CLIENT_DIR}/../../proto/*.proto)
+
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
+
+add_library( ib_api 
+    ${ib_src} 
+    ${PROTO_SRCS}
+    ${PROTO_HDRS}
+)
+
+target_include_directories(ib_api INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
 
 if(MSVC)
     target_compile_options(ib_api PRIVATE /EHsc)
@@ -33,10 +44,13 @@ target_compile_definitions(ib_api PRIVATE BOOST_ALL_DYN_LINK)
 
 target_include_directories( ib_api PRIVATE
     ${IB_CLIENT_DIR}
+    ${Protobuf_INCLUDE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 target_link_libraries(ib_api PRIVATE
     dfp
+    protobuf::libprotobuf
 )
 
 add_library( ib_helper ${util_src} ${ib_helper} ${date_src} )

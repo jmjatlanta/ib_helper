@@ -5,7 +5,7 @@ TEST(HistoricalBarFeederTest, WriteRead)
 {
     {
         HistoricalBarFileWriter writer("temp.csv");
-        Bar b{"1", 11.0, 9.0, 10.0, 9.5, doubleToDecimal(0.0), doubleToDecimal(100.0), 1};
+        Bar b{"1", 11.0, 9.0, 10.0, 9.5, DecimalFunctions::doubleToDecimal(0.0), DecimalFunctions::doubleToDecimal(100.0), 1};
         writer.Write(b);
         b.time = "2";
         b.open = b.close;
@@ -20,8 +20,8 @@ TEST(HistoricalBarFeederTest, WriteRead)
     EXPECT_EQ(b.low, 9.0);
     EXPECT_EQ(b.open, 10.0);
     EXPECT_EQ(b.close, 9.5);
-    EXPECT_EQ(decimalToDouble(b.wap), 0.0);
-    EXPECT_EQ(decimalToDouble(b.volume), 100.0);
+    EXPECT_EQ(DecimalFunctions::decimalToDouble(b.wap), 0.0);
+    EXPECT_EQ(DecimalFunctions::decimalToDouble(b.volume), 100.0);
     EXPECT_EQ(b.count, 1);
     try
     {
@@ -31,8 +31,8 @@ TEST(HistoricalBarFeederTest, WriteRead)
         EXPECT_EQ(b.low, 9.0);
         EXPECT_EQ(b.open, 9.5);
         EXPECT_EQ(b.close, 10.0);
-        EXPECT_EQ(decimalToDouble(b.wap), 0.0);
-        EXPECT_EQ(decimalToDouble(b.volume), 100.0);
+        EXPECT_EQ(DecimalFunctions::decimalToDouble(b.wap), 0.0);
+        EXPECT_EQ(DecimalFunctions::decimalToDouble(b.volume), 100.0);
         EXPECT_EQ(b.count, 1);
     } catch(...) {
         FAIL();

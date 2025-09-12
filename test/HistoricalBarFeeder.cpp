@@ -21,7 +21,7 @@ double to_double(const std::string& in)
 
 Decimal to_decimal(const std::string& in)
 {
-    return doubleToDecimal(to_double(in));
+    return DecimalFunctions::doubleToDecimal(to_double(in));
 }
 
 int to_int(const std::string& in)
@@ -71,8 +71,8 @@ void HistoricalBarFileWriter::Write(const Bar& in)
         + "," + std::to_string(in.low)
         + "," + std::to_string(in.open)
         + "," + std::to_string(in.close)
-        + "," + std::to_string(decimalToDouble(in.wap))
-        + "," + std::to_string(decimalToDouble(in.volume))
+        + "," + std::to_string(DecimalFunctions::decimalToDouble(in.wap))
+        + "," + std::to_string(DecimalFunctions::decimalToDouble(in.volume))
         + "," + std::to_string(in.count)
         + "\n";
     file << line;
