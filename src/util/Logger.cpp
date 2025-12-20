@@ -13,17 +13,20 @@
  * Include this file only once
  */
 
-std::shared_ptr<Logger> logger_ = std::make_shared<Logger>();
 typedef boost::log::sinks::synchronous_sink<boost::log::sinks::text_file_backend> fileSink;
 boost::shared_ptr<fileSink> fileSinkPtr;
 
 Logger* Logger::getInstance() {
-    boost::log::add_common_attributes();
-    boost::log::core::get()->set_filter( boost::log::trivial::severity >= boost::log::trivial::debug);
-    return logger_.get();
+    static Logger instance;
+    return &instance;
 }
 
-Logger::Logger() {}
+Logger::Logger() 
+{ 
+    boost::log::add_common_attributes();
+    boost::log::core::get()->set_filter( boost::log::trivial::severity >= boost::log::trivial::debug);
+    fileSinkPtr = nullptr; 
+}
 
 Logger::~Logger() { }
 
