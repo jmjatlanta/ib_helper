@@ -39,7 +39,11 @@ std::filesystem::path Logger::get_current_file_path() const
 
 static boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_file_backend>> add_file_log(const std::string& fullFileNamePrefix)
 {
-    auto logFileFolder = std::filesystem::path(fullFileNamePrefix).parent_path();
+    auto logFileFolder = std::filesystem::path(fullFileNamePrefix).parent_path().string();
+    if (!logFileFolder.ends_with(std::filesystem::path::preferred_separator))
+           logFileFolder += std::filesystem::path::preferred_separator;
+    std::cout << "add_file_log: logFileFolder:      " << logFileFolder << "\n"
+              << "add_file_log: fullFileNamePrefix: " << fullFileNamePrefix << std::endl;
     return boost::log::add_file_log(
             boost::log::keywords::file_name = fullFileNamePrefix + "_%N.log",
             boost::log::keywords::rotation_size = 10 * 1024 * 1024,
