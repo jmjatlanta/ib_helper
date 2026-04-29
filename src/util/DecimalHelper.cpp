@@ -3,14 +3,14 @@
 Decimal checkNaN(Decimal in)
 {
     if (isNaN(in))
-        return doubleToDecimal(0.0);
+        return DecimalFunctions::doubleToDecimal(0.0);
     return in;
 }
 
 Decimal checkInf(Decimal in)
 {
     if (isInf(in))
-        return doubleToDecimal(0.0);
+        return DecimalFunctions::doubleToDecimal(0.0);
     return in;
 }
 
@@ -32,7 +32,7 @@ bool isInf(Decimal in)
 
 bool decimalIsValid(Decimal in)
 {
-    std::string tmpString = decimalToString(in);
+    std::string tmpString = DecimalFunctions::decimalToString(in);
     return tmpString.compare(std::string{"+NaN"}) != 0  
             && tmpString.compare(std::string{"-NaN"}) != 0
             && tmpString.compare(std::string{"-SNaN"}) != 0;

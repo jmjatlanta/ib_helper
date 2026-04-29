@@ -73,7 +73,7 @@ class MockIBConnector : public ib_helper::IBConnector
     void ProcessOrdersImmediately(bool yn) { processOrdersImmediately = yn; }
     void SetOrderRejectReason(uint32_t code) { orderRejectCode = code; }
     void PlaceOrder(int orderId, const Contract& contract, const ::Order& order) override;
-    void CancelOrder(int orderId, const std::string& time) override;
+    void CancelOrder(int orderId, const OrderCancel& obj) override;
     void SetMaxOrderFillSize(double in) { maxOrderFillSize = in; }
     /***
      * @brief prep for reqOpenOrders to later call openOrder with the passed in information
@@ -93,7 +93,7 @@ class MockIBConnector : public ib_helper::IBConnector
      */
     void SendPosition(const std::string& account, const Contract& contract, Decimal position, double avgCost);
     virtual void orderStatus( OrderId orderId, const std::string& status, Decimal filled,
-	        Decimal remaining, double avgFillPrice, int permId, int parentId,
+	        Decimal remaining, double avgFillPrice, long long permId, int parentId,
 	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice) override;
 
     protected:

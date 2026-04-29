@@ -141,7 +141,7 @@ class IBConnector : public EWrapper
     virtual std::future<std::vector<DepthMktDataDescription> > RequestMktDepthExchanges();
     virtual bool IsShuttingDown() const { return currentConnectionStatus == ConnectionStatus::ATTEMPTING_SHUTDOWN || currentConnectionStatus == ConnectionStatus::SHUTDOWN; }
     virtual void PlaceOrder(int orderId, const Contract& contract, const ::Order& order);
-    virtual void CancelOrder(int orderId, const std::string& time);
+    virtual void CancelOrder(int orderId, const OrderCancel& obj);
     virtual std::future<std::vector<ContractDetails>> GetContractDetails(const Contract& contract);
     virtual std::future<std::vector<SecurityDefinitionOptionParameter>> GetOptionParameters(const Contract& contract);
     virtual void RequestPositions();
@@ -183,8 +183,8 @@ class IBConnector : public EWrapper
             const std::string& formattedBasisPoints, double totalDividends, int holdDays, 
             const std::string& futureLastTradeDate, double dividendImpact, double dividendsToLastTradeDate) override;
     virtual void orderStatus( OrderId orderId, const std::string& status, Decimal filled,
-	        Decimal remaining, double avgFillPrice, int permId, int parentId,
-	        double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice) override;
+	Decimal remaining, double avgFillPrice, long long permId, int parentId,
+	double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice) override;
     virtual void openOrder( OrderId orderId, const Contract&, const ::Order&, const OrderState&) override;
     virtual void openOrderEnd() override;
     virtual void winError( const std::string& str, int lastError) override;
@@ -201,7 +201,13 @@ class IBConnector : public EWrapper
     virtual void contractDetailsEnd( int reqId) override;
     virtual void execDetails( int reqId, const Contract& contract, const Execution& execution) override;
     virtual void execDetailsEnd( int reqId) override;
-    virtual void error(int id, int errorCode, const std::string& errorString, 
+    virtual void execDetailsProtoBuf(const protobuf::ExecutionDetails& executionDetailsProto) override;
+    virtual void execDetailsEndProtoBuf(const protobuf::ExecutionDetailsEnd& executionDetailsEndProto) override;
+    virtual void orderStatusProtoBuf(const protobuf::OrderStatus& orderStatusProto) override;
+    virtual void openOrderProtoBuf(const protobuf::OpenOrder& openOrderProto) override;
+    virtual void openOrdersEndProtoBuf(const protobuf::OpenOrdersEnd& openOrderEndProto) override;
+    virtual void errorProtoBuf(const protobuf::ErrorMessage& errorProto) override;
+    virtual void error(int id, time_t errorTime, int errorCode, const std::string& errorString, 
             const std::string& advancedOrderRejectJson) override;
     virtual void updateMktDepth(TickerId id, int position, int operation, int side, double price, Decimal size) override;
     virtual void updateMktDepthL2(TickerId id, int position, const std::string& marketMaker, int operation,
@@ -219,11 +225,12 @@ class IBConnector : public EWrapper
     virtual void realtimeBar(TickerId reqId, long time, double open, double high, double low, double close,
 	        Decimal volume, Decimal wap, int count) override;
     virtual void currentTime(long time) override;
+    virtual void currentTimeInMillis(time_t timeInMillis) override;
     virtual void fundamentalData(TickerId reqId, const std::string& data) override;
     virtual void deltaNeutralValidation(int reqId, const DeltaNeutralContract& deltaNeutralContract) override;
     virtual void tickSnapshotEnd( int reqId) override;
     virtual void marketDataType( TickerId reqId, int marketDataType) override;
-    virtual void commissionReport( const CommissionReport& commissionReport) override;
+    virtual void commissionAndFeesReport( const CommissionAndFeesReport& commissionReport) override;
     virtual void position( const std::string& account, const Contract& contract, Decimal position, 
             double avgCost) override;
     virtual void positionEnd() override;

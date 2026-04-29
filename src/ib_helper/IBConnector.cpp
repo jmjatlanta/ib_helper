@@ -322,10 +322,10 @@ void IBConnector::AddConnectionMonitor(IBConnectionMonitor* in)
     }
 }
 
-void IBConnector::CancelOrder(int orderId, const std::string& time)
+void IBConnector::CancelOrder(int orderId, const OrderCancel& obj)
 {
     if (ibClient != nullptr)
-        ibClient->cancelOrder(orderId, time);
+        ibClient->cancelOrder(orderId, obj);
 }
 
 void IBConnector::PlaceOrder(int orderId, const Contract& contract, const ::Order& ord)
@@ -632,7 +632,7 @@ void IBConnector::orderBound(long long orderId, int apiClientId, int apiOrderId)
     }
 }
 void IBConnector::orderStatus( OrderId orderId, const std::string& status, Decimal filled,
-            Decimal remaining, double avgFillPrice, int permId, int parentId,
+            Decimal remaining, double avgFillPrice, long long permId, int parentId,
             double lastFillPrice, int clientId, const std::string& whyHeld, double mktCapPrice)
 {
     std::scoped_lock lock(orderHandlersMutex);
@@ -765,8 +765,14 @@ void IBConnector::execDetailsEnd( int reqId)
     for(auto h : executionHandlers)
         h->OnExecDetailsEnd(reqId);
 }
+void IBConnector::execDetailsProtoBuf(const protobuf::ExecutionDetails& executionDetailsProto) {}
+void IBConnector::execDetailsEndProtoBuf(const protobuf::ExecutionDetailsEnd& executionDetailsEndProto) {}
+void IBConnector::orderStatusProtoBuf(const protobuf::OrderStatus& orderStatusProto) {}
+void IBConnector::openOrderProtoBuf(const protobuf::OpenOrder& openOrderProto) {}
+void IBConnector::openOrdersEndProtoBuf(const protobuf::OpenOrdersEnd& openOrderEndProto) {}
+void IBConnector::errorProtoBuf(const protobuf::ErrorMessage& errorProto) {}
 
-void IBConnector::error(int id, int errorCode, const std::string& errorString, 
+void IBConnector::error(int id, time_t time, int errorCode, const std::string& errorString, 
             const std::string& advancedOrderRejectJson)
 {
     std::string msg = "Error id: " + std::to_string(id) 
@@ -955,11 +961,12 @@ void IBConnector::scannerDataEnd(int reqId)
 void IBConnector::realtimeBar(TickerId reqId, long time, double open, double high, double low, double close,
             Decimal volume, Decimal wap, int count){}
 void IBConnector::currentTime(long time){}
+void IBConnector::currentTimeInMillis(time_t timeInMillis) {}
 void IBConnector::fundamentalData(TickerId reqId, const std::string& data){}
 void IBConnector::deltaNeutralValidation(int reqId, const DeltaNeutralContract& deltaNeutralContract){}
 void IBConnector::tickSnapshotEnd( int reqId){}
 void IBConnector::marketDataType( TickerId reqId, int marketDataType){}
-void IBConnector::commissionReport( const CommissionReport& commissionReport)
+void IBConnector::commissionAndFeesReport( const CommissionAndFeesReport& commissionReport)
 {
     std::scoped_lock lock(executionHandlersMutex);
     for(auto h : executionHandlers)

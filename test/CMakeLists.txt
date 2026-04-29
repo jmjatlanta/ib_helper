@@ -14,6 +14,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 find_package(Boost 1.74 COMPONENTS log log_setup REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
 
 add_executable( ib_helper_tests 
     ${test_src} 
@@ -30,15 +31,14 @@ else(MSVC)
 endif(MSVC)
 
 target_include_directories(ib_helper_tests PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ib_helper
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/util
-    ${IB_CLIENT_DIR}
+    ${IB_CLIENT_SOURCE_DIR}/CppClient/client
 )
 
 target_link_libraries(ib_helper_tests 
     ib_helper
     dfp
     ib_api
+    protobuf::libprotobuf
     GTest::gtest
     GTest::gmock_main
     Boost::log

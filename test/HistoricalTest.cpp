@@ -29,7 +29,7 @@ public:
 
 std::string to_string(Bar in)
 {
-    return to_string(to_time_point(in)) + " " + std::to_string(decimalToDouble(in.volume));
+    return to_string(to_time_point(in)) + " " + std::to_string(DecimalFunctions::decimalToDouble(in.volume));
 }
 
 TEST(HistoricalTest, getBars)
