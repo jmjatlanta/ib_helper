@@ -15,8 +15,19 @@ cd ib_helper
 git submodule update --init --recursive
 mkdir build
 cd build
-cmake .. -DIB_CLIENT_DIR=/home/mydir/IBJts/client/cppclient/client
+cmake .. -DIB_CLIENT_SOURCE_DIR=/home/mydir/IBJts/source
 make
+```
+On macOS, also pass `-DHH_DATELIB=On` (Apple's libc++ has no `std::chrono` time zones).
+
+### Using ib_helper as a subproject
+ib_helper can be added to another CMake project with `add_subdirectory()`. Its unit tests (which download
+googletest, and some of which need a running TWS) are only built by default when ib_helper is the top-level
+project; set `IB_HELPER_BUILD_TESTS` to override.
+```cmake
+set(IB_CLIENT_SOURCE_DIR "$ENV{HOME}/IBJts/source" CACHE PATH "TWS API source directory")
+add_subdirectory(external/ib_helper)
+target_link_libraries(my_app PRIVATE ib_helper::ib_helper)  # also brings in the TWS API (ib_helper::ib_api)
 ```
 
 Things left TODO (Mock/testing):

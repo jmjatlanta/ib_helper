@@ -17,9 +17,10 @@ find_package(Protobuf CONFIG REQUIRED)
 
 file(GLOB PROTO_FILES ${IB_CLIENT_SOURCE_DIR}/proto/*.proto)
 
-add_library( ib_api 
-    ${ib_src} 
+add_library( ib_api
+    ${ib_src}
 )
+add_library( ib_helper::ib_api ALIAS ib_api )
 
 protobuf_generate(
     LANGUAGE CPP 
@@ -36,8 +37,6 @@ target_include_directories(ib_api INTERFACE
 
 if(MSVC)
     target_compile_options(ib_api PRIVATE /EHsc)
-else(MSVC)
-    target_compile_options(ib_api PRIVATE -g -O0)
 endif(MSVC)
 
 if(HH_DATELIB)
@@ -49,10 +48,14 @@ endif(HH_DATELIB)
 
 target_compile_definitions(ib_api PRIVATE BOOST_ALL_DYN_LINK)
 
-target_include_directories( ib_api PRIVATE
+# PUBLIC: the TWS API headers (and the generated .pb.h files they include) are part of
+# ib_helper's public headers, e.g. IBConnector.hpp includes EWrapper.h
+target_include_directories( ib_api PUBLIC
     ${IB_CLIENT_SOURCE_DIR}/CppClient/client
-    ${Protobuf_INCLUDE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
+)
+target_include_directories( ib_api PRIVATE
+    ${Protobuf_INCLUDE_DIR}
 )
 
 target_link_libraries(ib_api PUBLIC
@@ -61,11 +64,10 @@ target_link_libraries(ib_api PUBLIC
 )
 
 add_library( ib_helper ${util_src} ${ib_helper} ${date_src} )
+add_library( ib_helper::ib_helper ALIAS ib_helper )
 
 if(MSVC)
     target_compile_options(ib_helper PRIVATE /EHsc)
-else(MSVC)
-    target_compile_options(ib_helper PRIVATE -g -O0)
 endif(MSVC)
 
 if(HH_DATELIB)
@@ -87,8 +89,11 @@ target_include_directories( ib_helper PRIVATE
     ${Boost_INCLUDE_DIR}
 )
 
-target_link_libraries(ib_helper PRIVATE
+# PUBLIC: ib_helper's headers need the TWS API headers and types (Decimal, protobuf messages)
+target_link_libraries(ib_helper PUBLIC
     ib_api
+)
+target_link_libraries(ib_helper PRIVATE
     dfp
     Boost::log
     Boost::log_setup
