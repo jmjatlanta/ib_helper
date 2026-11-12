@@ -152,12 +152,17 @@ std::future<std::vector<SecurityDefinitionOptionParameter>> IBConnector::GetOpti
         return p.get_future();
     }
     int promiseId = GetNextRequestId();
-    auto& promise = securityDefinitionHandlers[promiseId];
-    auto& vec = securityDefinitionData[promiseId]; // put the vector in there
-    //logger->debug("IBConnector", "GetOptionParameters: about to request details for " + contract.symbol + " id: " + std::to_string(promiseId) );
+    // register (and take the future) before sending: the reply may arrive before reqSecDefOptParams returns
+    auto future = RegisterOptionParametersRequest(promiseId);
     ibClient->reqSecDefOptParams(promiseId, contract.symbol, "", contract.secType, contract.conId);
-    //logger->debug("IBConnector", "GetContractDetails: request made for " + contract.symbol);
-    return promise.get_future();
+    return future;
+}
+
+std::future<std::vector<SecurityDefinitionOptionParameter>> IBConnector::RegisterOptionParametersRequest(int reqId)
+{
+    std::scoped_lock lock(securityDefinitionMutex);
+    securityDefinitionData[reqId];
+    return securityDefinitionHandlers[reqId].get_future();
 }
 std::future<std::vector<ContractDetails>> IBConnector::GetContractDetails(const Contract& contract)
 {
@@ -1018,12 +1023,21 @@ bool IBConnector::RouteRequestError(const IbError& err)
     }
     {
         // GetOptionParameters future
-        auto itr = securityDefinitionHandlers.find(id);
-        if (itr != securityDefinitionHandlers.end())
+        std::promise<std::vector<SecurityDefinitionOptionParameter>> promise;
+        bool found = false;
         {
-            auto promise = std::move(itr->second);
-            securityDefinitionHandlers.erase(itr);
-            securityDefinitionData.erase(id);
+            std::scoped_lock lock(securityDefinitionMutex);
+            auto itr = securityDefinitionHandlers.find(id);
+            if (itr != securityDefinitionHandlers.end())
+            {
+                promise = std::move(itr->second);
+                securityDefinitionHandlers.erase(itr);
+                securityDefinitionData.erase(id);
+                found = true;
+            }
+        }
+        if (found)
+        {
             promise.set_exception(std::make_exception_ptr(IbException(err)));
             return true;
         }
@@ -1211,21 +1225,25 @@ void IBConnector::securityDefinitionOptionalParameter(int reqId, const std::stri
 {
     //logger->debug("IBConnector", "securityDefinitionOptionalParameter: response for id " + std::to_string(reqId) 
     //        + " and conid " + std::to_string(underlyingConId));
-    auto itr = securityDefinitionData.find(reqId);
-    if (itr != securityDefinitionData.end())
+    SecurityDefinitionOptionParameter data;
+    data.reqId = reqId;
+    data.exchange = exchange;
+    data.underlyingConId = underlyingConId;
+    data.tradingClass = tradingClass;
+    data.multiplier = multiplier;
+    data.expirations = expirations;
+    data.strikes = strikes;
+    bool found = false;
     {
-        auto& vec = (*itr).second;
-        SecurityDefinitionOptionParameter data;
-        data.reqId = reqId;
-        data.exchange = exchange;
-        data.underlyingConId = underlyingConId;
-        data.tradingClass = tradingClass;
-        data.multiplier = multiplier;
-        data.expirations = expirations;
-        data.strikes = strikes;
-        vec.push_back(data);
+        std::scoped_lock lock(securityDefinitionMutex);
+        auto itr = securityDefinitionData.find(reqId);
+        if (itr != securityDefinitionData.end())
+        {
+            itr->second.push_back(std::move(data));
+            found = true;
+        }
     }
-    else
+    if (!found)
     {
         logger->error("IBConnector", "securityDefinitionOptionalParameter: id " + std::to_string(reqId) + " not found in collection");
     }
@@ -1233,18 +1251,29 @@ void IBConnector::securityDefinitionOptionalParameter(int reqId, const std::stri
 void IBConnector::securityDefinitionOptionalParameterEnd(int reqId)
 {
     //logger->debug("IBConnector", "securityDefinitionOptionalParameterEnd: reqId: " + std::to_string(reqId) );
-    auto itr = securityDefinitionHandlers.find(reqId);
-    auto dataItr = securityDefinitionData.find(reqId);
+    std::promise<std::vector<SecurityDefinitionOptionParameter>> promise;
     std::vector<SecurityDefinitionOptionParameter> vec;
-    if (dataItr != securityDefinitionData.end())
-        vec = (*dataItr).second;
-    if (itr != securityDefinitionHandlers.end())
+    bool found = false;
     {
-        auto& promise = (*itr).second;
-        promise.set_value(vec);
-        securityDefinitionHandlers.erase(itr);
-        securityDefinitionData.erase(dataItr);
-        //logger->debug("IBConnector", "securityDefinitionOptionalParameterEnd: id " + std::to_string(reqId) + " promise value set.");
+        // take both entries out under the lock; complete the promise after releasing it
+        std::scoped_lock lock(securityDefinitionMutex);
+        auto itr = securityDefinitionHandlers.find(reqId);
+        if (itr != securityDefinitionHandlers.end())
+        {
+            promise = std::move(itr->second);
+            securityDefinitionHandlers.erase(itr);
+            auto dataItr = securityDefinitionData.find(reqId);
+            if (dataItr != securityDefinitionData.end())
+            {
+                vec = std::move(dataItr->second);
+                securityDefinitionData.erase(dataItr);
+            }
+            found = true;
+        }
+    }
+    if (found)
+    {
+        promise.set_value(std::move(vec));
     }
     else
     {

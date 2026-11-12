@@ -251,6 +251,12 @@ class IBConnector : public EWrapper
     bool RouteOrderError(const IbError& err);
     bool RouteRequestError(const IbError& err);
     void RouteUnmatchedError(const IbError& err);
+    /***
+     * Add the pending-request entries for a GetOptionParameters request
+     * @param reqId the request id
+     * @returns the future that securityDefinitionOptionalParameterEnd() or error() completes
+     */
+    std::future<std::vector<SecurityDefinitionOptionParameter>> RegisterOptionParametersRequest(int reqId);
     virtual void updateMktDepth(TickerId id, int position, int operation, int side, double price, Decimal size) override;
     virtual void updateMktDepthL2(TickerId id, int position, const std::string& marketMaker, int operation,
 	        int side, double price, Decimal size, bool isSmartDepth) override;
@@ -357,6 +363,7 @@ class IBConnector : public EWrapper
     std::unordered_map<int, std::promise<std::vector<ContractDetails>> > contractDetailsHandlers;
     std::mutex contractDetailsDataMutex;
     std::unordered_map<int, std::vector<ContractDetails>> contractDetailsData;
+    std::mutex securityDefinitionMutex; // guards securityDefinitionHandlers and securityDefinitionData
     std::unordered_map<int, std::promise<std::vector<SecurityDefinitionOptionParameter>> > securityDefinitionHandlers;
     std::unordered_map<int, std::vector<SecurityDefinitionOptionParameter>> securityDefinitionData;
     std::mutex scannerHandlerMutex;

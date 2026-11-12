@@ -30,8 +30,7 @@ class RoutingConnector : public IBConnector
     }
     std::future<std::vector<ib_helper::SecurityDefinitionOptionParameter>> RegisterOptionParameters(int reqId)
     {
-        securityDefinitionData[reqId];
-        return securityDefinitionHandlers[reqId].get_future();
+        return RegisterOptionParametersRequest(reqId);
     }
     bool HasContractDetailsRequest(int reqId) { return contractDetailsHandlers.contains(reqId); }
 };
