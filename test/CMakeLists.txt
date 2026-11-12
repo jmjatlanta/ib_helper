@@ -26,8 +26,6 @@ if(MSVC)
     SET(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     target_compile_options(ib_helper_tests PRIVATE /EHsc)
     target_compile_definitions(ib_helper_tests PRIVATE NOMINMAX)
-else(MSVC)
-    target_compile_options(ib_helper_tests PRIVATE -g -O0)
 endif(MSVC)
 
 target_include_directories(ib_helper_tests PRIVATE 
