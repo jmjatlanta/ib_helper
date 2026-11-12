@@ -62,6 +62,14 @@ class IBConnector : public EWrapper
     virtual ~IBConnector();
 
     virtual bool connect();
+    /***
+     * Close the connection and release the TWS client.
+     * Must not be called from a TWS callback (it joins the reader thread).
+     * When the connection drops (connectionClosed, or 502/509 while connected), the
+     * connector moves to SHUTDOWN and calls IBConnectionMonitor::OnDisconnect, but leaves
+     * the cleanup to the owner: call disconnect() and/or connect() from your own thread,
+     * or use IBManagedConnector, which reconnects automatically.
+     */
     virtual bool disconnect();
     virtual void AddAccountHandler(AccountHandler* in);
     virtual void RemoveAccountHandler(AccountHandler* in);

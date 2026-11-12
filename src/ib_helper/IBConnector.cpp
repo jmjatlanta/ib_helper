@@ -896,18 +896,16 @@ bool IBConnector::RouteConnectivityError(const IbError& err)
     }
     if (err.code == 502 || err.code == 509)
     {
-        // if this is the "can't connect to IB" error on login, do a shutdown to get out of connection loop
+        // The TWS API has already closed the socket (EClientSocket::handleSocketError).
+        // Do not call disconnect() here: this runs on the reader thread (which disconnect()
+        // would try to join) or inside a failed send on the caller's thread (where deleting
+        // ibClient would pull it out from under the caller). Treat it as a closed connection:
+        // SHUTDOWN ends processMessages() and the monitors get OnDisconnect. The owner (e.g.
+        // IBManagedConnector's reconnect thread) calls disconnect()/connect() from its own thread.
         if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED)
-        {
-            // they're legit
-            currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
-            disconnect();
-        }
+            connectionClosed();
         else if (currentConnectionStatus == ConnectionStatus::PARTIALLY_CONNECTED)
-        {
-            // we can't call disconnect as we may be on the same thread
             cleanUpPartialConnection();
-        }
     }
     // with no monitors, let the catch-all handlers see it
     return !monitors.empty();
