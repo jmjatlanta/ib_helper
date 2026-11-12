@@ -8,6 +8,7 @@
 #include "AccountHandler.hpp"
 #include "OrderHandler.hpp"
 #include "ExecutionHandler.hpp"
+#include "IbError.hpp"
 #include "EReaderOSSignal.h"
 #include "EClientSocket.h"
 #include "EWrapper.h"
@@ -226,6 +227,11 @@ class IBConnector : public EWrapper
     virtual void errorProtoBuf(const protobuf::ErrorMessage& errorProto) override;
     virtual void error(int id, time_t errorTime, int errorCode, const std::string& errorString, 
             const std::string& advancedOrderRejectJson) override;
+    /***
+     * Decide how serious a TWS error() message is. Defaults to ib_helper::classify().
+     * Override to refine the classification (e.g. treat a code as Info for your use).
+     */
+    virtual IbSeverity ClassifyError(int errorCode, const std::string& errorString) const;
     virtual void updateMktDepth(TickerId id, int position, int operation, int side, double price, Decimal size) override;
     virtual void updateMktDepthL2(TickerId id, int position, const std::string& marketMaker, int operation,
 	        int side, double price, Decimal size, bool isSmartDepth) override;

@@ -791,16 +791,35 @@ void IBConnector::openOrderProtoBuf(const protobuf::OpenOrder& openOrderProto) {
 void IBConnector::openOrdersEndProtoBuf(const protobuf::OpenOrdersEnd& openOrderEndProto) {}
 void IBConnector::errorProtoBuf(const protobuf::ErrorMessage& errorProto) {}
 
+IbSeverity IBConnector::ClassifyError(int errorCode, const std::string& errorString) const
+{
+    return classify(errorCode, errorString);
+}
+
 void IBConnector::error(int id, time_t time, int errorCode, const std::string& errorString, 
             const std::string& advancedOrderRejectJson)
 {
-    std::string msg = "Error id: " + std::to_string(id) 
+    const IbError err{id, errorCode, errorString, advancedOrderRejectJson, time,
+            ClassifyError(errorCode, errorString)};
+    std::string msg = std::string(to_string(err.severity))
+        + " id: " + std::to_string(id) 
         + " Code: " + std::to_string(errorCode) 
         + ": " + errorString 
         + ". JSON: " + advancedOrderRejectJson
         + " current status: " + to_string(currentConnectionStatus);
-    if (errorCode != 162) // Historical market data canceled
-        logger->error(logCategory, msg);
+    switch(err.severity)
+    {
+        case IbSeverity::Info:
+            logger->debug(logCategory, msg);
+            break;
+        case IbSeverity::Warning:
+        case IbSeverity::Connectivity:
+            logger->warning(logCategory, msg);
+            break;
+        default:
+            logger->error(logCategory, msg);
+            break;
+    }
     // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
     if (errorCode == 502 // couldn't connect to TWS
         || errorCode == 509  // error reading socket
