@@ -67,6 +67,11 @@ bool IBConnector::connect()
             && currentConnectionStatus != ConnectionStatus::ATTEMPTING_CONNECTION 
             && currentConnectionStatus != ConnectionStatus::PARTIALLY_CONNECTED)
     {
+        // After a dropped connection the old reader thread, ibClient and osSignal are still
+        // here if the owner did not call disconnect(). Release them before changing the
+        // status: the old reader loop only ends while the status is SHUTDOWN.
+        if (!releaseClient())
+            return false;
         currentConnectionStatus = ConnectionStatus::ATTEMPTING_CONNECTION;
         //logger->debug("IBConnector", "connect: Attempting to connect to IB host " + hostname + ":" + std::to_string(port));
         osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
@@ -100,8 +105,6 @@ bool IBConnector::connect()
         }
         if (currentConnectionStatus != ConnectionStatus::FULLY_CONNECTED)
             currentConnectionStatus = ConnectionStatus::PARTIALLY_CONNECTED;
-        if (listenerThread != nullptr && listenerThread->joinable())
-            listenerThread->join();
         listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
         return true;
     }
@@ -117,22 +120,7 @@ bool IBConnector::disconnect()
     const bool wasConnected = before == ConnectionStatus::ATTEMPTING_CONNECTION
             || before == ConnectionStatus::PARTIALLY_CONNECTED
             || before == ConnectionStatus::FULLY_CONNECTED;
-    // there should be no more EReader messages after the thread shuts down (EReader is destroyed
-    if (listenerThread != nullptr && listenerThread->joinable())
-        listenerThread->join();
-    if (ibClient != nullptr)
-    {
-        //ibClient->eDisconnect(); <-- called from ereader in dtor
-        // give some time to inform other threads
-        //std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        delete ibClient;
-        ibClient = nullptr;
-    }
-    if (osSignal != nullptr)
-    {
-        delete osSignal;
-        osSignal = nullptr;
-    }
+    releaseClient();
     currentConnectionStatus = ConnectionStatus::SHUTDOWN;
     if (wasConnected)
     {
@@ -141,6 +129,32 @@ bool IBConnector::disconnect()
                       { curr->OnDisconnect(this); });
     }
     logger->debug("IBConnector", "disconnect completed");
+    return true;
+}
+
+bool IBConnector::releaseClient()
+{
+    if (listenerThread != nullptr && listenerThread->get_id() == std::this_thread::get_id())
+    {
+        // joining would deadlock; a TWS callback must not connect or disconnect
+        logger->error("IBConnector", "connect()/disconnect() called from a TWS callback; ignored");
+        return false;
+    }
+    // there are no more EReader messages after the thread shuts down (it destroys the EReader)
+    if (listenerThread != nullptr && listenerThread->joinable())
+        listenerThread->join();
+    listenerThread = nullptr;
+    if (ibClient != nullptr)
+    {
+        //ibClient->eDisconnect(); <-- called from ereader in dtor
+        delete ibClient;
+        ibClient = nullptr;
+    }
+    if (osSignal != nullptr)
+    {
+        delete osSignal;
+        osSignal = nullptr;
+    }
     return true;
 }
 

@@ -249,15 +249,19 @@ TEST_F(LiveConnectionTest, ManagedHandshakeClosed)
 
 TEST_F(LiveConnectionTest, ConnectAfterDropWithoutDisconnect)
 {
-    // Works, but leaks: connect() replaces the old ibClient and osSignal without deleting
-    // them (see ib_fix/docs/ib_helper_error_handling.md, "Make connect() clean up")
+    // connect() releases what the dropped connection left behind (the old reader thread,
+    // ibClient and osSignal) before reconnecting; ConnectCleanupTest checks the release offline
     Monitor mon;
     Connector conn("127.0.0.1", ProxyPort(), 909, &mon);
     ASSERT_TRUE(WaitFor([&]{ return conn.IsConnected(); }, 5s));
     ASSERT_EQ(proxy->Reset(), 1);
     ASSERT_TRUE(WaitFor([&]{ return mon.disconnects >= 1; }, 5s));
+    const void* oldClient = conn.Client();
+    ASSERT_NE(oldClient, nullptr) << "the drop is expected to leave the client for the owner";
     ASSERT_TRUE(conn.connect());
     EXPECT_TRUE(WaitFor([&]{ return conn.IsConnected(); }, 5s)) << "status " << to_string(conn.GetConnectionStatus());
+    EXPECT_EQ(mon.fullConnects, 2);
+    EXPECT_EQ(mon.disconnects, 1);
     conn.disconnect();
 }
 

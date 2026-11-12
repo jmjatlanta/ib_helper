@@ -1,6 +1,14 @@
 #include "../src/ib_helper/IBConnector.hpp"
 #include <gtest/gtest.h>
 #include <vector>
+#include <atomic>
+#include <future>
+#include <memory>
+#include <thread>
+#include "EReaderOSSignal.h"
+#ifndef _WIN32
+#include "TwsProxy.h"
+#endif
 
 /***
  * Tests that a socket failure reported through error() (502/509) updates the
@@ -179,3 +187,91 @@ TEST(DisconnectNotifyTest, DisconnectWhilePartiallyConnectedNotifies)
     EXPECT_EQ(monitor.disconnects, 1);
     conn.RemoveConnectionMonitor(&monitor);
 }
+
+#ifndef _WIN32
+namespace {
+
+std::atomic<int> deletedClients = 0;
+std::atomic<int> deletedSignals = 0;
+
+class TrackedClient : public EClientSocket
+{
+    public:
+    TrackedClient() : EClientSocket(nullptr, nullptr) {}
+    ~TrackedClient() override { ++deletedClients; }
+};
+
+class TrackedSignal : public EReaderOSSignal
+{
+    public:
+    TrackedSignal() : EReaderOSSignal(10) {}
+    ~TrackedSignal() override { ++deletedSignals; }
+};
+
+/*** a connector left as a dropped connection leaves it: SHUTDOWN, with the old client still allocated */
+class DroppedConnector : public IBConnector
+{
+    public:
+    explicit DroppedConnector(int port) : IBConnector()
+    {
+        hostname = "127.0.0.1";
+        this->port = port;
+        clientId = 910;
+        currentConnectionStatus = ConnectionStatus::SHUTDOWN;
+        osSignal = new TrackedSignal();
+        ibClient = new TrackedClient();
+    }
+    void SetListener(std::shared_ptr<std::thread> in) { listenerThread = in; }
+    bool HasListener() const { return listenerThread != nullptr; }
+    bool HasClient() const { return ibClient != nullptr || osSignal != nullptr; }
+    void JoinListener() { if (listenerThread != nullptr && listenerThread->joinable()) listenerThread->join(); }
+};
+
+} // namespace
+
+TEST(ConnectCleanupTest, ConnectReleasesWhatADropLeftBehind)
+{
+    // nothing listens on this port, so the new connection fails after the cleanup
+    TwsProxy proxy("127.0.0.1", 1);
+    proxy.Refuse();
+    deletedClients = 0;
+    deletedSignals = 0;
+    DroppedConnector conn(proxy.Port());
+    std::atomic<bool> oldReaderRan = false;
+    conn.SetListener(std::make_shared<std::thread>([&]{ oldReaderRan = true; }));
+
+    EXPECT_FALSE(conn.connect());
+    EXPECT_TRUE(oldReaderRan);
+    EXPECT_EQ(deletedClients, 1);
+    EXPECT_EQ(deletedSignals, 1);
+    EXPECT_FALSE(conn.HasListener());
+    EXPECT_FALSE(conn.HasClient());
+    EXPECT_EQ(conn.GetConnectionStatus(), IBConnector::ConnectionStatus::NOT_STARTED);
+}
+
+TEST(ConnectCleanupTest, ConnectFromTheReaderThreadIsRefused)
+{
+    TwsProxy proxy("127.0.0.1", 1);
+    proxy.Refuse();
+    deletedClients = 0;
+    DroppedConnector conn(proxy.Port());
+    // run connect() on the thread the connector thinks is its reader thread, as a TWS callback would
+    std::promise<void> go;
+    auto started = go.get_future().share();
+    std::atomic<int> result = -1;
+    conn.SetListener(std::make_shared<std::thread>([&, started]{
+        started.wait();
+        result = conn.connect() ? 1 : 0;
+    }));
+    go.set_value();
+    conn.JoinListener();
+
+    EXPECT_EQ(result, 0);
+    EXPECT_EQ(deletedClients, 0); // nothing released from under the "callback"
+    EXPECT_TRUE(conn.HasClient());
+    EXPECT_EQ(conn.GetConnectionStatus(), IBConnector::ConnectionStatus::SHUTDOWN);
+    // a later connect() from another thread cleans up
+    EXPECT_FALSE(conn.connect());
+    EXPECT_EQ(deletedClients, 1);
+}
+#endif

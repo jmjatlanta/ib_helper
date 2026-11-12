@@ -67,8 +67,9 @@ class IBConnector : public EWrapper
      * Must not be called from a TWS callback (it joins the reader thread).
      * When the connection drops (connectionClosed, or 502/509 while connected), the
      * connector moves to SHUTDOWN and calls IBConnectionMonitor::OnDisconnect, but leaves
-     * the cleanup to the owner: call disconnect() and/or connect() from your own thread,
-     * or use IBManagedConnector, which reconnects automatically.
+     * the cleanup to the owner: call disconnect() or connect() (which releases what is
+     * left of the old connection first) from your own thread, or use IBManagedConnector,
+     * which reconnects automatically.
      * Calls IBConnectionMonitor::OnDisconnect only if there was a connection to close, so
      * monitors get one OnDisconnect per connection, not one per disconnect() call.
      */
@@ -207,6 +208,12 @@ class IBConnector : public EWrapper
      * Handle an error on a partial connection (thread issue)
      */
     virtual void cleanUpPartialConnection() {}
+    /***
+     * Join the reader thread and delete ibClient and osSignal, if present.
+     * Does not change the status or notify anyone.
+     * @returns false (and does nothing) if called on the reader thread
+     */
+    bool releaseClient();
     /***
      * EWrapper virtual functions
      */
