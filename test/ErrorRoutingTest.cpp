@@ -362,3 +362,25 @@ TEST(ErrorRoutingTest, ConnectivityWithoutMonitorsFallsBack)
     ASSERT_EQ(account.codes.size(), 1u);
     EXPECT_EQ(account.codes[0], 1100);
 }
+
+TEST(ErrorRoutingTest, FuturesFailWhenNotConnected)
+{
+    // the test constructor leaves ibClient null, as if connect() was never called
+    RoutingConnector conn;
+    auto details = conn.GetContractDetails(Contract());
+    ASSERT_TRUE(IsReady(details));
+    try
+    {
+        details.get();
+        FAIL() << "expected IbException";
+    }
+    catch(const ib_helper::IbException& ex)
+    {
+        EXPECT_EQ(ex.error().code, 504);
+        EXPECT_EQ(ex.error().severity, IbSeverity::Connectivity);
+    }
+
+    auto options = conn.GetOptionParameters(Contract());
+    ASSERT_TRUE(IsReady(options));
+    EXPECT_THROW(options.get(), ib_helper::IbException);
+}

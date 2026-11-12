@@ -143,12 +143,22 @@ IBConnector::~IBConnector() {
 bool IBConnector::IsConnected() const { return currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED; }
 bool IBConnector::IsConnecting() const { return currentConnectionStatus == ConnectionStatus::ATTEMPTING_CONNECTION; }
 
+/***
+ * The failure set on a future when there is no TWS connection.
+ * 504 is the code the TWS API itself reports for "not connected".
+ */
+static std::exception_ptr NotConnectedException()
+{
+    return std::make_exception_ptr(IbException(IbError{-1, 504, "Not connected", "", time(nullptr),
+            classify(504, "Not connected")}));
+}
+
 std::future<std::vector<SecurityDefinitionOptionParameter>> IBConnector::GetOptionParameters(const Contract& contract)
 {
     if (ibClient == nullptr)
     {
         std::promise<std::vector<SecurityDefinitionOptionParameter>> p;
-        p.set_exception(std::exception_ptr{});
+        p.set_exception(NotConnectedException());
         return p.get_future();
     }
     int promiseId = GetNextRequestId();
@@ -169,7 +179,7 @@ std::future<std::vector<ContractDetails>> IBConnector::GetContractDetails(const 
     if (ibClient == nullptr)
     {
         std::promise<std::vector<ContractDetails>> p;
-        p.set_exception(std::exception_ptr{});
+        p.set_exception(NotConnectedException());
         return p.get_future();
     }
     int promiseId = GetNextRequestId();
