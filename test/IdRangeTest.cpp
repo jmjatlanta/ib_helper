@@ -16,6 +16,8 @@ class IdTestConnector : public ib_helper::IBConnector
     public:
     IdTestConnector() : ib_helper::IBConnector() {}
     void SetNextRequestId(int in) { nextRequestId = in; }
+    // RequestScannerSubscription needs TWS; register the id as it would
+    void RegisterScanner(int reqId) { scannerRequestIds.insert(reqId); }
     // TWS callbacks are protected; expose them so the tests can play TWS
     using ib_helper::IBConnector::nextValidId;
     using ib_helper::IBConnector::error;
@@ -90,6 +92,7 @@ TEST(IdRangeTest, ScannerEndOnlyForRequestIds)
 
     // the same error with a request id does
     int reqId = conn.GetNextRequestId();
+    conn.RegisterScanner(reqId);
     conn.error(reqId, 0, 162, "scanner cancelled", "");
     ASSERT_EQ(scanner.ended.size(), 1u);
     EXPECT_EQ(scanner.ended[0], reqId);

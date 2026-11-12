@@ -3,6 +3,11 @@
 namespace ib_helper
 {
 
+IbException::IbException(IbError in)
+        : std::runtime_error("TWS error " + std::to_string(in.code) + ": " + in.message), err(std::move(in))
+{
+}
+
 std::string_view to_string(IbSeverity in)
 {
     switch(in)

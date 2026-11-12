@@ -1,5 +1,6 @@
 #pragma once
 #include <ctime>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -43,6 +44,18 @@ struct IbError
     IbSeverity severity = IbSeverity::RequestFailed;
 
     bool isError() const { return severity >= IbSeverity::RequestFailed; }
+};
+
+/***
+ * Set on a future (e.g. GetOptionParameters) when TWS reports that the request failed
+ */
+class IbException : public std::runtime_error
+{
+    public:
+    explicit IbException(IbError in);
+    const IbError& error() const { return err; }
+    private:
+    IbError err;
 };
 
 } // namespace ib_helper

@@ -244,6 +244,10 @@ int IBConnector::RequestScannerSubscription( ScannerSubscription scannerSubscrip
     if (ibClient == nullptr)
         return -1;
     int nextReq = GetNextRequestId();
+    {
+        std::scoped_lock lock(scannerHandlerMutex);
+        scannerRequestIds.insert(nextReq);
+    }
     ibClient->reqScannerSubscription(nextReq, scannerSubscription, scannerSubscriptionOptions, scannerSubscriptionFilterOptions);
     return nextReq;
 }
@@ -252,6 +256,21 @@ void IBConnector::CancelScannerSubscription(int reqId)
 {
     //logger->debug("IBConnector", "CancelScannerSubscription called with reqId of " + std::to_string(reqId));
     ibClient->cancelScannerSubscription(reqId);
+}
+
+void IBConnector::AddErrorHandler(ErrorHandler* in)
+{
+    if (in == nullptr)
+        return;
+    std::scoped_lock lock(errorHandlersMutex);
+    if (std::find(errorHandlers.begin(), errorHandlers.end(), in) == errorHandlers.end())
+        errorHandlers.push_back(in);
+}
+
+void IBConnector::RemoveErrorHandler(ErrorHandler* in)
+{
+    std::scoped_lock lock(errorHandlersMutex);
+    std::erase(errorHandlers, in);
 }
 
 void IBConnector::AddOrderHandler(OrderHandler* in)
@@ -820,91 +839,214 @@ void IBConnector::error(int id, time_t time, int errorCode, const std::string& e
             logger->error(logCategory, msg);
             break;
     }
-    // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
-    if (errorCode == 502 // couldn't connect to TWS
-        || errorCode == 509  // error reading socket
-        )
+    // Route the message to whoever owns the id. Order ids and request ids are in
+    // separate ranges (see REQUEST_ID_BASE), so an id can only match one kind of owner.
+    if (RouteConnectivityError(err))
+        return;
+    if (IsOrderId(id) && RouteOrderError(err))
+        return;
+    if (IsRequestId(id) && RouteRequestError(err))
+        return;
+    RouteUnmatchedError(err);
+}
+
+bool IBConnector::RouteConnectivityError(const IbError& err)
+{
+    switch(err.code)
     {
+        case 502: // couldn't connect to TWS
+        case 509: // error reading socket
+        case 1100: // connectivity between TWS and IB lost
+        case 1101: // connectivity restored, data lost
+        case 1102: // connectivity restored, data maintained
+        case 1300: // socket port reset
+            break;
+        default:
+            return false;
+    }
+    std::vector<IBConnectionMonitor*> monitors;
+    {
+        std::scoped_lock lock(connectionMonitorsMutex);
+        monitors = connectionMonitors;
+    }
+    for(auto* monitor : monitors)
+    {
+        monitor->OnError(this, err.id, err.code, err.message, err.advancedRejectJson);
+        if (err.code == 1100)
+            monitor->OnIbConnectivity(this, false, false);
+        else if (err.code == 1101)
+            monitor->OnIbConnectivity(this, true, true);
+        else if (err.code == 1102)
+            monitor->OnIbConnectivity(this, true, false);
+    }
+    if (err.code == 502 || err.code == 509)
+    {
+        // if this is the "can't connect to IB" error on login, do a shutdown to get out of connection loop
         if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED)
         {
             // they're legit
             currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
-            for(auto* monitor : connectionMonitors)
-                monitor->OnError(this, id, errorCode, errorString, advancedOrderRejectJson);
             disconnect();
         }
-        else
+        else if (currentConnectionStatus == ConnectionStatus::PARTIALLY_CONNECTED)
         {
             // we can't call disconnect as we may be on the same thread
-            for(auto* monitor : connectionMonitors)
-                monitor->OnError(this, id, errorCode, errorString, advancedOrderRejectJson);
-            if (currentConnectionStatus == ConnectionStatus::PARTIALLY_CONNECTED)
-                cleanUpPartialConnection();
+            cleanUpPartialConnection();
         }
     }
-    if (errorCode == 1100 // Connection lost between TWS and IB
-        || errorCode == 1102 // Connection restored
-        )
+    // with no monitors, let the catch-all handlers see it
+    return !monitors.empty();
+}
+
+bool IBConnector::RouteOrderError(const IbError& err)
+{
+    std::vector<OrderHandler*> handlers;
     {
-        std::for_each(connectionMonitors.begin(), connectionMonitors.end(), 
-                      [this, id, errorCode, errorString, advancedOrderRejectJson](IBConnectionMonitor* curr)
-                      { curr->OnError(this, id, errorCode, errorString, advancedOrderRejectJson); });
+        std::scoped_lock lock(orderHandlersMutex);
+        handlers = orderHandlers;
     }
-    if (errorCode == 504) // not connected
+    for(auto* handler : handlers)
+        handler->OnOrderError(err.id, err);
+    return !handlers.empty();
+}
+
+bool IBConnector::RouteRequestError(const IbError& err)
+{
+    // Handler pointers are copied under their lock and called without it,
+    // so a handler may unsubscribe from inside OnError.
+    const int id = err.id;
     {
-        // should we alert the conneciton monitors?
-    }
-    // Order ids and request ids are in separate ranges (see REQUEST_ID_BASE), so only
-    // request ids are looked up in the request maps and scanner handlers
-    const bool isRequest = IsRequestId(id);
-    if (errorCode == 200 && isRequest) // no security definition found
-    {
-        // if the request id is found, set the exception in the promise/future
-        auto itr = contractDetailsHandlers.find(id);
-        if (itr != contractDetailsHandlers.end())
-        {
-            (*itr).second.set_exception(std::make_exception_ptr( std::out_of_range("Symbol not found")));
-            return;
-        }
-    }
-    if (errorCode == 162 && isRequest)
-    {
-        // we have successfully unsubscribed
-        std::scoped_lock lock(scannerHandlerMutex);
-        for(auto& h : scannerHandlers)
-            h->OnScannerSubscriptionEnd(this, id); 
-        return;
-    }
-    if (errorCode == 165 && isRequest)
-    {
-        // connection restored for a subscription (1100 was called previously, 1102 probably on its way)
-        // or subcription to bars or scan returned nothing
-        // documentation says: Historical market Data Service query message
-        // There was an issue with a historical data request, such is no such data in IB's database. Note this message is not specific to the API
+        // scanner subscription
+        bool isScanner = false;
+        bool ended = false;
+        std::vector<ScannerHandler*> handlers;
         {
             std::scoped_lock lock(scannerHandlerMutex);
-            for(auto& s : scannerHandlers)
-                s->OnScannerSubscriptionEnd(this, id);
+            isScanner = scannerRequestIds.contains(id);
+            if (isScanner)
+            {
+                // TWS ends a scanner subscription with 162 (e.g. after a cancel) or 165
+                ended = err.code == 162 || err.code == 165;
+                if (ended)
+                    scannerRequestIds.erase(id);
+                handlers = scannerHandlers;
+            }
         }
+        if (isScanner)
+        {
+            for(auto* h : handlers)
+            {
+                h->OnError(this, id, err);
+                if (ended)
+                    h->OnScannerSubscriptionEnd(this, id);
+            }
+            return true;
+        }
+    }
+    {
+        // market data or tick-by-tick subscription
+        TickHandler* handler = nullptr;
+        {
+            std::scoped_lock lock(tickHandlersMutex);
+            auto itr = tickHandlers.find(id);
+            if (itr != tickHandlers.end())
+                handler = itr->second;
+        }
+        if (handler != nullptr)
+        {
+            handler->OnError(id, err);
+            return true;
+        }
+    }
+    {
+        // market depth subscription
+        MarketDepthHandler* handler = nullptr;
+        {
+            std::scoped_lock lock(marketDepthHandlersMutex);
+            auto itr = marketDepthHandlers.find(id);
+            if (itr != marketDepthHandlers.end())
+                handler = itr->second;
+        }
+        if (handler != nullptr)
+        {
+            handler->OnError(id, err);
+            return true;
+        }
+    }
+    {
+        // historical data request
+        HistoricalDataHandler* handler = nullptr;
         {
             std::scoped_lock lock(historicalDataHandlersMutex);
-            auto handler = historicalDataHandlers[id];
-            if (handler != nullptr)
-                handler->OnHistoricalDataEnd(id,"","");
+            auto itr = historicalDataHandlers.find(id);
+            if (itr != historicalDataHandlers.end())
+                handler = itr->second;
         }
-    }
-    if (errorCode == 2109)
-    {
-        // Outside Regular Trading Hours warning
-        return;
-    }
-    {
-        std::scoped_lock lock(accountHandlersMutex);
-        for(auto handler : accountHandlers)
+        if (handler != nullptr)
         {
-            if (handler != nullptr)
-                handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);
+            handler->OnError(id, err);
+            if (err.code == 165) // historical data service query message: the request is over
+                handler->OnHistoricalDataEnd(id, "", "");
+            return true;
         }
+    }
+    if (!err.isError())
+        return false; // warnings for a pending future have no owner to tell
+    {
+        // GetContractDetails future
+        std::promise<std::vector<ContractDetails>> promise;
+        bool found = false;
+        {
+            std::scoped_lock lock(contractDetailsHandlersMutex, contractDetailsDataMutex);
+            auto itr = contractDetailsHandlers.find(id);
+            if (itr != contractDetailsHandlers.end())
+            {
+                promise = std::move(itr->second);
+                contractDetailsHandlers.erase(itr);
+                contractDetailsData.erase(id);
+                found = true;
+            }
+        }
+        if (found)
+        {
+            if (err.code == 200) // no security definition found. Kept as out_of_range for existing callers
+                promise.set_exception(std::make_exception_ptr(std::out_of_range("Symbol not found")));
+            else
+                promise.set_exception(std::make_exception_ptr(IbException(err)));
+            return true;
+        }
+    }
+    {
+        // GetOptionParameters future
+        auto itr = securityDefinitionHandlers.find(id);
+        if (itr != securityDefinitionHandlers.end())
+        {
+            auto promise = std::move(itr->second);
+            securityDefinitionHandlers.erase(itr);
+            securityDefinitionData.erase(id);
+            promise.set_exception(std::make_exception_ptr(IbException(err)));
+            return true;
+        }
+    }
+    return false;
+}
+
+void IBConnector::RouteUnmatchedError(const IbError& err)
+{
+    std::vector<ErrorHandler*> handlers;
+    {
+        std::scoped_lock lock(errorHandlersMutex);
+        handlers = errorHandlers;
+    }
+    for(auto* handler : handlers)
+        handler->OnError(this, err);
+    if (err.code == 2109) // Outside Regular Trading Hours warning, never sent to AccountHandlers
+        return;
+    std::scoped_lock lock(accountHandlersMutex);
+    for(auto handler : accountHandlers)
+    {
+        if (handler != nullptr)
+            handler->OnError(err.id, err.code, err.message, err.advancedRejectJson);
     }
 }
 void IBConnector::updateMktDepth(TickerId reqId, int position, int operation, int side, double price, Decimal size)

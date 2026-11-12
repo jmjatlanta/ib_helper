@@ -9,6 +9,7 @@
 #include "OrderHandler.hpp"
 #include "ExecutionHandler.hpp"
 #include "IbError.hpp"
+#include "ErrorHandler.hpp"
 #include "EReaderOSSignal.h"
 #include "EClientSocket.h"
 #include "EWrapper.h"
@@ -21,6 +22,7 @@
 #include <climits>
 #include <memory>
 #include <future>
+#include <unordered_set>
 
 namespace ib_helper {
 
@@ -67,6 +69,15 @@ class IBConnector : public EWrapper
     virtual void RemoveOrderHandler(OrderHandler* in);
     virtual void AddExecutionHandler(ExecutionHandler* in);
     virtual void RemoveExecutionHandler(ExecutionHandler* in);
+    /***
+     * Receive TWS errors that could not be routed to the owner of the id.
+     * Errors for known order ids go to OrderHandler::OnOrderError, errors for known
+     * request ids go to that request's handler (or fail its future), and
+     * connectivity messages (1100/1101/1102/1300/502/509) go to the IBConnectionMonitors.
+     * Unrouted errors also go to AccountHandler::OnError, for backward compatibility.
+     */
+    virtual void AddErrorHandler(ErrorHandler* in);
+    virtual void RemoveErrorHandler(ErrorHandler* in);
     virtual void AddScannerHandler(ScannerHandler* in);
     virtual void RemoveScannerHandler(ScannerHandler* in);
     virtual void RequestScannerParameters();
@@ -232,6 +243,14 @@ class IBConnector : public EWrapper
      * Override to refine the classification (e.g. treat a code as Info for your use).
      */
     virtual IbSeverity ClassifyError(int errorCode, const std::string& errorString) const;
+    /***
+     * error() routing helpers
+     * @returns true if the error was delivered to the owner of the id
+     */
+    bool RouteConnectivityError(const IbError& err);
+    bool RouteOrderError(const IbError& err);
+    bool RouteRequestError(const IbError& err);
+    void RouteUnmatchedError(const IbError& err);
     virtual void updateMktDepth(TickerId id, int position, int operation, int side, double price, Decimal size) override;
     virtual void updateMktDepthL2(TickerId id, int position, const std::string& marketMaker, int operation,
 	        int side, double price, Decimal size, bool isSmartDepth) override;
@@ -342,6 +361,7 @@ class IBConnector : public EWrapper
     std::unordered_map<int, std::vector<SecurityDefinitionOptionParameter>> securityDefinitionData;
     std::mutex scannerHandlerMutex;
     std::vector<ScannerHandler*> scannerHandlers;
+    std::unordered_set<int> scannerRequestIds; // active scanner subscriptions, guarded by scannerHandlerMutex
     std::vector<ExecutionHandler*> executionHandlers;
     std::vector<DisplayGroupCombination> displayGroupHandlers;
     std::vector<std::string> accounts;
@@ -358,6 +378,8 @@ class IBConnector : public EWrapper
     std::mutex orderHandlersMutex;
     std::mutex executionHandlersMutex;
     std::mutex displayGroupHandlersMutex;
+    std::mutex errorHandlersMutex;
+    std::vector<ErrorHandler*> errorHandlers;
     std::mutex connectionStatusMutex;
 }; 
 

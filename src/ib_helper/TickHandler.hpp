@@ -3,6 +3,7 @@
 #include "TickAttribLast.h"
 #include "TickAttribBidAsk.h"
 #include "Decimal.h"
+#include "IbError.hpp"
 #include <string>
 
 namespace ib_helper {
@@ -36,6 +37,10 @@ class TickHandler
     virtual void OnTickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, Decimal bidSize,
             Decimal askSize, const TickAttribBidAsk& tickAttribBidAsk) = 0;
     virtual void OnTickByTickMidPoint(int reqId, time_t time, double midPoint) = 0;
+    /***
+     * TWS reported an error or warning for this subscription (market data or tick-by-tick)
+     */
+    virtual void OnError(int reqId, const IbError& err) {}
 };
 
 } // namespace ib_helper

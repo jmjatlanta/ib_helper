@@ -31,6 +31,15 @@ class IBConnectionMonitor
      * @param json advanced order error information in json format
     */
     virtual void OnError(IBConnector* conn, int id, int errorCode, const std::string& msg, const std::string& jsonj) = 0;
+    /****
+     * The connection between TWS and IB's servers changed state
+     * (1100: up = false; 1101: up = true, dataLost = true; 1102: up = true, dataLost = false).
+     * Called in addition to OnError.
+     * @param conn the connection
+     * @param up true if TWS is connected to IB again
+     * @param dataLost true if subscriptions were lost and must be re-requested
+    */
+    virtual void OnIbConnectivity(IBConnector* conn, bool up, bool dataLost) {}
 };
 
 } // namespace ib_helper
