@@ -67,6 +67,11 @@ bool IBConnector::connect()
             && currentConnectionStatus != ConnectionStatus::ATTEMPTING_CONNECTION 
             && currentConnectionStatus != ConnectionStatus::PARTIALLY_CONNECTED)
     {
+        // After a dropped connection the old reader thread, ibClient and osSignal are still
+        // here if the owner did not call disconnect(). Release them before changing the
+        // status: the old reader loop only ends while the status is SHUTDOWN.
+        if (!releaseClient())
+            return false;
         currentConnectionStatus = ConnectionStatus::ATTEMPTING_CONNECTION;
         //logger->debug("IBConnector", "connect: Attempting to connect to IB host " + hostname + ":" + std::to_string(port));
         osSignal = new EReaderOSSignal(1000); // timeout (1000 == 1 sec)
@@ -100,8 +105,6 @@ bool IBConnector::connect()
         }
         if (currentConnectionStatus != ConnectionStatus::FULLY_CONNECTED)
             currentConnectionStatus = ConnectionStatus::PARTIALLY_CONNECTED;
-        if (listenerThread != nullptr && listenerThread->joinable())
-            listenerThread->join();
         listenerThread = std::make_shared<std::thread>(&IBConnector::processMessages, this);
         return true;
     }
@@ -111,15 +114,39 @@ bool IBConnector::connect()
 bool IBConnector::disconnect()
 {
     logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
-    currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
-    // there should be no more EReader messages after the thread shuts down (EReader is destroyed
+    // Only report a disconnect if there was a connection to close. After a drop,
+    // connectionClosed() has already set SHUTDOWN and told the monitors; this call only cleans up.
+    const ConnectionStatus before = currentConnectionStatus.exchange(ConnectionStatus::ATTEMPTING_SHUTDOWN);
+    const bool wasConnected = before == ConnectionStatus::ATTEMPTING_CONNECTION
+            || before == ConnectionStatus::PARTIALLY_CONNECTED
+            || before == ConnectionStatus::FULLY_CONNECTED;
+    releaseClient();
+    currentConnectionStatus = ConnectionStatus::SHUTDOWN;
+    if (wasConnected)
+    {
+        std::scoped_lock lock(connectionMonitorsMutex);
+        std::for_each(connectionMonitors.begin(), connectionMonitors.end(), [this](IBConnectionMonitor* curr)
+                      { curr->OnDisconnect(this); });
+    }
+    logger->debug("IBConnector", "disconnect completed");
+    return true;
+}
+
+bool IBConnector::releaseClient()
+{
+    if (listenerThread != nullptr && listenerThread->get_id() == std::this_thread::get_id())
+    {
+        // joining would deadlock; a TWS callback must not connect or disconnect
+        logger->error("IBConnector", "connect()/disconnect() called from a TWS callback; ignored");
+        return false;
+    }
+    // there are no more EReader messages after the thread shuts down (it destroys the EReader)
     if (listenerThread != nullptr && listenerThread->joinable())
         listenerThread->join();
+    listenerThread = nullptr;
     if (ibClient != nullptr)
     {
         //ibClient->eDisconnect(); <-- called from ereader in dtor
-        // give some time to inform other threads
-        //std::this_thread::sleep_for(std::chrono::milliseconds(500));
         delete ibClient;
         ibClient = nullptr;
     }
@@ -128,12 +155,6 @@ bool IBConnector::disconnect()
         delete osSignal;
         osSignal = nullptr;
     }
-    currentConnectionStatus = ConnectionStatus::SHUTDOWN;
-    // lock the mutex
-    std::scoped_lock lock(connectionMonitorsMutex);
-    std::for_each(connectionMonitors.begin(), connectionMonitors.end(), [this](IBConnectionMonitor* curr)
-                  { curr->OnDisconnect(this); });
-    logger->debug("IBConnector", "disconnect completed");
     return true;
 }
 
@@ -143,31 +164,46 @@ IBConnector::~IBConnector() {
 bool IBConnector::IsConnected() const { return currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED; }
 bool IBConnector::IsConnecting() const { return currentConnectionStatus == ConnectionStatus::ATTEMPTING_CONNECTION; }
 
+/***
+ * The failure set on a future when there is no TWS connection.
+ * 504 is the code the TWS API itself reports for "not connected".
+ */
+static std::exception_ptr NotConnectedException()
+{
+    return std::make_exception_ptr(IbException(IbError{-1, 504, "Not connected", "", time(nullptr),
+            classify(504, "Not connected")}));
+}
+
 std::future<std::vector<SecurityDefinitionOptionParameter>> IBConnector::GetOptionParameters(const Contract& contract)
 {
     if (ibClient == nullptr)
     {
         std::promise<std::vector<SecurityDefinitionOptionParameter>> p;
-        p.set_exception(std::exception_ptr{});
+        p.set_exception(NotConnectedException());
         return p.get_future();
     }
-    uint32_t promiseId = GetNextRequestId();
-    auto& promise = securityDefinitionHandlers[promiseId];
-    auto& vec = securityDefinitionData[promiseId]; // put the vector in there
-    //logger->debug("IBConnector", "GetOptionParameters: about to request details for " + contract.symbol + " id: " + std::to_string(promiseId) );
+    int promiseId = GetNextRequestId();
+    // register (and take the future) before sending: the reply may arrive before reqSecDefOptParams returns
+    auto future = RegisterOptionParametersRequest(promiseId);
     ibClient->reqSecDefOptParams(promiseId, contract.symbol, "", contract.secType, contract.conId);
-    //logger->debug("IBConnector", "GetContractDetails: request made for " + contract.symbol);
-    return promise.get_future();
+    return future;
+}
+
+std::future<std::vector<SecurityDefinitionOptionParameter>> IBConnector::RegisterOptionParametersRequest(int reqId)
+{
+    std::scoped_lock lock(securityDefinitionMutex);
+    securityDefinitionData[reqId];
+    return securityDefinitionHandlers[reqId].get_future();
 }
 std::future<std::vector<ContractDetails>> IBConnector::GetContractDetails(const Contract& contract)
 {
     if (ibClient == nullptr)
     {
         std::promise<std::vector<ContractDetails>> p;
-        p.set_exception(std::exception_ptr{});
+        p.set_exception(NotConnectedException());
         return p.get_future();
     }
-    uint32_t promiseId = GetNextRequestId();
+    int promiseId = GetNextRequestId();
     std::scoped_lock lock(contractDetailsHandlersMutex, contractDetailsDataMutex);
     auto& promise = contractDetailsHandlers[promiseId];
     auto& vec = contractDetailsData[promiseId]; // put the vector in there
@@ -183,9 +219,9 @@ void IBConnector::RequestPositions()
         ibClient->reqPositions();
 }
 
-uint32_t IBConnector::RequestExecutionReports(const ExecutionFilter& filter)
+int IBConnector::RequestExecutionReports(const ExecutionFilter& filter)
 {
-    uint32_t reqId = GetNextRequestId();
+    int reqId = GetNextRequestId();
     if (ibClient != nullptr)
         ibClient->reqExecutions(reqId, filter);
     return reqId;
@@ -243,7 +279,11 @@ int IBConnector::RequestScannerSubscription( ScannerSubscription scannerSubscrip
 {
     if (ibClient == nullptr)
         return -1;
-    int nextReq = ++nextRequestId;
+    int nextReq = GetNextRequestId();
+    {
+        std::scoped_lock lock(scannerHandlerMutex);
+        scannerRequestIds.insert(nextReq);
+    }
     ibClient->reqScannerSubscription(nextReq, scannerSubscription, scannerSubscriptionOptions, scannerSubscriptionFilterOptions);
     return nextReq;
 }
@@ -252,6 +292,21 @@ void IBConnector::CancelScannerSubscription(int reqId)
 {
     //logger->debug("IBConnector", "CancelScannerSubscription called with reqId of " + std::to_string(reqId));
     ibClient->cancelScannerSubscription(reqId);
+}
+
+void IBConnector::AddErrorHandler(ErrorHandler* in)
+{
+    if (in == nullptr)
+        return;
+    std::scoped_lock lock(errorHandlersMutex);
+    if (std::find(errorHandlers.begin(), errorHandlers.end(), in) == errorHandlers.end())
+        errorHandlers.push_back(in);
+}
+
+void IBConnector::RemoveErrorHandler(ErrorHandler* in)
+{
+    std::scoped_lock lock(errorHandlersMutex);
+    std::erase(errorHandlers, in);
 }
 
 void IBConnector::AddOrderHandler(OrderHandler* in)
@@ -280,12 +335,31 @@ void IBConnector::AddExecutionHandler(ExecutionHandler* in)
 
 void IBConnector::RemoveExecutionHandler(ExecutionHandler* in)
 {
-    uint32_t toErase = 0;
     std::scoped_lock lock(executionHandlersMutex);
     executionHandlers.erase(std::remove(executionHandlers.begin(), executionHandlers.end(), in), executionHandlers.end());
 }
 
-AccountHandler* IBConnector::GetDefaultAccountHandler() 
+int IBConnector::GetNextOrderId()
+{
+    int id = ++nextOrderId;
+    if (!IsOrderId(id) && logger != nullptr)
+        logger->error(logCategory, "GetNextOrderId: order id " + std::to_string(id)
+                + " is outside the order id range and may collide with request ids");
+    return id;
+}
+
+int IBConnector::GetNextRequestId()
+{
+    int current = nextRequestId.load();
+    int next;
+    do
+    {
+        next = (current >= INT_MAX || current < REQUEST_ID_BASE) ? REQUEST_ID_BASE : current + 1;
+    } while (!nextRequestId.compare_exchange_weak(current, next));
+    return next;
+}
+
+AccountHandler* IBConnector::GetDefaultAccountHandler()
 { 
     std::scoped_lock lock(accountHandlersMutex);
     if (accountHandlers.size() == 0) 
@@ -379,14 +453,14 @@ void IBConnector::processMessages() {
  * @param regulatorySnapshot true to only get a regulatory snapshot
  * @param mktDataOptions not currently used by us
  */
-uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
+int IBConnector::SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
         const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
         const TagValueListSPtr& mktDataOptions)
 {
     if (ibClient == nullptr)
         return 0;
 
-    uint32_t reqId = GetNextRequestId();
+    int reqId = GetNextRequestId();
     {
         std::scoped_lock lock(tickHandlersMutex);
         tickHandlers[reqId] = tickHandler;
@@ -395,7 +469,7 @@ uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandle
     return reqId;
 };
 
-void IBConnector::UnsubscribeFromMarketData(uint32_t reqId) 
+void IBConnector::UnsubscribeFromMarketData(int reqId) 
 { 
     //logger->debug("IBConnector", "UnsubscribFromMarketData called with reqId of " + std::to_string(reqId));
     {
@@ -406,10 +480,10 @@ void IBConnector::UnsubscribeFromMarketData(uint32_t reqId)
         ibClient->cancelMktData(reqId); 
 }
 
-uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
+int IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
             int numberOfTicks, bool ignoreSize)
 {
-    uint32_t reqId = GetNextRequestId();
+    int reqId = GetNextRequestId();
     {
         std::scoped_lock lock(tickHandlersMutex);
         tickHandlers[reqId] = handler;
@@ -419,7 +493,7 @@ uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandle
     return reqId;
 };
 
-void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId) 
+void IBConnector::UnsubscribeFromTickByTick(int reqId) 
 { 
     //logger->debug("IBConnector", "UnsubscribFromTickByTick called with reqId of " + std::to_string(reqId));
     if (ibClient != nullptr)
@@ -430,9 +504,9 @@ void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId)
     }
 }
 
-uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines)
+int IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines)
 {
-    uint32_t reqId = GetNextRequestId();
+    int reqId = GetNextRequestId();
     {
         std::scoped_lock lock(marketDepthHandlersMutex);
         marketDepthHandlers[reqId] = depthHandler;
@@ -445,7 +519,7 @@ uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDep
     return reqId;
 }
 
-void IBConnector::UnsubscribeFromMarketDepth(uint32_t subscriptionId)
+void IBConnector::UnsubscribeFromMarketDepth(int subscriptionId)
 {
     //logger->debug("IBConnector", "UnsubscribFromMarketDepth called with subscriptionId of " + std::to_string(subscriptionId));
     {
@@ -465,7 +539,7 @@ std::future<std::vector<DepthMktDataDescription> > IBConnector::RequestMktDepthE
     return promise.get_future();
 }
 
-void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionId)
+void IBConnector::UnsubscribeFromHistoricalData(int historicalSubscriptionId)
 {
     //logger->debug("IBConnector", "UnsubscribFromHistoricalData called with subscriptionId of " + std::to_string(historicalSubscriptionId));
     if (ibClient != nullptr)
@@ -477,7 +551,7 @@ void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionI
     //logger->debug("IBConnector", "UnsubscribeFromHistoricalData: " + std::to_string(historicalSubscriptionId));
 }
 
-uint32_t IBConnector::SubscribeToGroupEvents(DisplayGroupHandler* in, int groupId)
+int IBConnector::SubscribeToGroupEvents(DisplayGroupHandler* in, int groupId)
 {
     std::scoped_lock lock(displayGroupHandlersMutex);
     auto id = GetNextRequestId();
@@ -486,7 +560,7 @@ uint32_t IBConnector::SubscribeToGroupEvents(DisplayGroupHandler* in, int groupI
     return id;
 }
 
-void IBConnector::UnsubscribeFromGroupEvents(uint32_t reqId)
+void IBConnector::UnsubscribeFromGroupEvents(int reqId)
 {
     //logger->debug("IBConnector", "UnsubscribFromGropuEvents called with subscriptionId of " + std::to_string(reqId));
     std::scoped_lock lock(displayGroupHandlersMutex);
@@ -494,7 +568,7 @@ void IBConnector::UnsubscribeFromGroupEvents(uint32_t reqId)
                   { return curr.reqId == reqId; });
 }
 
-uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
+int IBConnector::SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
         const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize, bool rth)
 {
     if (ibClient == nullptr)
@@ -528,7 +602,7 @@ void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, co
     {
         std::string str;
         std::for_each(tickHandlers.begin(), tickHandlers.end(),
-                [&str](const std::pair<uint32_t, TickHandler*> curr)
+                [&str](const std::pair<const int, TickHandler*>& curr)
                 { if (curr.second != nullptr) str += ", " + std::to_string(curr.first); });
         logger->debug("IBConnector", "tickPrice: No subscribers for id " + std::to_string(tickerId)
                 + ". Valid subscriber ids: " + str);
@@ -772,98 +846,250 @@ void IBConnector::openOrderProtoBuf(const protobuf::OpenOrder& openOrderProto) {
 void IBConnector::openOrdersEndProtoBuf(const protobuf::OpenOrdersEnd& openOrderEndProto) {}
 void IBConnector::errorProtoBuf(const protobuf::ErrorMessage& errorProto) {}
 
+IbSeverity IBConnector::ClassifyError(int errorCode, const std::string& errorString) const
+{
+    return classify(errorCode, errorString);
+}
+
 void IBConnector::error(int id, time_t time, int errorCode, const std::string& errorString, 
             const std::string& advancedOrderRejectJson)
 {
-    std::string msg = "Error id: " + std::to_string(id) 
+    const IbError err{id, errorCode, errorString, advancedOrderRejectJson, time,
+            ClassifyError(errorCode, errorString)};
+    std::string msg = std::string(to_string(err.severity))
+        + " id: " + std::to_string(id) 
         + " Code: " + std::to_string(errorCode) 
         + ": " + errorString 
         + ". JSON: " + advancedOrderRejectJson
         + " current status: " + to_string(currentConnectionStatus);
-    if (errorCode != 162) // Historical market data canceled
-        logger->error(logCategory, msg);
-    // if this is the "can't connect to IB error on login, do a shutdown to get out of connection loop
-    if (errorCode == 502 // couldn't connect to TWS
-        || errorCode == 509  // error reading socket
-        )
+    switch(err.severity)
     {
-        if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED)
-        {
-            // they're legit
-            currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
-            for(auto* monitor : connectionMonitors)
-                monitor->OnError(this, id, errorCode, errorString, advancedOrderRejectJson);
-            disconnect();
-        }
-        else
-        {
-            // we can't call disconnect as we may be on the same thread
-            for(auto* monitor : connectionMonitors)
-                monitor->OnError(this, id, errorCode, errorString, advancedOrderRejectJson);
-            if (currentConnectionStatus == ConnectionStatus::PARTIALLY_CONNECTED)
-                cleanUpPartialConnection();
-        }
+        case IbSeverity::Info:
+            logger->debug(logCategory, msg);
+            break;
+        case IbSeverity::Warning:
+        case IbSeverity::Connectivity:
+            logger->warning(logCategory, msg);
+            break;
+        default:
+            logger->error(logCategory, msg);
+            break;
     }
-    if (errorCode == 1100 // Connection lost between TWS and IB
-        || errorCode == 1102 // Connection restored
-        )
-    {
-        std::for_each(connectionMonitors.begin(), connectionMonitors.end(), 
-                      [this, id, errorCode, errorString, advancedOrderRejectJson](IBConnectionMonitor* curr)
-                      { curr->OnError(this, id, errorCode, errorString, advancedOrderRejectJson); });
-    }
-    if (errorCode == 504) // not connected
-    {
-        // should we alert the conneciton monitors?
-    }
-    if (errorCode == 200) // no security definition found
-    {
-        // if the request id is found, set the exception in the promise/future
-        auto itr = contractDetailsHandlers.find(id);
-        if (itr != contractDetailsHandlers.end())
-        {
-            (*itr).second.set_exception(std::make_exception_ptr( std::out_of_range("Symbol not found")));
-            return;
-        }
-    }
-    if (errorCode == 162)
-    {
-        // we have successfully unsubscribed
-        std::scoped_lock lock(scannerHandlerMutex);
-        for(auto& h : scannerHandlers)
-            h->OnScannerSubscriptionEnd(this, id); 
+    // Route the message to whoever owns the id. Order ids and request ids are in
+    // separate ranges (see REQUEST_ID_BASE), so an id can only match one kind of owner.
+    if (RouteConnectivityError(err))
         return;
-    }
-    if (errorCode == 165 )
+    if (IsOrderId(id) && RouteOrderError(err))
+        return;
+    if (IsRequestId(id) && RouteRequestError(err))
+        return;
+    RouteUnmatchedError(err);
+}
+
+bool IBConnector::RouteConnectivityError(const IbError& err)
+{
+    switch(err.code)
     {
-        // connection restored for a subscription (1100 was called previously, 1102 probably on its way)
-        // or subcription to bars or scan returned nothing
-        // documentation says: Historical market Data Service query message
-        // There was an issue with a historical data request, such is no such data in IB's database. Note this message is not specific to the API
+        case 502: // couldn't connect to TWS
+        case 509: // error reading socket
+        case 1100: // connectivity between TWS and IB lost
+        case 1101: // connectivity restored, data lost
+        case 1102: // connectivity restored, data maintained
+        case 1300: // socket port reset
+            break;
+        default:
+            return false;
+    }
+    std::vector<IBConnectionMonitor*> monitors;
+    {
+        std::scoped_lock lock(connectionMonitorsMutex);
+        monitors = connectionMonitors;
+    }
+    for(auto* monitor : monitors)
+    {
+        monitor->OnError(this, err.id, err.code, err.message, err.advancedRejectJson);
+        if (err.code == 1100)
+            monitor->OnIbConnectivity(this, false, false);
+        else if (err.code == 1101)
+            monitor->OnIbConnectivity(this, true, true);
+        else if (err.code == 1102)
+            monitor->OnIbConnectivity(this, true, false);
+    }
+    if (err.code == 502 || err.code == 509)
+    {
+        // The TWS API has already closed the socket (EClientSocket::handleSocketError).
+        // Do not call disconnect() here: this runs on the reader thread (which disconnect()
+        // would try to join) or inside a failed send on the caller's thread (where deleting
+        // ibClient would pull it out from under the caller). Treat it as a closed connection:
+        // SHUTDOWN ends processMessages() and the monitors get OnDisconnect. The owner (e.g.
+        // IBManagedConnector's reconnect thread) calls disconnect()/connect() from its own thread.
+        if (currentConnectionStatus == ConnectionStatus::FULLY_CONNECTED)
+            connectionClosed();
+        else if (currentConnectionStatus == ConnectionStatus::PARTIALLY_CONNECTED)
+            cleanUpPartialConnection();
+    }
+    // with no monitors, let the catch-all handlers see it
+    return !monitors.empty();
+}
+
+bool IBConnector::RouteOrderError(const IbError& err)
+{
+    std::vector<OrderHandler*> handlers;
+    {
+        std::scoped_lock lock(orderHandlersMutex);
+        handlers = orderHandlers;
+    }
+    for(auto* handler : handlers)
+        handler->OnOrderError(err.id, err);
+    return !handlers.empty();
+}
+
+bool IBConnector::RouteRequestError(const IbError& err)
+{
+    // Handler pointers are copied under their lock and called without it,
+    // so a handler may unsubscribe from inside OnError.
+    const int id = err.id;
+    {
+        // scanner subscription
+        bool isScanner = false;
+        bool ended = false;
+        std::vector<ScannerHandler*> handlers;
         {
             std::scoped_lock lock(scannerHandlerMutex);
-            for(auto& s : scannerHandlers)
-                s->OnScannerSubscriptionEnd(this, id);
+            isScanner = scannerRequestIds.contains(id);
+            if (isScanner)
+            {
+                // TWS ends a scanner subscription with 162 (e.g. after a cancel) or 165
+                ended = err.code == 162 || err.code == 165;
+                if (ended)
+                    scannerRequestIds.erase(id);
+                handlers = scannerHandlers;
+            }
         }
+        if (isScanner)
+        {
+            for(auto* h : handlers)
+            {
+                h->OnError(this, id, err);
+                if (ended)
+                    h->OnScannerSubscriptionEnd(this, id);
+            }
+            return true;
+        }
+    }
+    {
+        // market data or tick-by-tick subscription
+        TickHandler* handler = nullptr;
+        {
+            std::scoped_lock lock(tickHandlersMutex);
+            auto itr = tickHandlers.find(id);
+            if (itr != tickHandlers.end())
+                handler = itr->second;
+        }
+        if (handler != nullptr)
+        {
+            handler->OnError(id, err);
+            return true;
+        }
+    }
+    {
+        // market depth subscription
+        MarketDepthHandler* handler = nullptr;
+        {
+            std::scoped_lock lock(marketDepthHandlersMutex);
+            auto itr = marketDepthHandlers.find(id);
+            if (itr != marketDepthHandlers.end())
+                handler = itr->second;
+        }
+        if (handler != nullptr)
+        {
+            handler->OnError(id, err);
+            return true;
+        }
+    }
+    {
+        // historical data request
+        HistoricalDataHandler* handler = nullptr;
         {
             std::scoped_lock lock(historicalDataHandlersMutex);
-            auto handler = historicalDataHandlers[id];
-            if (handler != nullptr)
-                handler->OnHistoricalDataEnd(id,"","");
+            auto itr = historicalDataHandlers.find(id);
+            if (itr != historicalDataHandlers.end())
+                handler = itr->second;
         }
-    }
-    if (errorCode == 2109)
-    {
-        // Outside Regular Trading Hours warning
-        return;
-    }
-    {
-        std::scoped_lock lock(accountHandlersMutex);
-        for(auto handler : accountHandlers)
+        if (handler != nullptr)
         {
-            if (handler != nullptr)
-                handler->OnError(id, errorCode, errorString, advancedOrderRejectJson);
+            handler->OnError(id, err);
+            if (err.code == 165) // historical data service query message: the request is over
+                handler->OnHistoricalDataEnd(id, "", "");
+            return true;
         }
+    }
+    if (!err.isError())
+        return false; // warnings for a pending future have no owner to tell
+    {
+        // GetContractDetails future
+        std::promise<std::vector<ContractDetails>> promise;
+        bool found = false;
+        {
+            std::scoped_lock lock(contractDetailsHandlersMutex, contractDetailsDataMutex);
+            auto itr = contractDetailsHandlers.find(id);
+            if (itr != contractDetailsHandlers.end())
+            {
+                promise = std::move(itr->second);
+                contractDetailsHandlers.erase(itr);
+                contractDetailsData.erase(id);
+                found = true;
+            }
+        }
+        if (found)
+        {
+            if (err.code == 200) // no security definition found. Kept as out_of_range for existing callers
+                promise.set_exception(std::make_exception_ptr(std::out_of_range("Symbol not found")));
+            else
+                promise.set_exception(std::make_exception_ptr(IbException(err)));
+            return true;
+        }
+    }
+    {
+        // GetOptionParameters future
+        std::promise<std::vector<SecurityDefinitionOptionParameter>> promise;
+        bool found = false;
+        {
+            std::scoped_lock lock(securityDefinitionMutex);
+            auto itr = securityDefinitionHandlers.find(id);
+            if (itr != securityDefinitionHandlers.end())
+            {
+                promise = std::move(itr->second);
+                securityDefinitionHandlers.erase(itr);
+                securityDefinitionData.erase(id);
+                found = true;
+            }
+        }
+        if (found)
+        {
+            promise.set_exception(std::make_exception_ptr(IbException(err)));
+            return true;
+        }
+    }
+    return false;
+}
+
+void IBConnector::RouteUnmatchedError(const IbError& err)
+{
+    std::vector<ErrorHandler*> handlers;
+    {
+        std::scoped_lock lock(errorHandlersMutex);
+        handlers = errorHandlers;
+    }
+    for(auto* handler : handlers)
+        handler->OnError(this, err);
+    if (err.code == 2109) // Outside Regular Trading Hours warning, never sent to AccountHandlers
+        return;
+    std::scoped_lock lock(accountHandlersMutex);
+    for(auto handler : accountHandlers)
+    {
+        if (handler != nullptr)
+            handler->OnError(err.id, err.code, err.message, err.advancedRejectJson);
     }
 }
 void IBConnector::updateMktDepth(TickerId reqId, int position, int operation, int side, double price, Decimal size)
@@ -1028,21 +1254,25 @@ void IBConnector::securityDefinitionOptionalParameter(int reqId, const std::stri
 {
     //logger->debug("IBConnector", "securityDefinitionOptionalParameter: response for id " + std::to_string(reqId) 
     //        + " and conid " + std::to_string(underlyingConId));
-    auto itr = securityDefinitionData.find(reqId);
-    if (itr != securityDefinitionData.end())
+    SecurityDefinitionOptionParameter data;
+    data.reqId = reqId;
+    data.exchange = exchange;
+    data.underlyingConId = underlyingConId;
+    data.tradingClass = tradingClass;
+    data.multiplier = multiplier;
+    data.expirations = expirations;
+    data.strikes = strikes;
+    bool found = false;
     {
-        auto& vec = (*itr).second;
-        SecurityDefinitionOptionParameter data;
-        data.reqId = reqId;
-        data.exchange = exchange;
-        data.underlyingConId = underlyingConId;
-        data.tradingClass = tradingClass;
-        data.multiplier = multiplier;
-        data.expirations = expirations;
-        data.strikes = strikes;
-        vec.push_back(data);
+        std::scoped_lock lock(securityDefinitionMutex);
+        auto itr = securityDefinitionData.find(reqId);
+        if (itr != securityDefinitionData.end())
+        {
+            itr->second.push_back(std::move(data));
+            found = true;
+        }
     }
-    else
+    if (!found)
     {
         logger->error("IBConnector", "securityDefinitionOptionalParameter: id " + std::to_string(reqId) + " not found in collection");
     }
@@ -1050,18 +1280,29 @@ void IBConnector::securityDefinitionOptionalParameter(int reqId, const std::stri
 void IBConnector::securityDefinitionOptionalParameterEnd(int reqId)
 {
     //logger->debug("IBConnector", "securityDefinitionOptionalParameterEnd: reqId: " + std::to_string(reqId) );
-    auto itr = securityDefinitionHandlers.find(reqId);
-    auto dataItr = securityDefinitionData.find(reqId);
+    std::promise<std::vector<SecurityDefinitionOptionParameter>> promise;
     std::vector<SecurityDefinitionOptionParameter> vec;
-    if (dataItr != securityDefinitionData.end())
-        vec = (*dataItr).second;
-    if (itr != securityDefinitionHandlers.end())
+    bool found = false;
     {
-        auto& promise = (*itr).second;
-        promise.set_value(vec);
-        securityDefinitionHandlers.erase(itr);
-        securityDefinitionData.erase(dataItr);
-        //logger->debug("IBConnector", "securityDefinitionOptionalParameterEnd: id " + std::to_string(reqId) + " promise value set.");
+        // take both entries out under the lock; complete the promise after releasing it
+        std::scoped_lock lock(securityDefinitionMutex);
+        auto itr = securityDefinitionHandlers.find(reqId);
+        if (itr != securityDefinitionHandlers.end())
+        {
+            promise = std::move(itr->second);
+            securityDefinitionHandlers.erase(itr);
+            auto dataItr = securityDefinitionData.find(reqId);
+            if (dataItr != securityDefinitionData.end())
+            {
+                vec = std::move(dataItr->second);
+                securityDefinitionData.erase(dataItr);
+            }
+            found = true;
+        }
+    }
+    if (found)
+    {
+        promise.set_value(std::move(vec));
     }
     else
     {
@@ -1103,7 +1344,7 @@ void IBConnector::historicalDataUpdate(TickerId reqId, const Bar& bar)
     {
         std::string str;
         std::for_each(historicalDataHandlers.begin(), historicalDataHandlers.end(),
-                [&str]( const std::pair<uint32_t, HistoricalDataHandler*> curr)
+                [&str]( const std::pair<const int, HistoricalDataHandler*>& curr)
                 { if(curr.second != nullptr) str += ", " + std::to_string(curr.first); });
         /*
         logger->debug("IBConnector", "historicalDataUpdate called for id " + std::to_string(reqId) 

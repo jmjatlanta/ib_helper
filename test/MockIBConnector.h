@@ -24,23 +24,23 @@ class MockIBConnector : public ib_helper::IBConnector
     public:
     MockIBConnector(const std::string& hostname, int port, int clientId, ib_helper::IBConnectionMonitor* monitor = nullptr);
     ~MockIBConnector();
-    uint32_t GetNextRequestId() override;
+    int GetNextRequestId() override;
     std::future<std::vector<ContractDetails>> GetContractDetails(const Contract& contract) override;
     bool IsConnected() const override;
     void RequestPositions() override;
     void RequestOpenOrders() override;
     void RequestAllOpenOrders() override;
-    uint32_t RequestExecutionReports(const ExecutionFilter& filter) override;
+    int RequestExecutionReports(const ExecutionFilter& filter) override;
     void AddConnectionMonitor(ib_helper::IBConnectionMonitor* in) override;
-    uint32_t SubscribeToHistoricalData(const Contract& contract, ib_helper::HistoricalDataHandler* handler,
+    int SubscribeToHistoricalData(const Contract& contract, ib_helper::HistoricalDataHandler* handler,
             const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize, bool rth = true) override;
-    void UnsubscribeFromHistoricalData(uint32_t subId) override;
-    uint32_t SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
+    void UnsubscribeFromHistoricalData(int subId) override;
+    int SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
         const std::string& tickType, int numberOfTicks, bool ignoreSize) override;
-    uint32_t SubscribeToMarketData(const Contract& contract, ib_helper::TickHandler* tickHandler, 
+    int SubscribeToMarketData(const Contract& contract, ib_helper::TickHandler* tickHandler, 
             const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
             const TagValueListSPtr& mktDataOptions) override;
-    void UnsubscribeFromTickByTick(uint32_t subId) override;
+    void UnsubscribeFromTickByTick(int subId) override;
     void RequestAccountUpdates(bool subscribe, const std::string& account) override;
     // bars
     /***
@@ -66,9 +66,9 @@ class MockIBConnector : public ib_helper::IBConnector
      * @param subId the subscription id
      */
     void SendHistoricalDataEnd(int subId);
-    void SendMarketData(uint32_t subId, double last, double bid, double ask);
+    void SendMarketData(int subId, double last, double bid, double ask);
     void SendTick(int subId, double lastPrice);
-    void SendBidAsk(uint32_t subscriptionId, double bid, double ask);
+    void SendBidAsk(int subscriptionId, double bid, double ask);
     // orders
     void ProcessOrdersImmediately(bool yn) { processOrdersImmediately = yn; }
     void SetOrderRejectReason(uint32_t code) { orderRejectCode = code; }
@@ -103,10 +103,10 @@ class MockIBConnector : public ib_helper::IBConnector
     bool validateOrder(int orderId, const Contract& contract, const ::Order& order);
     bool processOrder(MockOrder& order, double price);
     bool submitOrder(MockOrder& order);
-    MockOrder& findOrderById(uint32_t orderId);
-    std::atomic<uint32_t> nextRequestId;
-    std::atomic<uint32_t> nextOrderId;
-    std::unordered_map<uint32_t, std::promise<std::vector<ContractDetails>>> contractDetailsHandlers;
+    MockOrder& findOrderById(int orderId);
+    std::atomic<int> nextRequestId;
+    std::atomic<int> nextOrderId;
+    std::unordered_map<int, std::promise<std::vector<ContractDetails>>> contractDetailsHandlers;
     // orders
     bool processOrdersImmediately = true;
     uint32_t orderRejectCode = 0;

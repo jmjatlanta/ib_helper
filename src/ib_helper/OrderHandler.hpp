@@ -2,6 +2,7 @@
 #include "Contract.h"
 #include "Order.h"
 #include "OrderState.h"
+#include "IbError.hpp"
 
 namespace ib_helper
 {
@@ -16,6 +17,11 @@ class OrderHandler
             const std::string& whyHeld, double mktCapPrice) = 0;
     virtual void OnOpenOrderEnd() = 0;
     virtual void OnOrderBound(long orderId, int apiClientId, int apiOrderId) = 0;
+    /***
+     * TWS reported an error, warning or confirmation for an order id.
+     * Check err.severity / err.isError(): e.g. 202 (cancelled) and 399 are not failures.
+     */
+    virtual void OnOrderError(int orderId, const IbError& err) {}
 };
 
 } // namespace igb_helper

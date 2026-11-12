@@ -184,7 +184,7 @@ TEST(ReconnectTest, error502)
     ASSERT_FALSE(conn->IsConnected());
     EXPECT_EQ( myStrategy.onConnectCount, 0);
     EXPECT_EQ( myStrategy.onFullConnectCount, 0);
-    EXPECT_EQ( myStrategy.onDisconnectCount, 0); // as there is no ibClient, disconnect is not called
+    EXPECT_EQ( myStrategy.onDisconnectCount, 1); // a 502 while connected is reported once, as a disconnect
     EXPECT_EQ( myStrategy.onErrorCount, 1);
 
     // connection should be reestablished
