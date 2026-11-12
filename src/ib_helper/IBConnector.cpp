@@ -602,7 +602,7 @@ void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, co
     {
         std::string str;
         std::for_each(tickHandlers.begin(), tickHandlers.end(),
-                [&str](const const std::pair<const int, TickHandler*>& curr)
+                [&str](const std::pair<const int, TickHandler*>& curr)
                 { if (curr.second != nullptr) str += ", " + std::to_string(curr.first); });
         logger->debug("IBConnector", "tickPrice: No subscribers for id " + std::to_string(tickerId)
                 + ". Valid subscriber ids: " + str);
@@ -1344,7 +1344,7 @@ void IBConnector::historicalDataUpdate(TickerId reqId, const Bar& bar)
     {
         std::string str;
         std::for_each(historicalDataHandlers.begin(), historicalDataHandlers.end(),
-                [&str]( const const std::pair<const int, HistoricalDataHandler*>& curr)
+                [&str]( const std::pair<const int, HistoricalDataHandler*>& curr)
                 { if(curr.second != nullptr) str += ", " + std::to_string(curr.first); });
         /*
         logger->debug("IBConnector", "historicalDataUpdate called for id " + std::to_string(reqId) 
