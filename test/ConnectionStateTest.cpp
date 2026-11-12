@@ -98,3 +98,84 @@ TEST_P(ConnectionStateTest, SocketFailureWhenAlreadyDown)
 }
 
 INSTANTIATE_TEST_SUITE_P(SocketCodes, ConnectionStateTest, ::testing::Values(502, 509));
+
+namespace {
+
+/*** uses the real disconnect(); with no TWS client or reader thread it only changes state and notifies */
+class PlainConnector : public IBConnector
+{
+    public:
+    PlainConnector() : IBConnector() {}
+    using IBConnector::error;
+    using IBConnector::connectionClosed;
+    void SetStatus(ConnectionStatus in) { currentConnectionStatus = in; }
+};
+
+} // namespace
+
+TEST(DisconnectNotifyTest, DisconnectWhileConnectedNotifiesOnce)
+{
+    PlainConnector conn;
+    RecordingMonitor monitor;
+    conn.AddConnectionMonitor(&monitor);
+    conn.SetStatus(IBConnector::ConnectionStatus::FULLY_CONNECTED);
+    EXPECT_TRUE(conn.disconnect());
+    EXPECT_EQ(conn.GetConnectionStatus(), IBConnector::ConnectionStatus::SHUTDOWN);
+    EXPECT_EQ(monitor.disconnects, 1);
+    // a second disconnect() has nothing left to close
+    EXPECT_TRUE(conn.disconnect());
+    EXPECT_EQ(monitor.disconnects, 1);
+    conn.RemoveConnectionMonitor(&monitor);
+}
+
+TEST(DisconnectNotifyTest, CleanupAfterDropDoesNotNotifyAgain)
+{
+    for(int code : {502, 509})
+    {
+        PlainConnector conn;
+        RecordingMonitor monitor;
+        conn.AddConnectionMonitor(&monitor);
+        conn.SetStatus(IBConnector::ConnectionStatus::FULLY_CONNECTED);
+        conn.error(-1, 0, code, "socket failure", "");
+        EXPECT_EQ(monitor.disconnects, 1) << "code " << code;
+        conn.disconnect(); // the owner cleans up
+        EXPECT_EQ(monitor.disconnects, 1) << "code " << code;
+        conn.RemoveConnectionMonitor(&monitor);
+    }
+}
+
+TEST(DisconnectNotifyTest, CleanupAfterClosedConnectionDoesNotNotifyAgain)
+{
+    PlainConnector conn;
+    RecordingMonitor monitor;
+    conn.AddConnectionMonitor(&monitor);
+    conn.SetStatus(IBConnector::ConnectionStatus::FULLY_CONNECTED);
+    conn.connectionClosed(); // TWS closed the connection
+    EXPECT_EQ(monitor.disconnects, 1);
+    conn.disconnect();
+    EXPECT_EQ(monitor.disconnects, 1);
+    conn.RemoveConnectionMonitor(&monitor);
+}
+
+TEST(DisconnectNotifyTest, DisconnectWhenNeverConnectedDoesNotNotify)
+{
+    PlainConnector conn;
+    RecordingMonitor monitor;
+    conn.AddConnectionMonitor(&monitor);
+    EXPECT_EQ(conn.GetConnectionStatus(), IBConnector::ConnectionStatus::NOT_STARTED);
+    EXPECT_TRUE(conn.disconnect());
+    EXPECT_EQ(monitor.disconnects, 0);
+    EXPECT_EQ(conn.GetConnectionStatus(), IBConnector::ConnectionStatus::SHUTDOWN);
+    conn.RemoveConnectionMonitor(&monitor);
+}
+
+TEST(DisconnectNotifyTest, DisconnectWhilePartiallyConnectedNotifies)
+{
+    PlainConnector conn;
+    RecordingMonitor monitor;
+    conn.AddConnectionMonitor(&monitor);
+    conn.SetStatus(IBConnector::ConnectionStatus::PARTIALLY_CONNECTED);
+    conn.disconnect();
+    EXPECT_EQ(monitor.disconnects, 1);
+    conn.RemoveConnectionMonitor(&monitor);
+}

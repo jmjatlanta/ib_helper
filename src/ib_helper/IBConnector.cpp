@@ -111,7 +111,12 @@ bool IBConnector::connect()
 bool IBConnector::disconnect()
 {
     logger->debug("IBConnector", "disconnect: Attempting to disconnect from IB host " + hostname + ":" + std::to_string(port));
-    currentConnectionStatus = ConnectionStatus::ATTEMPTING_SHUTDOWN;
+    // Only report a disconnect if there was a connection to close. After a drop,
+    // connectionClosed() has already set SHUTDOWN and told the monitors; this call only cleans up.
+    const ConnectionStatus before = currentConnectionStatus.exchange(ConnectionStatus::ATTEMPTING_SHUTDOWN);
+    const bool wasConnected = before == ConnectionStatus::ATTEMPTING_CONNECTION
+            || before == ConnectionStatus::PARTIALLY_CONNECTED
+            || before == ConnectionStatus::FULLY_CONNECTED;
     // there should be no more EReader messages after the thread shuts down (EReader is destroyed
     if (listenerThread != nullptr && listenerThread->joinable())
         listenerThread->join();
@@ -129,10 +134,12 @@ bool IBConnector::disconnect()
         osSignal = nullptr;
     }
     currentConnectionStatus = ConnectionStatus::SHUTDOWN;
-    // lock the mutex
-    std::scoped_lock lock(connectionMonitorsMutex);
-    std::for_each(connectionMonitors.begin(), connectionMonitors.end(), [this](IBConnectionMonitor* curr)
-                  { curr->OnDisconnect(this); });
+    if (wasConnected)
+    {
+        std::scoped_lock lock(connectionMonitorsMutex);
+        std::for_each(connectionMonitors.begin(), connectionMonitors.end(), [this](IBConnectionMonitor* curr)
+                      { curr->OnDisconnect(this); });
+    }
     logger->debug("IBConnector", "disconnect completed");
     return true;
 }

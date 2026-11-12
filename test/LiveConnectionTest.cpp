@@ -119,9 +119,10 @@ void DropThenRecover(TwsProxy& proxy, bool reset, int clientId)
     if (reset)
         EXPECT_TRUE(mon.Saw(509)) << "codes: " << mon.Codes();
 
-    // the owner cleans up from its own thread; this must not hang
+    // the owner cleans up from its own thread; this must not hang, nor report the drop again
     EXPECT_TRUE(conn.disconnect());
     EXPECT_EQ(conn.Client(), nullptr);
+    EXPECT_EQ(mon.disconnects, 1);
 
     ASSERT_TRUE(conn.connect());
     EXPECT_TRUE(WaitFor([&]{ return conn.IsConnected(); }, 5s)) << "status " << to_string(conn.GetConnectionStatus());
@@ -260,11 +261,7 @@ TEST_F(LiveConnectionTest, ConnectAfterDropWithoutDisconnect)
     conn.disconnect();
 }
 
-/***
- * Known problems, kept disabled until fixed. Run with --gtest_also_run_disabled_tests.
- */
-
-TEST_F(LiveConnectionTest, DISABLED_OneOnDisconnectPerDrop)
+TEST_F(LiveConnectionTest, OneOnDisconnectPerDrop)
 {
     Monitor mon;
     auto conn = std::make_unique<ib_helper::IBManagedConnector>("127.0.0.1", ProxyPort(), 906, &mon);

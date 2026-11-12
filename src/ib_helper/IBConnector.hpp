@@ -69,6 +69,8 @@ class IBConnector : public EWrapper
      * connector moves to SHUTDOWN and calls IBConnectionMonitor::OnDisconnect, but leaves
      * the cleanup to the owner: call disconnect() and/or connect() from your own thread,
      * or use IBManagedConnector, which reconnects automatically.
+     * Calls IBConnectionMonitor::OnDisconnect only if there was a connection to close, so
+     * monitors get one OnDisconnect per connection, not one per disconnect() call.
      */
     virtual bool disconnect();
     virtual void AddAccountHandler(AccountHandler* in);
