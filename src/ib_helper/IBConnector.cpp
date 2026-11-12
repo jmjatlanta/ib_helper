@@ -151,7 +151,7 @@ std::future<std::vector<SecurityDefinitionOptionParameter>> IBConnector::GetOpti
         p.set_exception(std::exception_ptr{});
         return p.get_future();
     }
-    uint32_t promiseId = GetNextRequestId();
+    int promiseId = GetNextRequestId();
     auto& promise = securityDefinitionHandlers[promiseId];
     auto& vec = securityDefinitionData[promiseId]; // put the vector in there
     //logger->debug("IBConnector", "GetOptionParameters: about to request details for " + contract.symbol + " id: " + std::to_string(promiseId) );
@@ -167,7 +167,7 @@ std::future<std::vector<ContractDetails>> IBConnector::GetContractDetails(const 
         p.set_exception(std::exception_ptr{});
         return p.get_future();
     }
-    uint32_t promiseId = GetNextRequestId();
+    int promiseId = GetNextRequestId();
     std::scoped_lock lock(contractDetailsHandlersMutex, contractDetailsDataMutex);
     auto& promise = contractDetailsHandlers[promiseId];
     auto& vec = contractDetailsData[promiseId]; // put the vector in there
@@ -183,9 +183,9 @@ void IBConnector::RequestPositions()
         ibClient->reqPositions();
 }
 
-uint32_t IBConnector::RequestExecutionReports(const ExecutionFilter& filter)
+int IBConnector::RequestExecutionReports(const ExecutionFilter& filter)
 {
-    uint32_t reqId = GetNextRequestId();
+    int reqId = GetNextRequestId();
     if (ibClient != nullptr)
         ibClient->reqExecutions(reqId, filter);
     return reqId;
@@ -243,7 +243,7 @@ int IBConnector::RequestScannerSubscription( ScannerSubscription scannerSubscrip
 {
     if (ibClient == nullptr)
         return -1;
-    int nextReq = ++nextRequestId;
+    int nextReq = GetNextRequestId();
     ibClient->reqScannerSubscription(nextReq, scannerSubscription, scannerSubscriptionOptions, scannerSubscriptionFilterOptions);
     return nextReq;
 }
@@ -280,12 +280,31 @@ void IBConnector::AddExecutionHandler(ExecutionHandler* in)
 
 void IBConnector::RemoveExecutionHandler(ExecutionHandler* in)
 {
-    uint32_t toErase = 0;
     std::scoped_lock lock(executionHandlersMutex);
     executionHandlers.erase(std::remove(executionHandlers.begin(), executionHandlers.end(), in), executionHandlers.end());
 }
 
-AccountHandler* IBConnector::GetDefaultAccountHandler() 
+int IBConnector::GetNextOrderId()
+{
+    int id = ++nextOrderId;
+    if (!IsOrderId(id) && logger != nullptr)
+        logger->error(logCategory, "GetNextOrderId: order id " + std::to_string(id)
+                + " is outside the order id range and may collide with request ids");
+    return id;
+}
+
+int IBConnector::GetNextRequestId()
+{
+    int current = nextRequestId.load();
+    int next;
+    do
+    {
+        next = (current >= INT_MAX || current < REQUEST_ID_BASE) ? REQUEST_ID_BASE : current + 1;
+    } while (!nextRequestId.compare_exchange_weak(current, next));
+    return next;
+}
+
+AccountHandler* IBConnector::GetDefaultAccountHandler()
 { 
     std::scoped_lock lock(accountHandlersMutex);
     if (accountHandlers.size() == 0) 
@@ -379,14 +398,14 @@ void IBConnector::processMessages() {
  * @param regulatorySnapshot true to only get a regulatory snapshot
  * @param mktDataOptions not currently used by us
  */
-uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
+int IBConnector::SubscribeToMarketData(const Contract& contract, TickHandler* tickHandler, 
         const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
         const TagValueListSPtr& mktDataOptions)
 {
     if (ibClient == nullptr)
         return 0;
 
-    uint32_t reqId = GetNextRequestId();
+    int reqId = GetNextRequestId();
     {
         std::scoped_lock lock(tickHandlersMutex);
         tickHandlers[reqId] = tickHandler;
@@ -395,7 +414,7 @@ uint32_t IBConnector::SubscribeToMarketData(const Contract& contract, TickHandle
     return reqId;
 };
 
-void IBConnector::UnsubscribeFromMarketData(uint32_t reqId) 
+void IBConnector::UnsubscribeFromMarketData(int reqId) 
 { 
     //logger->debug("IBConnector", "UnsubscribFromMarketData called with reqId of " + std::to_string(reqId));
     {
@@ -406,10 +425,10 @@ void IBConnector::UnsubscribeFromMarketData(uint32_t reqId)
         ibClient->cancelMktData(reqId); 
 }
 
-uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
+int IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandler* handler, const std::string& tickType, 
             int numberOfTicks, bool ignoreSize)
 {
-    uint32_t reqId = GetNextRequestId();
+    int reqId = GetNextRequestId();
     {
         std::scoped_lock lock(tickHandlersMutex);
         tickHandlers[reqId] = handler;
@@ -419,7 +438,7 @@ uint32_t IBConnector::SubscribeToTickByTick(const Contract& contract, TickHandle
     return reqId;
 };
 
-void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId) 
+void IBConnector::UnsubscribeFromTickByTick(int reqId) 
 { 
     //logger->debug("IBConnector", "UnsubscribFromTickByTick called with reqId of " + std::to_string(reqId));
     if (ibClient != nullptr)
@@ -430,9 +449,9 @@ void IBConnector::UnsubscribeFromTickByTick(uint32_t reqId)
     }
 }
 
-uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines)
+int IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDepthHandler* depthHandler, uint32_t numLines)
 {
-    uint32_t reqId = GetNextRequestId();
+    int reqId = GetNextRequestId();
     {
         std::scoped_lock lock(marketDepthHandlersMutex);
         marketDepthHandlers[reqId] = depthHandler;
@@ -445,7 +464,7 @@ uint32_t IBConnector::SubscribeToMarketDepth(const Contract& contract, MarketDep
     return reqId;
 }
 
-void IBConnector::UnsubscribeFromMarketDepth(uint32_t subscriptionId)
+void IBConnector::UnsubscribeFromMarketDepth(int subscriptionId)
 {
     //logger->debug("IBConnector", "UnsubscribFromMarketDepth called with subscriptionId of " + std::to_string(subscriptionId));
     {
@@ -465,7 +484,7 @@ std::future<std::vector<DepthMktDataDescription> > IBConnector::RequestMktDepthE
     return promise.get_future();
 }
 
-void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionId)
+void IBConnector::UnsubscribeFromHistoricalData(int historicalSubscriptionId)
 {
     //logger->debug("IBConnector", "UnsubscribFromHistoricalData called with subscriptionId of " + std::to_string(historicalSubscriptionId));
     if (ibClient != nullptr)
@@ -477,7 +496,7 @@ void IBConnector::UnsubscribeFromHistoricalData(uint32_t historicalSubscriptionI
     //logger->debug("IBConnector", "UnsubscribeFromHistoricalData: " + std::to_string(historicalSubscriptionId));
 }
 
-uint32_t IBConnector::SubscribeToGroupEvents(DisplayGroupHandler* in, int groupId)
+int IBConnector::SubscribeToGroupEvents(DisplayGroupHandler* in, int groupId)
 {
     std::scoped_lock lock(displayGroupHandlersMutex);
     auto id = GetNextRequestId();
@@ -486,7 +505,7 @@ uint32_t IBConnector::SubscribeToGroupEvents(DisplayGroupHandler* in, int groupI
     return id;
 }
 
-void IBConnector::UnsubscribeFromGroupEvents(uint32_t reqId)
+void IBConnector::UnsubscribeFromGroupEvents(int reqId)
 {
     //logger->debug("IBConnector", "UnsubscribFromGropuEvents called with subscriptionId of " + std::to_string(reqId));
     std::scoped_lock lock(displayGroupHandlersMutex);
@@ -494,7 +513,7 @@ void IBConnector::UnsubscribeFromGroupEvents(uint32_t reqId)
                   { return curr.reqId == reqId; });
 }
 
-uint32_t IBConnector::SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
+int IBConnector::SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
         const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize, bool rth)
 {
     if (ibClient == nullptr)
@@ -528,7 +547,7 @@ void IBConnector::tickPrice( TickerId tickerId, TickType field, double price, co
     {
         std::string str;
         std::for_each(tickHandlers.begin(), tickHandlers.end(),
-                [&str](const std::pair<uint32_t, TickHandler*> curr)
+                [&str](const const std::pair<const int, TickHandler*>& curr)
                 { if (curr.second != nullptr) str += ", " + std::to_string(curr.first); });
         logger->debug("IBConnector", "tickPrice: No subscribers for id " + std::to_string(tickerId)
                 + ". Valid subscriber ids: " + str);
@@ -816,7 +835,10 @@ void IBConnector::error(int id, time_t time, int errorCode, const std::string& e
     {
         // should we alert the conneciton monitors?
     }
-    if (errorCode == 200) // no security definition found
+    // Order ids and request ids are in separate ranges (see REQUEST_ID_BASE), so only
+    // request ids are looked up in the request maps and scanner handlers
+    const bool isRequest = IsRequestId(id);
+    if (errorCode == 200 && isRequest) // no security definition found
     {
         // if the request id is found, set the exception in the promise/future
         auto itr = contractDetailsHandlers.find(id);
@@ -826,7 +848,7 @@ void IBConnector::error(int id, time_t time, int errorCode, const std::string& e
             return;
         }
     }
-    if (errorCode == 162)
+    if (errorCode == 162 && isRequest)
     {
         // we have successfully unsubscribed
         std::scoped_lock lock(scannerHandlerMutex);
@@ -834,7 +856,7 @@ void IBConnector::error(int id, time_t time, int errorCode, const std::string& e
             h->OnScannerSubscriptionEnd(this, id); 
         return;
     }
-    if (errorCode == 165 )
+    if (errorCode == 165 && isRequest)
     {
         // connection restored for a subscription (1100 was called previously, 1102 probably on its way)
         // or subcription to bars or scan returned nothing
@@ -1103,7 +1125,7 @@ void IBConnector::historicalDataUpdate(TickerId reqId, const Bar& bar)
     {
         std::string str;
         std::for_each(historicalDataHandlers.begin(), historicalDataHandlers.end(),
-                [&str]( const std::pair<uint32_t, HistoricalDataHandler*> curr)
+                [&str]( const const std::pair<const int, HistoricalDataHandler*>& curr)
                 { if(curr.second != nullptr) str += ", " + std::to_string(curr.first); });
         /*
         logger->debug("IBConnector", "historicalDataUpdate called for id " + std::to_string(reqId) 

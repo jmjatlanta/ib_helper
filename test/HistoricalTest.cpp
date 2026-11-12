@@ -55,7 +55,7 @@ TEST(HistoricalTest, getBars)
     }
     // does it include premarket with zero volume?
     /*
-    virtual uint32_t SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
+    virtual int SubscribeToHistoricalData(const Contract& contract, HistoricalDataHandler* handler,
             const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize,
             bool rth = true);
     */

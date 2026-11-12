@@ -5,7 +5,7 @@
 #include <algorithm>
 
 MockIBConnector::MockIBConnector(const std::string& hostname, int port, int clientId, ib_helper::IBConnectionMonitor* monitor) 
-    : nextRequestId(1), nextOrderId(1)
+    : nextRequestId(REQUEST_ID_BASE - 1), nextOrderId(1)
 {
     logger = util::SysLogger::getInstance();
     this->SetDefaultAccount("ABC123");
@@ -21,7 +21,7 @@ MockIBConnector::~MockIBConnector()
     logger->debug("MockIBConnector", "dtor called");
 }
 
-uint32_t MockIBConnector::GetNextRequestId()
+int MockIBConnector::GetNextRequestId()
 {
     return ++nextRequestId;
 }
@@ -53,7 +53,7 @@ void doGetContractDetails(const Contract& contract, std::promise<std::vector<Con
 std::future<std::vector<ContractDetails>> MockIBConnector::GetContractDetails(const Contract& contract)
 {
     // we have some that are good and some that are bad
-    uint32_t promiseId = GetNextRequestId();
+    int promiseId = GetNextRequestId();
     auto& promise = contractDetailsHandlers[promiseId];
     doGetContractDetails(contract, promise);
     return promise.get_future();
@@ -84,9 +84,9 @@ void MockIBConnector::RequestAllOpenOrders()
     return RequestOpenOrders();
 }
 
-uint32_t MockIBConnector::RequestExecutionReports(const ExecutionFilter& filter)
+int MockIBConnector::RequestExecutionReports(const ExecutionFilter& filter)
 {
-    uint32_t id = GetNextRequestId();
+    int id = GetNextRequestId();
     for(auto h : executionHandlers)
         h->OnExecDetailsEnd(id);
     return id;
@@ -99,7 +99,7 @@ void MockIBConnector::AddConnectionMonitor(ib_helper::IBConnectionMonitor* in)
     in->OnConnect(this);
 }
 
-uint32_t MockIBConnector::SubscribeToHistoricalData(const Contract& contract, ib_helper::HistoricalDataHandler* handler,
+int MockIBConnector::SubscribeToHistoricalData(const Contract& contract, ib_helper::HistoricalDataHandler* handler,
             const std::string& endDateTime, const std::string& timePeriod, const std::string& barSize, bool rth)
 {
     int id = GetNextRequestId();
@@ -107,12 +107,12 @@ uint32_t MockIBConnector::SubscribeToHistoricalData(const Contract& contract, ib
     return id;
 }
 
-void MockIBConnector::UnsubscribeFromHistoricalData(uint32_t subId)
+void MockIBConnector::UnsubscribeFromHistoricalData(int subId)
 {
     // do nothing
 }
 
-void MockIBConnector::UnsubscribeFromTickByTick(uint32_t subId)
+void MockIBConnector::UnsubscribeFromTickByTick(int subId)
 {
     // do nothing
 }
@@ -204,18 +204,18 @@ void MockIBConnector::SendBar(int subId, const Bar& in, bool inPast)
     }
 }
 
-uint32_t MockIBConnector::SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
+int MockIBConnector::SubscribeToTickByTick(const Contract& contract, ib_helper::TickHandler* handler, 
         const std::string& tickType, int numberOfTicks, bool ignoreSize)
 {
-    uint32_t reqId = GetNextRequestId();
+    int reqId = GetNextRequestId();
     tickHandlers[reqId] = handler;
     return reqId;
 };
-uint32_t MockIBConnector::SubscribeToMarketData(const Contract& contract, ib_helper::TickHandler* tickHandler, 
+int MockIBConnector::SubscribeToMarketData(const Contract& contract, ib_helper::TickHandler* tickHandler, 
         const std::string& genericTickList, bool snapshot, bool regulatorySnapshot, 
         const TagValueListSPtr& mktDataOptions)
 {
-    uint32_t reqId = GetNextRequestId();
+    int reqId = GetNextRequestId();
     tickHandlers[reqId] = tickHandler;
     return reqId;
 }
@@ -306,7 +306,7 @@ void MockIBConnector::RequestAccountUpdates(bool subscribe, const std::string& a
 {
 }
 
-void MockIBConnector::SendMarketData(uint32_t subId, double last, double bid, double ask)
+void MockIBConnector::SendMarketData(int subId, double last, double bid, double ask)
 {
     auto itr = tickHandlers.find(subId);
     if (itr != tickHandlers.end())
@@ -319,7 +319,7 @@ void MockIBConnector::SendMarketData(uint32_t subId, double last, double bid, do
     SendTick(subId, last);
 }
 
-void MockIBConnector::SendBidAsk(uint32_t subscriptionId, double bid, double ask)
+void MockIBConnector::SendBidAsk(int subscriptionId, double bid, double ask)
 {
     auto itr = tickHandlers.find(subscriptionId);
     if (itr != tickHandlers.end())
@@ -333,7 +333,7 @@ void MockIBConnector::SendBidAsk(uint32_t subscriptionId, double bid, double ask
     }
 }
 
-MockOrder& MockIBConnector::findOrderById(uint32_t orderId)
+MockOrder& MockIBConnector::findOrderById(int orderId)
 {
     // NOTE: non-locking
     auto itr = std::find_if(orders.begin(), orders.end(), [orderId](const MockOrder& curr){ return curr.orderId == orderId; });

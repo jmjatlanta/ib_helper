@@ -123,7 +123,7 @@ TEST(IBConnectorTest, DISABLED_Ticks)
     MyTickHandler tickHandler;
     ib_helper::ContractBuilder contractBuilder{&conn};
     ContractDetails msft = contractBuilder.BuildStock("GOTU");
-    uint32_t tickSubscriptionId = conn.SubscribeToMarketData(msft.contract, &tickHandler, "225,233", false, false, nullptr);
+    int tickSubscriptionId = conn.SubscribeToMarketData(msft.contract, &tickHandler, "225,233", false, false, nullptr);
     std::this_thread::sleep_for(std::chrono::seconds(3));
     conn.UnsubscribeFromMarketData(tickSubscriptionId);
     EXPECT_GT(tickHandler.methodsCalled, 0);
@@ -131,7 +131,7 @@ TEST(IBConnectorTest, DISABLED_Ticks)
     // Last, AllLast, BidAsk
     tickSubscriptionId = conn.SubscribeToTickByTick(msft.contract, &tickHandler, "BidAsk", 0, true);
     std::this_thread::sleep_for(std::chrono::seconds(15));
-    uint32_t lastSubscriptionId = conn.SubscribeToTickByTick(msft.contract, &tickHandler, "AllLast", 0, true);
+    int lastSubscriptionId = conn.SubscribeToTickByTick(msft.contract, &tickHandler, "AllLast", 0, true);
     std::this_thread::sleep_for(std::chrono::seconds(30));
     conn.UnsubscribeFromTickByTick(tickSubscriptionId);
     conn.UnsubscribeFromTickByTick(lastSubscriptionId);
